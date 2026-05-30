@@ -427,6 +427,44 @@ tr.bg-selected td{background:#eff6ff!important}
 .bulk-modal-body{padding:20px 22px}
 .bulk-modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
 
+/* ── CUMPLEAÑOS & FECHAS ── */
+.event-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;display:flex;align-items:center;gap:12px;margin-bottom:8px;transition:box-shadow .15s}
+.event-card:hover{box-shadow:var(--shadow-lg)}
+.event-card.hoy{border-left:4px solid #f5d400;background:#fefce8}
+.event-card.pronto{border-left:4px solid var(--blue)}
+.event-card.aniversario{border-left:4px solid var(--green)}
+.event-card.critico{border-left:4px solid var(--orange)}
+.event-card.critico-red{border-left:4px solid var(--red)}
+.event-emoji{font-size:24px;flex-shrink:0;width:40px;text-align:center}
+.event-name{font-size:13px;font-weight:700;color:var(--text)}
+.event-detail{font-size:11px;color:var(--text2);margin-top:2px}
+.event-badge{margin-left:auto;flex-shrink:0;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:700}
+.event-badge.hoy{background:#fef9c3;color:#a16207}
+.event-badge.pronto{background:var(--blue-light);color:var(--blue-dark)}
+.event-badge.aniv{background:var(--green-light);color:var(--green)}
+.event-badge.critico{background:var(--orange-light);color:#92400e}
+.event-badge.rojo{background:var(--red-light);color:var(--red)}
+.event-section-title{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:14px 0 6px;display:flex;align-items:center;gap:6px}
+.event-section-title::after{content:'';flex:1;height:1px;background:var(--border)}
+/* Widget dashboard */
+.dash-widget{background:linear-gradient(135deg,#001a4d,#003c9d);border-radius:10px;padding:14px 18px;margin-bottom:20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.dash-widget-item{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.1);border-radius:8px;padding:6px 12px;font-size:12px;color:#fff}
+.dash-widget-item .emoji{font-size:16px}
+.dash-widget-empty{font-size:12px;color:rgba(255,255,255,.5)}
+/* -- DOCUMENTOS DEL EMPLEADO -- */
+.doc-tipo-card{background:#fafbfc;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
+.doc-tipo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.doc-tipo-title{font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
+.doc-item{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.doc-item:hover{background:#f8fafc}
+.doc-icon{width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
+.doc-icon.pdf{background:#fee2e2}
+.doc-icon.img{background:#dbeafe}
+.doc-icon.word{background:#dbeafe}
+.doc-icon.otro{background:#f1f5f9}
+.doc-name{font-size:12px;font-weight:600;color:var(--text);flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.doc-meta{font-size:10px;color:var(--text3);margin-top:1px}
+.doc-empty{font-size:11px;color:var(--text3);font-style:italic;padding:4px 0}
 /* RESPONSIVE ADJUSTMENTS */
 @media(max-width:1100px){.stats-grid{grid-template-columns:repeat(2,1fr)}.charts-grid{grid-template-columns:1fr 1fr}.chart-card.wide{grid-column:span 1}}
 
@@ -651,6 +689,14 @@ tr.bg-selected td{background:#eff6ff!important}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 11h6"/></svg>
     Certificados
   </div>
+  <div id="sb-nav-fechas" class="sb-item" onclick="showSection('fechas',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+    Cumplea&#241;os &amp; Fechas
+  </div>
+  <div id="sb-nav-estadisticas" class="sb-item" onclick="showSection('estadisticas',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+    Estad&#237;sticas
+  </div>
   <div class="sb-section" id="sb-label-sistema" style="margin-top:8px">Sistema</div>
   <div id="sb-nav-auditoria" class="sb-item" onclick="showSection('auditoria',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
@@ -751,6 +797,9 @@ tr.bg-selected td{background:#eff6ff!important}
             <div class="stat-sub">C&#233;dulas con m&#225;s de un registro</div>
           </div>
         </div>
+
+      <!-- Widget: Hoy en la empresa (cumpleaños y aniversarios del día) -->
+      <div id="dash-widget-hoy" style="display:none;margin-bottom:20px"></div>
 
       <div class="charts-grid">
         <!-- Género donut -->
@@ -1456,6 +1505,72 @@ tr.bg-selected td{background:#eff6ff!important}
 
       <div id="lista-usuarios"></div>
     </div><!-- /usuarios -->
+
+
+    <!-- ════════════════════════════════════ CUMPLEAÑOS & FECHAS ══ -->
+    <div id="section-fechas" class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Cumplea&#241;os &amp; Fechas</div>
+          <div class="section-sub">Cumplea&#241;os, aniversarios laborales y fechas cr&#237;ticas del personal</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="buildFechas(_fechasTabActiva)">&#8635; Actualizar</button>
+      </div>
+
+      <!-- Tabs -->
+      <div style="display:flex;gap:4px;margin-bottom:16px;border-bottom:1px solid var(--border)">
+        <div class="panel-tab active" id="ftab-cumple" onclick="buildFechas('cumple')" style="font-size:13px;padding:10px 16px">&#127874; Cumplea&#241;os</div>
+        <div class="panel-tab" id="ftab-aniv" onclick="buildFechas('aniv')" style="font-size:13px;padding:10px 16px">&#127881; Aniversarios</div>
+        <div class="panel-tab" id="ftab-critico" onclick="buildFechas('critico')" style="font-size:13px;padding:10px 16px">&#9888; Fechas cr&#237;ticas</div>
+      </div>
+
+      <div id="fechas-content">
+        <div class="empty-state" style="padding:40px"><p>Cargando...</p></div>
+      </div>
+    </div><!-- /fechas -->
+    <!-- ════════════════════════════════════ ESTADÍSTICAS ══ -->
+    <div id="section-estadisticas" class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Estad&#237;sticas de Rotaci&#243;n</div>
+          <div class="section-sub">An&#225;lisis gerencial de movimiento de personal</div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="buildEstadisticas()">&#8635; Actualizar</button>
+      </div>
+
+      <!-- KPIs resumen -->
+      <div class="stats-grid" id="rot-kpis" style="margin-bottom:20px"></div>
+
+      <!-- Gráficos fila 1 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+        <div class="chart-card">
+          <div class="chart-title">&#191;Por qu&#233; se van?</div>
+          <div class="chart-sub">Motivos de retiro (empleados inactivos)</div>
+          <div class="chart-wrap" style="display:flex;align-items:center;justify-content:center;height:200px">
+            <canvas id="chartMotivos" style="max-height:200px"></canvas>
+          </div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Rotaci&#243;n mensual</div>
+          <div class="chart-sub">Empleados retirados por mes (&#250;ltimos 12 meses)</div>
+          <div class="chart-wrap" style="height:200px"><canvas id="chartRotMensual"></canvas></div>
+        </div>
+      </div>
+
+      <!-- Gráficos fila 2 -->
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+        <div class="chart-card">
+          <div class="chart-title">Clientes con m&#225;s bajas</div>
+          <div class="chart-sub">Top 10 por n&#250;mero de retiros</div>
+          <div class="chart-wrap" style="height:240px"><canvas id="chartRotCliente"></canvas></div>
+        </div>
+        <div class="chart-card">
+          <div class="chart-title">Permanencia promedio</div>
+          <div class="chart-sub">Meses promedio por cargo (activos e inactivos)</div>
+          <div class="mini-bar-list" id="chartPermanencia" style="margin-top:8px;max-height:240px;overflow-y:auto"></div>
+        </div>
+      </div>
+    </div><!-- /estadisticas -->
   </div><!-- /content -->
 </div><!-- /main -->
 
@@ -1531,6 +1646,9 @@ tr.bg-selected td{background:#eff6ff!important}
     <div class="panel-tab" onclick="switchTab(this,'tab-seguridad')">Seguridad Social</div>
     <div class="panel-tab" onclick="switchTab(this,'tab-historial')">Historial</div>
     <div class="panel-tab" onclick="switchTab(this,'tab-cambios')">Cambios</div>
+    <div class="panel-tab" onclick="switchTab(this,'tab-docs');loadDocumentos()">
+      &#128206; Documentos <span id="docs-badge" style="display:none;background:var(--blue);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:3px">0</span>
+    </div>
   </div>
   <div class="panel-body">
     <div class="panel-tab-content active" id="tab-personal">
@@ -1559,6 +1677,19 @@ tr.bg-selected td{background:#eff6ff!important}
         <span style="font-size:11px;color:var(--text3);background:#f1f5f9;padding:3px 9px;border-radius:20px">Simulación</span>
       </div>
       <div class="change-log" id="infoCambios"></div>
+    </div>
+
+    <!-- ── TAB DOCUMENTOS ── -->
+    <div class="panel-tab-content" id="tab-docs">
+      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
+        <div style="font-size:12px;color:var(--text2)">Documentos adjuntos al perfil del empleado</div>
+        <label class="btn btn-ghost btn-sm" style="cursor:pointer" id="btn-subir-doc-top">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Subir documento
+          <input type="file" id="doc-file-top" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none" onchange="subirDocDesdeBoton(this)">
+        </label>
+      </div>
+      <div id="docs-grid"></div>
     </div>
   </div>
 </div>
@@ -1960,9 +2091,11 @@ function showSection(id, el) {
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios'};
+  const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios',estadisticas:'Estadísticas de Rotación',fechas:'Cumpleaños & Fechas Críticas'};
   document.getElementById('breadcrumb').textContent = titles[id]||id;
   if (id === 'auditoria') loadAuditLog();
+  if (id === 'estadisticas') buildEstadisticas();
+  if (id === 'fechas') buildFechas('cumple');
   if (id === 'usuarios') {
     if (!isAdmin()) {
       // No-admin intentando entrar a Gestión de Usuarios — redirigir al dashboard
@@ -1987,7 +2120,8 @@ function initFilters(){
 function filterTable(){
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   const estado = document.getElementById('filterEstado').value;
-  updateBulkBar();  // actualizar "Seleccionar todos N" con el nuevo filtro
+  updateBulkBar();       // actualizar "Seleccionar todos N" con el nuevo filtro
+  updateExportButton();  // actualizar label del botón exportar
   const cliente = document.getElementById('filterCliente').value;
   const cargo = document.getElementById('filterCargo').value;
   const genero = document.getElementById('filterGenero').value;
@@ -2561,14 +2695,508 @@ async function saveEdit(){
   closeEditModal();
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// ESTADÍSTICAS DE ROTACIÓN
+// ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// CUMPLEAÑOS, ANIVERSARIOS Y FECHAS CRÍTICAS
+// ══════════════════════════════════════════════════════════════════════════
+// ══════════════════════════════════════════════════════════════════════════
+// DOCUMENTOS DEL EMPLEADO — Supabase Storage + tabla documentos_empleados
+// ══════════════════════════════════════════════════════════════════════════
+const DOC_TIPOS = [
+  { key:'cedula',    label:'Cedula de ciudadania', emoji:'ID' },
+  { key:'contrato',  label:'Contrato firmado',     emoji:'CT' },
+  { key:'examen',    label:'Examen medico',         emoji:'ME' },
+  { key:'paz_salvo', label:'Paz y salvo',           emoji:'PS' },
+  { key:'otro',      label:'Otros documentos',      emoji:'DC' },
+];
+let _docsEmpId = null;
+
+async function loadDocumentos() {
+  const empId = currentEmpId;
+  if (!empId) return;
+  _docsEmpId = empId;
+  const grid = document.getElementById('docs-grid');
+  if (!grid) return;
+  grid.innerHTML = '<div style="color:var(--text3);font-size:12px;padding:12px">Cargando...</div>';
+
+  const { data, error } = await sb.from('documentos_empleados')
+    .select('*').eq('empleado_id', String(empId)).order('created_at', {ascending:false});
+  if (error) { grid.innerHTML = '<div style="color:var(--red);font-size:12px">Error: ' + escapeHTML(error.message) + '</div>'; return; }
+
+  const badge = document.getElementById('docs-badge');
+  if (badge) { badge.textContent = (data||[]).length; badge.style.display = (data||[]).length>0?'':'none'; }
+
+  const byTipo = {};
+  DOC_TIPOS.forEach(t => byTipo[t.key] = []);
+  (data||[]).forEach(d => { if (!byTipo[d.tipo]) byTipo[d.tipo]=[]; byTipo[d.tipo].push(d); });
+
+  grid.innerHTML = DOC_TIPOS.map(tipo => {
+    const docs = byTipo[tipo.key]||[];
+    const itemsHtml = docs.length
+      ? docs.map(d => {
+          const ext = (d.nombre.split('.').pop()||'').toLowerCase();
+          const isPdf = ext==='pdf', isImg = ['jpg','jpeg','png'].includes(ext);
+          const ico = isPdf?'pdf':isImg?'img':ext.includes('doc')?'word':'otro';
+          const emo = isPdf?'📄':isImg?'🖼️':ext.includes('doc')?'📝':'📎';
+          const fecha = d.created_at ? new Date(d.created_at).toLocaleDateString('es-CO') : '';
+          const tam = d.tamanio ? (d.tamanio>1048576?(d.tamanio/1048576).toFixed(1)+'MB':(d.tamanio/1024).toFixed(0)+'KB') : '';
+          return '<div class="doc-item">'
+            + '<div class="doc-icon '+ico+'">'+emo+'</div>'
+            + '<div style="flex:1;min-width:0"><div class="doc-name">'+escapeHTML(d.nombre)+'</div>'
+            + '<div class="doc-meta">'+fecha+(d.subido_por?' · '+escapeHTML(d.subido_por):'')+' '+tam+'</div></div>'
+            + '<button class="btn-icon" title="Ver/Descargar" onclick="descargarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>'
+            + (isEditor() ? '<button class="btn-icon red" title="Eliminar" onclick="eliminarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>' : '')
+            + '</div>';
+        }).join('')
+      : '<div class="doc-empty">Sin documentos en esta categoria</div>';
+
+    return '<div class="doc-tipo-card">'
+      + '<div class="doc-tipo-header"><div class="doc-tipo-title" style="font-size:12px;font-weight:700">'+escapeHTML(tipo.label)+'</div>'
+      + (isEditor() ? '<label class="btn-icon" style="cursor:pointer;font-size:10px;gap:3px" title="Subir"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Subir<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirDocumento(this,\''+tipo.key+'\')"></label>' : '')
+      + '</div>'
+      + itemsHtml + '</div>';
+  }).join('');
+}
+
+async function subirDocumento(input, tipo) {
+  const file = input.files[0];
+  if (!file || !_docsEmpId) return;
+  if (file.size > 10*1024*1024) { showToast('Maximo 10MB por archivo'); return; }
+  showToast('Subiendo ' + file.name + '...');
+  const path = _docsEmpId + '/' + tipo + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
+  if (upErr) { showToast('Error: ' + upErr.message); return; }
+  const { error: dbErr } = await sb.from('documentos_empleados').insert([{
+    empleado_id: String(_docsEmpId), tipo, nombre: file.name,
+    storage_path: path, tamanio: file.size,
+    subido_por: _currentUser?.display_name || _currentUser?.email || 'Usuario'
+  }]);
+  if (dbErr) { showToast('Error registrando: ' + dbErr.message); return; }
+  await logAudit('create', 'documentos', String(_docsEmpId), 'Subio documento ' + tipo + ': ' + file.name);
+  showToast('Documento subido correctamente');
+  input.value = '';
+  loadDocumentos();
+}
+
+function subirDocDesdeBoton(input) {
+  const file = input.files[0]; if (!file) return;
+  const opciones = DOC_TIPOS.map((t,i)=>(i+1)+'. '+t.label).join('\n');
+  const resp = prompt('Que tipo de documento es?\n\n'+opciones+'\n\nEscribe el numero (1-5):');
+  const idx = parseInt(resp)-1;
+  if (isNaN(idx)||idx<0||idx>=DOC_TIPOS.length) { showToast('Tipo no valido'); return; }
+  subirDocumento(input, DOC_TIPOS[idx].key);
+}
+
+async function descargarDocumento(id, storagePath) {
+  const { data, error } = await sb.storage.from('documentos').createSignedUrl(storagePath, 3600);
+  if (error) { showToast('Error: ' + error.message); return; }
+  window.open(data.signedUrl, '_blank');
+}
+
+async function eliminarDocumento(id, storagePath) {
+  if (!confirm('Eliminar este documento? Esta accion no se puede deshacer.')) return;
+  const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
+  if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
+  await sb.from('documentos_empleados').delete().eq('id', id);
+  await logAudit('delete', 'documentos', String(_docsEmpId), 'Elimino documento');
+  showToast('Documento eliminado');
+  loadDocumentos();
+}
+let _fechasTabActiva = 'cumple';
+
+// Obtiene dia/mes/año de fecha DD/MM/AAAA
+function _dmy(str) {
+  if (!str) return null;
+  const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  return m ? { d:+m[1], m:+m[2], y:+m[3] } : null;
+}
+
+// Días hasta el próximo cumpleaños (0 = hoy, negativo = ya pasó)
+function _diasHastaCumple(nacStr) {
+  const p = _dmy(nacStr); if (!p) return 999;
+  const hoy = new Date();
+  let cumple = new Date(hoy.getFullYear(), p.m-1, p.d);
+  if (cumple < new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate())) {
+    cumple.setFullYear(hoy.getFullYear()+1);
+  }
+  const diff = cumple - new Date(hoy.getFullYear(), hoy.getMonth(), hoy.getDate());
+  return Math.round(diff/(1000*60*60*24));
+}
+
+function _edad(nacStr) {
+  const p = _dmy(nacStr); if (!p) return null;
+  const hoy = new Date();
+  let age = hoy.getFullYear() - p.y;
+  if (hoy.getMonth()+1 < p.m || (hoy.getMonth()+1 === p.m && hoy.getDate() < p.d)) age--;
+  return age;
+}
+
+function _anosServicio(ingresoStr) {
+  const p = _dmy(ingresoStr); if (!p) return null;
+  const hoy = new Date();
+  let years = hoy.getFullYear() - p.y;
+  if (hoy.getMonth()+1 < p.m || (hoy.getMonth()+1 === p.m && hoy.getDate() < p.d)) years--;
+  return years;
+}
+
+function _mesIngreso(ingresoStr) {
+  const p = _dmy(ingresoStr); return p ? p.m : null;
+}
+
+function _diaIngreso(ingresoStr) {
+  const p = _dmy(ingresoStr); return p ? p.d : null;
+}
+
+// Construir el widget del dashboard "Hoy en la empresa"
+function buildWidgetHoy() {
+  const widget = document.getElementById('dash-widget-hoy');
+  if (!widget || !EMPLEADOS.length) { if(widget) widget.style.display='none'; return; }
+
+  const hoy = new Date();
+  const dm = hoy.getDate(), mm = hoy.getMonth()+1;
+
+  const cumpleHoy = EMPLEADOS.filter(e => {
+    if (e.estado !== 'ACTIVO') return false;
+    const p = _dmy(e.nacimiento);
+    return p && p.d === dm && p.m === mm;
+  });
+
+  const anivHoy = EMPLEADOS.filter(e => {
+    if (e.estado !== 'ACTIVO' || !e.ingreso) return false;
+    const p = _dmy(e.ingreso);
+    return p && p.d === dm && p.m === mm && hoy.getFullYear() > p.y;
+  });
+
+  if (!cumpleHoy.length && !anivHoy.length) { widget.style.display='none'; return; }
+
+  let items = '';
+  cumpleHoy.forEach(e => {
+    const edad = _edad(e.nacimiento);
+    items += '<div class="dash-widget-item"><span class="emoji">🎂</span><span><strong>' + escapeHTML(e.nombre.split(' ').slice(0,2).join(' ')) + '</strong> cumple hoy' + (edad?' ('+edad+' años)':'') + '</span></div>';
+  });
+  anivHoy.forEach(e => {
+    const anos = _anosServicio(e.ingreso);
+    items += '<div class="dash-widget-item"><span class="emoji">🎉</span><span><strong>' + escapeHTML(e.nombre.split(' ').slice(0,2).join(' ')) + '</strong> ' + anos + ' año' + (anos!==1?'s':'') + ' en la empresa</span></div>';
+  });
+
+  widget.innerHTML = '<div class="dash-widget"><div style="font-size:12px;font-weight:700;color:#f5d400;margin-right:6px;white-space:nowrap">HOY EN LA EMPRESA</div>' + items + '</div>';
+  widget.style.display = 'block';
+}
+
+// Construir la sección de fechas
+function buildFechas(tab) {
+  _fechasTabActiva = tab;
+  // Actualizar tabs
+  ['cumple','aniv','critico'].forEach(t => {
+    const el = document.getElementById('ftab-'+t);
+    if (el) el.classList.toggle('active', t===tab);
+  });
+
+  const container = document.getElementById('fechas-content');
+  if (!container) return;
+
+  if (!EMPLEADOS.length) {
+    container.innerHTML = '<div class="empty-state" style="padding:40px"><p>Importa empleados para ver fechas</p></div>';
+    return;
+  }
+
+  if (tab === 'cumple')   _buildCumpleanos(container);
+  if (tab === 'aniv')     _buildAniversarios(container);
+  if (tab === 'critico')  _buildFechasCriticas(container);
+}
+
+function _empCard(e, badgeHtml, cardClass) {
+  const g = e.genero === 'FEMENINO' ? 'f' : 'm';
+  const ini = e.cedula ? getInitials(e.nombre) : '?';
+  return '<div class="event-card ' + cardClass + '">'
+    + '<div class="emp-avatar ' + g + '" style="width:36px;height:36px;font-size:12px;flex-shrink:0">' + escapeHTML(ini) + '</div>'
+    + '<div style="flex:1;min-width:0"><div class="event-name">' + escapeHTML(e.nombre) + '</div>'
+    + '<div class="event-detail">' + escapeHTML(e.cargo||'Sin cargo') + ' &bull; ' + escapeHTML(e.cliente||'Sin cliente') + '</div></div>'
+    + badgeHtml + '</div>';
+}
+
+// ── Tab 1: Cumpleaños ────────────────────────────────────────────────────
+function _buildCumpleanos(container) {
+  const activos = EMPLEADOS.filter(e => e.estado === 'ACTIVO' && e.nacimiento);
+  const hoy = new Date();
+
+  // Ordenar por días hasta cumpleaños
+  const conDias = activos.map(e => ({ e, dias: _diasHastaCumple(e.nacimiento), edad: _edad(e.nacimiento) }))
+    .sort((a,b) => a.dias - b.dias);
+
+  const cumpleHoy   = conDias.filter(x => x.dias === 0);
+  const cumpleSem   = conDias.filter(x => x.dias > 0 && x.dias <= 7);
+  const cumpleMes   = conDias.filter(x => x.dias > 7 && x.dias <= 31);
+  const sinFecha    = EMPLEADOS.filter(e => e.estado === 'ACTIVO' && !e.nacimiento);
+
+  let html = '';
+
+  if (cumpleHoy.length) {
+    html += '<div class="event-section-title">🎂 Hoy</div>';
+    html += cumpleHoy.map(({e, edad}) => _empCard(e,
+      '<span class="event-badge hoy">Hoy' + (edad?' · '+edad+' años':'') + '</span>', 'hoy')).join('');
+  }
+
+  if (cumpleSem.length) {
+    html += '<div class="event-section-title">📅 Esta semana</div>';
+    html += cumpleSem.map(({e, dias, edad}) => {
+      const label = dias === 1 ? 'Mañana' : 'En ' + dias + ' días';
+      const dm = _dmy(e.nacimiento);
+      const fechaStr = dm ? dm.d + '/' + String(dm.m).padStart(2,'0') : '';
+      return _empCard(e, '<span class="event-badge pronto">' + label + (fechaStr?' ('+fechaStr+')':'') + (edad?' · '+edad+' años':'') + '</span>', 'pronto');
+    }).join('');
+  }
+
+  if (cumpleMes.length) {
+    html += '<div class="event-section-title">📆 Este mes</div>';
+    html += cumpleMes.map(({e, dias, edad}) => {
+      const dm = _dmy(e.nacimiento);
+      const fechaStr = dm ? dm.d + '/' + String(dm.m).padStart(2,'0') : '';
+      return _empCard(e, '<span class="event-badge pronto">En '+dias+' días' + (fechaStr?' ('+fechaStr+')':'') + (edad?' · '+edad+' años':'') + '</span>', 'pronto');
+    }).join('');
+  }
+
+  if (!cumpleHoy.length && !cumpleSem.length && !cumpleMes.length) {
+    html += '<div style="text-align:center;padding:32px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🎂</div><p>No hay cumpleaños en los próximos 31 días</p></div>';
+  }
+
+  if (sinFecha.length) {
+    html += '<div class="event-section-title" style="margin-top:20px">⚠ Sin fecha de nacimiento (' + sinFecha.length + ')</div>';
+    html += '<div style="background:var(--orange-light);border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e">Estos ' + sinFecha.length + ' empleados activos no tienen fecha de nacimiento registrada — no aparecen en la lista de cumpleaños. <a href="#" onclick="showSection(\'alertas\',document.getElementById(\'sb-nav-alertas\'));return false" style="color:var(--orange);font-weight:700">Ver en alertas →</a></div>';
+  }
+
+  container.innerHTML = html;
+}
+
+// ── Tab 2: Aniversarios laborales ─────────────────────────────────────────
+function _buildAniversarios(container) {
+  const hoy = new Date();
+  const mesActual = hoy.getMonth() + 1;
+
+  const conAniv = EMPLEADOS
+    .filter(e => e.ingreso)
+    .map(e => ({ e, anos: _anosServicio(e.ingreso), mes: _mesIngreso(e.ingreso), dia: _diaIngreso(e.ingreso) }))
+    .filter(x => x.mes === mesActual && x.anos > 0)
+    .sort((a,b) => b.anos - a.anos);
+
+  const milestones = [20,15,10,5,3,1];
+  const especiales = conAniv.filter(x => milestones.includes(x.anos));
+  const resto      = conAniv.filter(x => !milestones.includes(x.anos));
+
+  let html = '';
+  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  html += '<div style="background:var(--green-light);border-radius:8px;padding:10px 14px;font-size:12px;color:var(--green);margin-bottom:14px">📅 Aniversarios laborales en <strong>' + meses[mesActual-1] + '</strong>: <strong>' + conAniv.length + ' empleados</strong></div>';
+
+  if (especiales.length) {
+    html += '<div class="event-section-title">🏆 Fechas especiales este mes</div>';
+    html += especiales.map(({e, anos, dia}) => {
+      const emoji = anos >= 20 ? '🥇' : anos >= 10 ? '🥈' : anos >= 5 ? '🥉' : '⭐';
+      return _empCard(e, '<span class="event-badge aniv">' + emoji + ' ' + anos + ' año' + (anos!==1?'s':'') + ' el ' + dia + '</span>', 'aniversario');
+    }).join('');
+  }
+
+  if (resto.length) {
+    html += '<div class="event-section-title">🎉 Otros aniversarios del mes</div>';
+    html += resto.map(({e, anos, dia}) =>
+      _empCard(e, '<span class="event-badge aniv">' + anos + ' año' + (anos!==1?'s':'') + ' el día ' + dia + '</span>', 'aniversario')
+    ).join('');
+  }
+
+  if (!conAniv.length) {
+    html = '<div style="text-align:center;padding:32px;color:var(--text3)"><div style="font-size:32px;margin-bottom:8px">🎉</div><p>No hay aniversarios laborales este mes</p></div>';
+  }
+
+  container.innerHTML = html;
+}
+
+// ── Tab 3: Fechas críticas ────────────────────────────────────────────────
+function _buildFechasCriticas(container) {
+  const activos = EMPLEADOS.filter(e => e.estado === 'ACTIVO');
+  let html = '';
+
+  // 1. Recién ingresados (< 90 días) — posible período de prueba
+  const hace90 = new Date(); hace90.setDate(hace90.getDate()-90);
+  const nuevos = activos.filter(e => {
+    const ini = _parseDate(e.ingreso);
+    return ini && ini >= hace90;
+  }).sort((a,b) => (_parseDate(b.ingreso)||0) - (_parseDate(a.ingreso)||0));
+
+  html += '<div class="event-section-title">🆕 Recién ingresados — últimos 90 días (' + nuevos.length + ')</div>';
+  if (nuevos.length) {
+    html += nuevos.slice(0,8).map(e => {
+      const ini = _parseDate(e.ingreso);
+      const dias = ini ? Math.floor((new Date()-ini)/(1000*60*60*24)) : '?';
+      return _empCard(e, '<span class="event-badge pronto">Hace ' + dias + ' días</span>', 'pronto');
+    }).join('');
+    if (nuevos.length > 8) html += '<div style="font-size:11px;color:var(--text3);padding:6px 0">y ' + (nuevos.length-8) + ' más...</div>';
+  } else {
+    html += '<div style="color:var(--text3);font-size:12px;padding:6px 0">Sin ingresos recientes en los últimos 90 días</div>';
+  }
+
+  // 2. Larga trayectoria (10+ años) — reconocimiento
+  const veteranos = activos.map(e => ({ e, anos: _anosServicio(e.ingreso) }))
+    .filter(x => x.anos >= 10).sort((a,b) => b.anos - a.anos);
+  html += '<div class="event-section-title" style="margin-top:20px">🏅 Larga trayectoria — 10+ años (' + veteranos.length + ')</div>';
+  if (veteranos.length) {
+    html += veteranos.slice(0,8).map(({e, anos}) =>
+      _empCard(e, '<span class="event-badge aniv">' + anos + ' años de servicio</span>', 'aniversario')
+    ).join('');
+    if (veteranos.length > 8) html += '<div style="font-size:11px;color:var(--text3);padding:6px 0">y ' + (veteranos.length-8) + ' más...</div>';
+  } else {
+    html += '<div style="color:var(--text3);font-size:12px;padding:6px 0">Sin empleados con 10 o más años actualmente</div>';
+  }
+
+  // 3. Próximos a edad de pensión (Colombia: mujeres 57, hombres 62)
+  const proximosPension = activos.map(e => {
+    const edad = _edad(e.nacimiento); if (!edad) return null;
+    const limite = e.genero === 'FEMENINO' ? 57 : 62;
+    const faltan = limite - edad;
+    return faltan >= 0 && faltan <= 3 ? { e, edad, faltan, limite } : null;
+  }).filter(Boolean).sort((a,b) => a.faltan - b.faltan);
+
+  html += '<div class="event-section-title" style="margin-top:20px">👴 Próximos a pensión — menos de 3 años (' + proximosPension.length + ')</div>';
+  if (proximosPension.length) {
+    html += proximosPension.map(({e, edad, faltan, limite}) => {
+      const cls = faltan === 0 ? 'critico-red' : 'critico';
+      const badge = faltan === 0
+        ? '<span class="event-badge rojo">Ya cumplió edad (' + limite + ' años)</span>'
+        : '<span class="event-badge critico">Le faltan ' + faltan + ' año' + (faltan!==1?'s':'') + ' (tiene ' + edad + ')</span>';
+      return _empCard(e, badge, cls);
+    }).join('');
+  } else {
+    html += '<div style="color:var(--text3);font-size:12px;padding:6px 0">Ningún empleado activo próximo a la edad de pensión</div>';
+  }
+
+  // 4. Sin datos críticos (celular, EPS, AFP)
+  const sinCel = activos.filter(e => !e.celular).length;
+  const sinEPS = activos.filter(e => !e.eps).length;
+  const sinAFP = activos.filter(e => !e.afp).length;
+  const sinNac = activos.filter(e => !e.nacimiento).length;
+  if (sinCel || sinEPS || sinAFP || sinNac) {
+    html += '<div class="event-section-title" style="margin-top:20px">⚠ Datos críticos faltantes</div>';
+    html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
+      + (sinCel ? '<div class="event-card critico"><div class="event-emoji">📵</div><div><div class="event-name">Sin celular</div><div class="event-detail">'+sinCel+' empleados activos</div></div><a href="#" onclick="showSection(\'alertas\',document.getElementById(\'sb-nav-alertas\'));return false" class="event-badge critico" style="text-decoration:none">Ver →</a></div>' : '')
+      + (sinEPS ? '<div class="event-card critico"><div class="event-emoji">🏥</div><div><div class="event-name">Sin EPS</div><div class="event-detail">'+sinEPS+' empleados activos</div></div></div>' : '')
+      + (sinAFP ? '<div class="event-card critico"><div class="event-emoji">💼</div><div><div class="event-name">Sin AFP</div><div class="event-detail">'+sinAFP+' empleados activos</div></div></div>' : '')
+      + (sinNac ? '<div class="event-card critico"><div class="event-emoji">📅</div><div><div class="event-name">Sin fecha de nacimiento</div><div class="event-detail">'+sinNac+' empleados activos</div></div></div>' : '')
+      + '</div>';
+  }
+
+  container.innerHTML = html;
+}
+let _statCharts = {};
+
+// Helper: parsear fecha DD/MM/AAAA a Date
+function _parseDate(str) {
+  if (!str) return null;
+  const m = str.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (!m) return null;
+  return new Date(+m[3], +m[2]-1, +m[1]);
+}
+
+function buildEstadisticas() {
+  if (!EMPLEADOS.length) {
+    document.getElementById('rot-kpis').innerHTML =
+      '<div style="grid-column:span 4;text-align:center;padding:32px;color:var(--text3)">Importa empleados para ver estadisticas</div>';
+    return;
+  }
+  // Destruir gráficos anteriores
+  Object.values(_statCharts).forEach(c => { try{c.destroy();}catch(e){} });
+  _statCharts = {};
+
+  const inactivos = EMPLEADOS.filter(e => e.estado !== 'ACTIVO');
+  const total     = EMPLEADOS.length;
+  const tasaRot   = total > 0 ? ((inactivos.length / total) * 100).toFixed(1) : 0;
+
+  // Permanencia promedio de inactivos
+  let totalMeses = 0, conFechas = 0;
+  inactivos.forEach(e => {
+    const ini = _parseDate(e.ingreso), ret = _parseDate(e.retiro);
+    if (ini && ret && ret > ini) { totalMeses += (ret-ini)/(1000*60*60*24*30.44); conFechas++; }
+  });
+  const promM = conFechas > 0 ? (totalMeses/conFechas).toFixed(1) : null;
+  const promA = conFechas > 0 ? (totalMeses/conFechas/12).toFixed(1) : null;
+
+  // Retiros último año
+  const hace12 = new Date(); hace12.setFullYear(hace12.getFullYear()-1);
+  const retAnio = inactivos.filter(e => { const d=_parseDate(e.retiro); return d&&d>=hace12; }).length;
+
+  // KPIs
+  const kpiEl = document.getElementById('rot-kpis');
+  if (kpiEl) kpiEl.innerHTML =
+    '<div class="stat-card"><div class="stat-card-top"><div class="stat-label">Total inactivos</div><div class="stat-icon red"><svg viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div></div><div class="stat-value" style="color:var(--red)">' + inactivos.length.toLocaleString('es-CO') + '</div><div class="stat-sub">Retiros historicos</div></div>' +
+    '<div class="stat-card"><div class="stat-card-top"><div class="stat-label">Tasa de rotacion</div><div class="stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg></div></div><div class="stat-value" style="color:var(--orange)">' + tasaRot + '%</div><div class="stat-sub">Del total historico</div></div>' +
+    '<div class="stat-card"><div class="stat-card-top"><div class="stat-label">Permanencia prom.</div><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div></div><div class="stat-value">' + (promA ? promA+' años' : '—') + '</div><div class="stat-sub">' + (promM ? promM+' meses prom.' : 'Sin fechas suficientes') + '</div></div>' +
+    '<div class="stat-card"><div class="stat-card-top"><div class="stat-label">Retiros ultimo año</div><div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="var(--purple)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div></div><div class="stat-value" style="color:var(--purple)">' + retAnio + '</div><div class="stat-sub">Ultimos 12 meses</div></div>';
+
+  // Gráfico 1: Motivos
+  const motivoCount = {};
+  inactivos.forEach(e => { const m=(e.motivo||'Sin especificar').trim()||'Sin especificar'; motivoCount[m]=(motivoCount[m]||0)+1; });
+  const topMotivos = Object.entries(motivoCount).sort((a,b)=>b[1]-a[1]).slice(0,7);
+  const elM = document.getElementById('chartMotivos');
+  if (elM && topMotivos.length) _statCharts.motivos = new Chart(elM, {
+    type:'doughnut',
+    data:{ labels:topMotivos.map(([k])=>k.length>22?k.slice(0,22)+'...':k), datasets:[{data:topMotivos.map(([,v])=>v),backgroundColor:['#003c9d','#3b82f6','#60a5fa','#93c5fd','#f5d400','#dc2626','#94a3b8'],borderWidth:0,hoverOffset:4}] },
+    options:{ plugins:{legend:{position:'right',labels:{font:{size:10},padding:8,boxWidth:12}}}, cutout:'55%', maintainAspectRatio:false }
+  });
+
+  // Gráfico 2: Rotación mensual
+  const meses=[],counts=[];
+  for(let i=11;i>=0;i--){ const d=new Date(); d.setMonth(d.getMonth()-i); d.setDate(1);
+    const y=d.getFullYear(),m=d.getMonth();
+    meses.push(d.toLocaleDateString('es-CO',{month:'short',year:'2-digit'}));
+    counts.push(inactivos.filter(e=>{const ret=_parseDate(e.retiro);return ret&&ret.getFullYear()===y&&ret.getMonth()===m;}).length);
+  }
+  const elR = document.getElementById('chartRotMensual');
+  if (elR) _statCharts.mensual = new Chart(elR, {
+    type:'bar',
+    data:{labels:meses,datasets:[{label:'Retiros',data:counts,backgroundColor:'#003c9d',borderRadius:4,borderSkipped:false}]},
+    options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}},grid:{color:'#f1f5f9'}},x:{ticks:{font:{size:9}}}},maintainAspectRatio:false}
+  });
+
+  // Gráfico 3: Top clientes con más bajas
+  const cliRot={};
+  inactivos.forEach(e=>{const c=e.cliente||'Sin cliente';cliRot[c]=(cliRot[c]||0)+1;});
+  const topCli=Object.entries(cliRot).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const elC = document.getElementById('chartRotCliente');
+  if (elC && topCli.length) _statCharts.clientes = new Chart(elC, {
+    type:'bar',
+    data:{labels:topCli.map(([k])=>k.length>28?k.slice(0,28)+'...':k),datasets:[{data:topCli.map(([,v])=>v),backgroundColor:'#dc2626',borderRadius:4,borderSkipped:false}]},
+    options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}},maintainAspectRatio:false}
+  });
+
+  // Gráfico 4: Permanencia por cargo
+  const cargoPerm={};
+  inactivos.forEach(e=>{
+    const ini=_parseDate(e.ingreso),ret=_parseDate(e.retiro);
+    if(!ini||!ret||ret<=ini) return;
+    const ms=(ret-ini)/(1000*60*60*24*30.44),cargo=e.cargo||'Sin cargo';
+    if(!cargoPerm[cargo]) cargoPerm[cargo]={total:0,n:0};
+    cargoPerm[cargo].total+=ms; cargoPerm[cargo].n++;
+  });
+  const topP=Object.entries(cargoPerm).map(([k,v])=>({cargo:k,prom:(v.total/v.n).toFixed(1),n:v.n})).sort((a,b)=>b.prom-a.prom).slice(0,10);
+  const maxP=topP.length?parseFloat(topP[0].prom):1;
+  const elP=document.getElementById('chartPermanencia');
+  if(elP) elP.innerHTML=topP.length
+    ?topP.map(t=>'<div class="mini-bar-item" style="margin-bottom:8px"><div class="mini-bar-header"><span class="mini-bar-label">'+escapeHTML(t.cargo.length>30?t.cargo.slice(0,30)+'...':t.cargo)+'</span><span class="mini-bar-val" style="font-size:11px">'+t.prom+' m &bull; '+t.n+' casos</span></div><div class="mini-bar-track"><div class="mini-bar-fill" style="width:'+(parseFloat(t.prom)/maxP*100).toFixed(1)+'%;background:#003c9d"></div></div></div>').join('')
+    :'<div style="color:var(--text3);font-size:12px;padding:8px">Sin datos de fechas suficientes para calcular permanencia</div>';
+}
 // ── EXPORTAR EMPLEADOS A EXCEL ───────────────────────────────────────────
-// Genera un .xlsx con todos los empleados en el mismo orden de columnas
-// que la plantilla de importación — listo para archivar o reimportar.
+// Exporta filteredData (lo que está visible con los filtros actuales).
+// Si no hay filtros activos → exporta todos.
+// Si hay filtros → exporta solo esos, con una nota en el nombre del archivo.
 function exportEmployees() {
-  if (!EMPLEADOS.length) { showToast('No hay empleados para exportar'); return; }
+  const source = (filteredData.length > 0 && filteredData.length < EMPLEADOS.length)
+    ? filteredData   // hay filtro activo → exportar solo esos
+    : EMPLEADOS;     // sin filtro → exportar todos
+
+  if (!source.length) { showToast('No hay empleados para exportar'); return; }
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
 
-  // Mismas columnas y orden que la plantilla descargable
+  const esFiltrado = source.length < EMPLEADOS.length;
+
   const HEADERS = [
     'CLIENTE *', 'NOMBRE COMPLETO *', 'CEDULA *', 'FECHA DE INGRESO *',
     'FECHA DE RETIRO', 'MOTIVO DE RETIRO', 'ESTADO *', 'GENERO *',
@@ -2584,18 +3212,25 @@ function exportEmployees() {
     'riesgo','correo','incapacitado','notas'
   ];
 
-  // Fila de diseño vacía (igual que la plantilla), luego encabezados, luego datos
+  // Fila de aviso si es filtrado
+  const infoRow = esFiltrado
+    ? [`Exportacion filtrada — ${source.length} de ${EMPLEADOS.length} empleados`].concat(Array(25).fill(''))
+    : Array(26).fill('');
+
   const designRow = Array(26).fill('');
-  const dataRows  = EMPLEADOS.map(e => FIELDS.map(f => {
+  const dataRows  = source.map(e => FIELDS.map(f => {
     const v = e[f];
-    // Omitir campos internos (notas con errores pendientes si el usuario prefiere)
     return (v !== null && v !== undefined) ? String(v) : '';
   }));
 
   const aoa = [designRow, HEADERS, ...dataRows];
   const ws  = XLSX.utils.aoa_to_sheet(aoa);
+  if (esFiltrado) {
+    // Resaltar la fila de aviso (celda A1)
+    if (!ws['A1']) ws['A1'] = {};
+    ws['!merges'] = [{s:{r:0,c:0}, e:{r:0,c:25}}];
+  }
 
-  // Anchos iguales a la plantilla
   ws['!cols'] = [
     {wch:38},{wch:32},{wch:14},{wch:16},{wch:16},{wch:28},
     {wch:10},{wch:12},{wch:16},{wch:6}, {wch:20},{wch:32},
@@ -2608,13 +3243,26 @@ function exportEmployees() {
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Empleados');
 
-  // Nombre de archivo con fecha
-  const now  = new Date();
+  const now   = new Date();
   const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-  const fname = `empleados_${fecha}.xlsx`;
+  const sufijo = esFiltrado ? `_filtro_${source.length}` : '';
+  const fname  = `empleados${sufijo}_${fecha}.xlsx`;
 
   XLSX.writeFile(wb, fname);
-  showToast(`✓ ${EMPLEADOS.length} empleados exportados → ${fname}`);
+  showToast(`✓ ${source.length} empleados exportados${esFiltrado?' (filtro activo)':''} → ${fname}`);
+}
+
+// Actualizar el label del botón de exportar con el conteo actual del filtro
+function updateExportButton() {
+  const btn = document.getElementById('btn-exportar-excel');
+  if (!btn) return;
+  const n = filteredData.length;
+  const total = EMPLEADOS.length;
+  if (n > 0 && n < total) {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar filtro (' + n + ')';
+  } else {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar Excel' + (total > 0 ? ' (' + total + ')' : '');
+  }
 }
 
 function showToast(msg){
@@ -2801,6 +3449,7 @@ function refreshDashboard() {
   // Alertas del dashboard (calcula desde EMPLEADOS)
   buildDashAlerts();
   buildCharts();
+  buildWidgetHoy();   // Widget de cumpleanos/aniversarios del dia
   buildDuplicados();
 
   // Actualizar chips del topbar
@@ -3654,9 +4303,9 @@ async function loadUserProfile(user) {
 
 // Secciones permitidas por rol
 const ROLE_SECTIONS = {
-  admin:  ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','auditoria','usuarios'],
-  editor: ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','auditoria'],
-  viewer: ['dashboard','empleados']
+  admin:  ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','usuarios'],
+  editor: ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria'],
+  viewer: ['dashboard','empleados','fechas','estadisticas']
 };
 
 function canAccess(section) {
