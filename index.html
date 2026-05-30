@@ -1534,6 +1534,25 @@ async function loadFromSupabase() {
   EMPLEADOS.length = 0;
   EMPLEADOS.push(...allData);
   filteredData = [...EMPLEADOS];
+
+  // Restaurar el dash-empty a su contenido original (quitar el spinner)
+  // refreshDashboard() solo controla display, no el innerHTML
+  const dashEmptyEl = document.getElementById('dash-empty');
+  if (dashEmptyEl) {
+    dashEmptyEl.innerHTML =
+      '<div style="text-align:center;padding:72px 24px;max-width:520px;margin:0 auto">' +
+      '<div style="width:72px;height:72px;background:var(--blue-light);border-radius:50%;display:flex;align-items:center;justify-content:center;margin:0 auto 20px">' +
+      '<svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87M16 3.13a4 4 0 0 1 0 7.75"/></svg>' +
+      '</div>' +
+      '<div style="font-size:20px;font-weight:800;color:var(--text);margin-bottom:8px">Sin datos a&#250;n</div>' +
+      '<div style="font-size:14px;color:var(--text2);margin-bottom:28px;line-height:1.6">El sistema est&#225; listo. Importa tu primer Excel de empleados<br>para que el dashboard, la tabla y los gr&#225;ficos se activen.</div>' +
+      '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
+      '<button class="btn btn-primary" onclick="showSection(''importacion'',document.getElementById(''sb-nav-importacion''))">' +
+      '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>' +
+      'Importar empleados</button>' +
+      '</div></div>';
+  }
+
   initFilters();
   filterTable();
   renderAlerts();
