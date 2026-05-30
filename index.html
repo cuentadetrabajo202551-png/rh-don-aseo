@@ -1015,8 +1015,8 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
             </div>
           </div>
           <div style="display:flex;gap:8px">
-            <button class="btn btn-ghost btn-sm" onclick="goImportStep(1)">&#8592; Cambiar archivo</button>
-            <button class="btn btn-primary btn-sm" onclick="goImportStep(3)">Validar datos &#8594;</button>
+            <button class="btn btn-ghost btn-sm" onclick="goImportStep(1)">← Cambiar archivo</button>
+            <button class="btn btn-primary btn-sm" onclick="goImportStep(3)">Validar datos →</button>
           </div>
         </div>
 
@@ -1139,7 +1139,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
           </div>
           <div style="display:flex;gap:10px;justify-content:center">
             <button class="btn btn-ghost" onclick="goImportStep(1)">Nueva importaci&#243;n</button>
-            <button class="btn btn-primary" onclick="showSection('empleados',document.getElementById('sb-nav-empleados'))">Ver empleados &#8594;</button>
+            <button class="btn btn-primary" onclick="showSection('empleados',document.getElementById('sb-nav-empleados'))">Ver empleados →</button>
           </div>
         </div>
       </div>
@@ -1367,7 +1367,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
             <option value="delete">Eliminaciones</option>
             <option value="import">Importaciones</option>
           </select>
-          <button class="btn btn-ghost btn-sm" onclick="loadAuditLog()">&#8635; Actualizar</button>
+          <button class="btn btn-ghost btn-sm" onclick="loadAuditLog()">↻ Actualizar</button>
         </div>
       </div>
       <div class="table-wrap" id="audit-container">
@@ -1780,7 +1780,7 @@ function _resetDashEmpty() {
     'El sistema est\xe1 listo. Importa tu primer Excel de empleados<br>' +
     'para que el dashboard, la tabla y los gr\xe1ficos se activen.</div>' +
     '<div style="display:flex;gap:10px;justify-content:center;flex-wrap:wrap">' +
-    '<button class="btn btn-primary" id="btn-ir-importar">&#8593; Importar empleados</button>' +
+    '<button class="btn btn-primary" id="btn-ir-importar">↑ Importar empleados</button>' +
     '</div></div>';
   // Asignar evento al botón después de crearlo
   const btn = document.getElementById('btn-ir-importar');
@@ -1806,7 +1806,15 @@ function showSection(id, el) {
   const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios'};
   document.getElementById('breadcrumb').textContent = titles[id]||id;
   if (id === 'auditoria') loadAuditLog();
-  if (id === 'usuarios' && isAdmin()) cargarListaUsuarios();
+  if (id === 'usuarios') {
+    if (!isAdmin()) {
+      // No-admin intentando entrar a Gestión de Usuarios — redirigir al dashboard
+      showToast('Solo el administrador puede acceder a Gestion de Usuarios');
+      showSection('dashboard', document.getElementById('sb-nav-dashboard'));
+      return;
+    }
+    cargarListaUsuarios();
+  }
 }
 
 // ───────────────────── TABLE ─────────────────────
@@ -2324,7 +2332,7 @@ function renderAlerts(){
   document.getElementById('alertSinCelular').innerHTML = sinCelular.length
     ? sinCelular.slice(0,8).map(e=>alertRow(e)).join('')
       + (sinCelular.length>8?`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">y ${sinCelular.length-8} m\xe1s...</div>`:'')
-    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">&#10003; Todos los activos tienen celular registrado</div>`;
+    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">✓ Todos los activos tienen celular registrado</div>`;
 
   // ── Sin c\xe9dula ─────────────────────────────────────────────────────────
   const sinCed = EMPLEADOS.filter(e=>!e.cedula);
@@ -2340,7 +2348,7 @@ function renderAlerts(){
           </div>
           <span class="alert-emp-action" onclick="openPanel(${e.id})">Ver perfil</span>
         </div>`).join('')
-    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">&#10003; Todos los registros tienen c\xe9dula</div>`;
+    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">✓ Todos los registros tienen c\xe9dula</div>`;
 
   // ── Cargos inconsistentes (calculado din\xe1micamente) ───────────────────
   const cargoCount = {};
@@ -2356,7 +2364,7 @@ function renderAlerts(){
     if(group.length>1) groups.push(group);
   });
   const bCI = document.getElementById('badge-cargos-inc');
-  if(bCI) bCI.textContent = groups.length ? `${groups.length} grupo${groups.length!==1?'s':''}` : '&#10003;';
+  if(bCI) bCI.textContent = groups.length ? `${groups.length} grupo${groups.length!==1?'s':''}` : '✓';
   document.getElementById('alertCargosInconsistentes').innerHTML = groups.length
     ? groups.slice(0,5).map(g=>`
         <div class="alert-emp-row">
@@ -2369,7 +2377,7 @@ function renderAlerts(){
           </div>
           <span class="alert-emp-action" onclick="showSection('duplicados',document.getElementById('sb-nav-duplicados'));switchDupTab('names')">Normalizar</span>
         </div>`).join('')
-    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">&#10003; No se detectaron variantes inconsistentes de cargos</div>`;
+    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">✓ No se detectaron variantes inconsistentes de cargos</div>`;
 
   // ── Historial (c\xe9dulas con m\xe1s de 1 registro) ────────────────────────
   const cedCount={};
@@ -2392,7 +2400,7 @@ function renderAlerts(){
       }).join('')
       +(historial.length>6?`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">y ${historial.length-6} m\xe1s...</div>`:'')
       +`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">Total: ${conHistorial.toLocaleString('es-CO')} c\xe9dulas con m\xe1s de un registro en el sistema</div>`
-    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">&#10003; No hay c\xe9dulas con registros duplicados</div>`;
+    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">✓ No hay c\xe9dulas con registros duplicados</div>`;
 }
 
 // ───────────────────── CHARTS ─────────────────────
@@ -3369,7 +3377,7 @@ async function loadAuditLog() {
   if (error) { container.innerHTML = '<div class="empty-state"><p style="color:var(--red)">Error: ' + escapeHTML(error.message) + '</p></div>'; return; }
   if (!data || !data.length) { container.innerHTML = '<div class="empty-state" style="padding:40px"><p>No hay registros de auditor&#237;a a&#250;n</p></div>'; return; }
 
-  const icons = { create:'&#43;', update:'&#9998;', delete:'&#215;', login:'&#9654;', logout:'&#8592;', import_:'&#8593;' };
+  const icons = { create:'&#43;', update:'&#9998;', delete:'&#215;', login:'&#9654;', logout:'←', import_:'↑' };
   const iClass = { create:'create', update:'update', delete:'delete', login:'login', logout:'login', import_:'import_' };
   container.innerHTML = data.map(r => {
     const d = new Date(r.created_at);
@@ -3435,7 +3443,7 @@ async function guardarPerfil() {
   _currentUser.cargo        = cargo;
   applyRoleVisibility();
   await logAudit('update', 'perfil', _currentUser.id, 'Actualizo nombre/cargo');
-  showToast('&#10003; Perfil actualizado');
+  showToast('✓ Perfil actualizado');
   cerrarPerfilUsuario();
 }
 
@@ -3459,7 +3467,7 @@ async function subirFotoPerfil(input) {
   applyRoleVisibility();
   abrirPerfilUsuario();  // refrescar panel
   await logAudit('update', 'perfil', _currentUser.id, 'Actualizo foto de perfil');
-  showToast('&#10003; Foto actualizada');
+  showToast('✓ Foto actualizada');
 }
 
 // ── GESTIÓN DE USUARIOS (solo admin) ──────────────────────────────────────
@@ -3473,8 +3481,8 @@ async function crearNuevoUsuario() {
   const email  = document.getElementById('nu-email').value.trim();
   const pass   = document.getElementById('nu-pass').value;
   const role   = document.getElementById('nu-role').value;
-  if (!nombre || !email || !pass) { showToast('Nombre, correo y contrase&#241;a son obligatorios'); return; }
-  if (pass.length < 8) { showToast('La contrase&#241;a debe tener m&#237;nimo 8 caracteres'); return; }
+  if (!nombre || !email || !pass) { showToast('Nombre, correo y contrasena son obligatorios'); return; }
+  if (pass.length < 8) { showToast('La contrasena debe tener minimo 8 caracteres'); return; }
 
   const { data: signUpData, error } = await sb.auth.signUp({ email, password: pass });
   if (error) { showToast('Error: ' + error.message); return; }
@@ -3486,7 +3494,7 @@ async function crearNuevoUsuario() {
 
   document.getElementById('form-nuevo-usuario').style.display = 'none';
   ['nu-nombre','nu-cargo','nu-email','nu-pass'].forEach(id => { document.getElementById(id).value = ''; });
-  showToast('&#10003; Usuario creado. Se envi&oacute; email de confirmaci&oacute;n a ' + email);
+  showToast('✓ Usuario creado. Se envio email de confirmacion a ' + email);
   cargarListaUsuarios();
 }
 
@@ -3509,20 +3517,31 @@ async function cargarListaUsuarios() {
       + '<div style="flex:1"><div style="font-weight:600;font-size:13px">' + escapeHTML(p.display_name||'Sin nombre')
       + (isCurrentUser ? ' <span style="font-size:10px;color:var(--blue)">(t&uacute;)</span>' : '')
       + '</div><div style="font-size:11px;color:var(--text3)">' + escapeHTML(p.cargo||'Sin cargo') + '</div></div>'
-      + '<select class="role-select ' + p.role + '" onchange="cambiarRol(\'' + p.id + '\',this)"'
-      + (isCurrentUser ? ' disabled title="No puedes cambiar tu propio rol"' : '') + '>'
-      + ['admin','editor','viewer'].map(r => '<option value="' + r + '"' + (r===p.role?' selected':'') + '>' + roleLabels[r] + '</option>').join('')
-      + '</select></div>';
+      // Solo el admin puede cambiar roles — el resto ve el rol como texto estático
+      + (isAdmin()
+          ? '<select class="role-select ' + p.role + '" onchange="cambiarRol(\'' + p.id + '\',this)"'
+            + (isCurrentUser ? ' disabled title="No puedes cambiar tu propio rol"' : '') + '>'
+            + ['admin','editor','viewer'].map(r => '<option value="' + r + '"' + (r===p.role?' selected':'') + '>' + roleLabels[r] + '</option>').join('')
+            + '</select>'
+          : '<span class="role-select ' + p.role + '" style="cursor:default;user-select:none">' + (roleLabels[p.role]||p.role) + '</span>'
+        )
+      + '</div>';
   }).join('');
 }
 
 async function cambiarRol(userId, select) {
+  // Solo el admin puede cambiar roles
+  if (!isAdmin()) {
+    showToast('Solo el administrador puede cambiar roles');
+    cargarListaUsuarios();  // refrescar para revertir cualquier cambio visual
+    return;
+  }
   const newRole = select.value;
   const { error } = await sb.from('profiles').update({ role: newRole }).eq('id', userId);
   if (error) { showToast('Error: ' + error.message); select.value = select.dataset.prev || 'viewer'; return; }
   select.className = 'role-select ' + newRole;
   await logAudit('update', 'usuario', userId, 'Cambio rol a ' + newRole);
-  showToast('&#10003; Rol actualizado');
+  showToast('✓ Rol actualizado');
 }
 
 // ── AUTENTICACIÓN — Login / Logout ─────────────────────────────────────────
@@ -4240,7 +4259,7 @@ function filterImportTable(filter, el) {
         ${r.status!=='error'
           ?`<button class="btn-icon" style="color:var(--green)"
               title="Incluir en importaci\xf3n"
-              onclick="showToast('Fila ${escapeHTML(String(r.row||''))} incluida')">&#10003;</button>`
+              onclick="showToast('Fila ${escapeHTML(String(r.row||''))} incluida')">✓</button>`
           :''}
       </td>
     </tr>`).join('');
@@ -4291,7 +4310,7 @@ function buildDuplicados() {
 
   const elExact=document.getElementById('dup-content-exact');
   if(!exactGroups.length){
-    elExact.innerHTML='<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; No se encontraron c\xe9dulas con m\xe1s de un registro ACTIVO simult\xe1neo.</div>';
+    elExact.innerHTML='<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">✓ No se encontraron c\xe9dulas con m\xe1s de un registro ACTIVO simult\xe1neo.</div>';
   } else {
     elExact.innerHTML='<div style="background:var(--red-light);border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--red);font-weight:600">&#9888; '+exactGroups.length+' grupo'+( exactGroups.length!==1?'s':'')+' con m\xe1s de un registro ACTIVO para la misma c\xe9dula.</div>'
       +exactGroups.map(([ced,records])=>`<div class="dup-group-card"><div class="dup-group-header"><div class="dup-group-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>CC ${escapeHTML(ced)} &mdash; ${escapeHTML(records[0].nombre||'Sin nombre')}</div><span class="dup-score high">${records.length} registros ACTIVOS</span></div><div class="dup-comparison">${records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+'</div><div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val diff">'+escapeHTML(r.cliente||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Cargo</span><span class="dup-field-val">'+escapeHTML(r.cargo||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Ingreso</span><span class="dup-field-val">'+escapeHTML(r.ingreso||'&mdash;')+'</span></div></div>').join('')}</div><div class="dup-actions"><span style="font-size:11px;color:var(--text2);font-weight:600;align-self:center">&#191;Qu\xe9 es?</span><button class="dup-btn" onclick="showToast('Traslado marcado')">&#128260; Traslado</button><button class="dup-btn" onclick="showToast('Historial v\xe1lido')">&#128203; Historial</button><button class="dup-btn" onclick="showToast('Marcado como reingreso')">&#8617; Reingreso</button><button class="dup-btn danger" onclick="showToast('Duplicado marcado para eliminaci\xf3n')">&#128465; Eliminar uno</button></div></div>`).join('');
@@ -4304,8 +4323,8 @@ function buildDuplicados() {
 
   const elPoss=document.getElementById('dup-content-possible');
   elPoss.innerHTML=!nameGroups.length
-    ?'<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; No se encontraron nombres id\xe9nticos con c\xe9dulas distintas.</div>'
-    :nameGroups.slice(0,5).map(([,records])=>`<div class="dup-group-card"><div class="dup-group-header"><div class="dup-group-title">Mismo nombre &mdash; c\xe9dulas distintas</div><span class="dup-score med">Revisar</span></div><div class="dup-comparison">${records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+' &mdash; CC '+escapeHTML(r.cedula)+'</div><div class="dup-field-row"><span class="dup-field-label">Nombre</span><span class="dup-field-val diff">'+escapeHTML(r.nombre)+'</span></div><div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val">'+escapeHTML(r.cliente||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Celular</span><span class="dup-field-val">'+escapeHTML(r.celular||'&mdash;')+'</span></div></div>').join('')}</div><div class="dup-actions"><button class="dup-btn primary" onclick="showToast('Confirmado: personas distintas')">&#10003; Personas distintas</button><button class="dup-btn danger" onclick="showToast('Marcado para unificaci\xf3n')">&#128279; Unificar</button></div></div>`).join('');
+    ?'<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">✓ No se encontraron nombres id\xe9nticos con c\xe9dulas distintas.</div>'
+    :nameGroups.slice(0,5).map(([,records])=>`<div class="dup-group-card"><div class="dup-group-header"><div class="dup-group-title">Mismo nombre &mdash; c\xe9dulas distintas</div><span class="dup-score med">Revisar</span></div><div class="dup-comparison">${records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+' &mdash; CC '+escapeHTML(r.cedula)+'</div><div class="dup-field-row"><span class="dup-field-label">Nombre</span><span class="dup-field-val diff">'+escapeHTML(r.nombre)+'</span></div><div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val">'+escapeHTML(r.cliente||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Celular</span><span class="dup-field-val">'+escapeHTML(r.celular||'&mdash;')+'</span></div></div>').join('')}</div><div class="dup-actions"><button class="dup-btn primary" onclick="showToast('Confirmado: personas distintas')">✓ Personas distintas</button><button class="dup-btn danger" onclick="showToast('Marcado para unificaci\xf3n')">&#128279; Unificar</button></div></div>`).join('');
 
   // ── Nombres similares: variantes de cargos y clientes ─────────────
   function groupSimilarNames(map){
@@ -4326,7 +4345,7 @@ function buildDuplicados() {
 
   const elNames=document.getElementById('dup-content-names');
   elNames.innerHTML=!allGroups.length
-    ?'<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; No se detectaron variantes similares en clientes ni cargos.</div>'
+    ?'<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">✓ No se detectaron variantes similares en clientes ni cargos.</div>'
     :allGroups.slice(0,6).map(({type,group})=>{
       const tc=type==='CARGO'?'var(--orange)':'var(--blue)';
       const tb=type==='CARGO'?'var(--orange-light)':'var(--blue-light)';
