@@ -593,7 +593,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
     </div>
   </div>
   <div class="sb-yellow-bar"></div>
-  <div class="sb-section">Principal</div>
+  <div class="sb-section" id="sb-label-principal">Principal</div>
   <div id="sb-nav-dashboard" class="sb-item active" onclick="showSection('dashboard',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
     Dashboard
@@ -626,7 +626,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 11h6"/></svg>
     Certificados
   </div>
-  <div class="sb-section" style="margin-top:8px">Sistema</div>
+  <div class="sb-section" id="sb-label-sistema" style="margin-top:8px">Sistema</div>
   <div id="sb-nav-auditoria" class="sb-item" onclick="showSection('auditoria',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
     Auditor&#237;a
@@ -801,11 +801,11 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
           <div class="section-sub" id="emp-section-sub">Sin datos importados a&#250;n</div>
         </div>
         <div style="display:flex;gap:8px">
-          <button class="btn btn-ghost" onclick="exportEmployees()" title="Descargar todos los empleados como Excel">
+          <button id="btn-exportar-excel" class="btn btn-ghost" onclick="exportEmployees()" title="Descargar todos los empleados como Excel">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
             Exportar Excel
           </button>
-          <button class="btn btn-primary" onclick="openEditModal(null)">
+          <button id="btn-nuevo-empleado" class="btn btn-primary" onclick="openEditModal(null)">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
             Nuevo empleado
           </button>
@@ -1481,7 +1481,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
     </div>
     <div style="display:flex;gap:8px;align-items:center">
       <span id="panelBadge" class="badge badge-activo"></span>
-      <button class="btn btn-ghost btn-sm" onclick="openEditModalFromPanel()">
+      <button id="panel-edit-btn" class="btn btn-ghost btn-sm" onclick="openEditModalFromPanel()">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Editar
       </button>
@@ -1801,6 +1801,13 @@ let currentEmpId = null;
 
 // ───────────────────── NAVIGATION ─────────────────────
 function showSection(id, el) {
+  // Verificar acceso según rol
+  if (_currentUser && !canAccess(id)) {
+    showToast('No tienes acceso a esta sección');
+    // Redirigir silenciosamente al dashboard
+    showSection('dashboard', document.getElementById('sb-nav-dashboard'));
+    return;
+  }
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
@@ -1934,9 +1941,9 @@ function renderTable(){
           <button class="btn-icon" onclick="openPanel(${emp.id})" title="Ver perfil">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
-          <button class="btn-icon" onclick="openEditModal(${emp.id})" title="Editar">
+          ${isEditor() ? `<button class="btn-icon" onclick="openEditModal(${emp.id})" title="Editar">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
+          </button>` : ''}
         </div>
       </td>
     </tr>`;
@@ -3323,22 +3330,64 @@ async function loadUserProfile(user) {
   if (!data.email) sb.from('profiles').update({ email: user.email }).eq('id', user.id).then(() => {});
 }
 
+// Secciones permitidas por rol
+const ROLE_SECTIONS = {
+  admin:  ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','auditoria','usuarios'],
+  editor: ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','auditoria'],
+  viewer: ['dashboard','empleados']
+};
+
+function canAccess(section) {
+  const role = _currentUser?.role || 'viewer';
+  return (ROLE_SECTIONS[role] || ROLE_SECTIONS.viewer).includes(section);
+}
+
 // Aplicar visibilidad según rol
 function applyRoleVisibility() {
   if (!_currentUser) return;
-  // Mostrar Gestión de Usuarios solo a admin
-  const usersNav = document.getElementById('sb-nav-usuarios');
-  if (usersNav) usersNav.style.display = isAdmin() ? '' : 'none';
-  // Actualizar sidebar footer
+  const role = _currentUser.role || 'viewer';
+
+  // ── Sidebar: mostrar/ocultar items según rol ───────────────────────────
+  const navItems = {
+    'sb-nav-alertas':      'editor',
+    'sb-nav-importacion':  'editor',
+    'sb-nav-duplicados':   'editor',
+    'sb-nav-catalogos':    'editor',
+    'sb-nav-certificados': 'editor',
+    'sb-nav-auditoria':    'editor',
+    'sb-nav-usuarios':     'admin',
+  };
+  Object.entries(navItems).forEach(([id, minRole]) => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const allowed = minRole === 'admin' ? isAdmin() : isEditor();
+    el.style.display = allowed ? '' : 'none';
+  });
+
+  // Ocultar la etiqueta "Sistema" si el viewer no ve nada en esa sección
+  const sysLabel = document.getElementById('sb-label-sistema');
+  if (sysLabel) sysLabel.style.display = isEditor() ? '' : 'none';
+
+  // ── Botones en sección Empleados ──────────────────────────────────────
+  ['btn-nuevo-empleado', 'btn-exportar-excel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = isEditor() ? '' : 'none';
+  });
+
+  // ── Botón Editar en panel de perfil del empleado ──────────────────────
+  const editBtn = document.getElementById('panel-edit-btn');
+  if (editBtn) editBtn.style.display = isEditor() ? '' : 'none';
+
+  // ── Footer del sidebar: nombre, rol, avatar ───────────────────────────
   const nameEl   = document.getElementById('sb-user-email');
   const roleEl   = document.getElementById('sb-user-role-badge');
   const avatarEl = document.getElementById('sb-avatar-display');
   if (nameEl) nameEl.textContent = _currentUser.display_name || _currentUser.email;
-  const roleLabels = { admin: '&#9830; Admin', editor: '&#9998; Editor', viewer: '&#9711; Visualizador' };
+  const roleLabels = { admin: '♦ Admin', editor: '✎ Editor', viewer: '○ Visualizador' };
   const roleColors = { admin: '#f5d400', editor: '#60a5fa', viewer: '#64748b' };
   if (roleEl) {
-    roleEl.innerHTML = roleLabels[_currentUser.role] || _currentUser.role;
-    roleEl.style.color = roleColors[_currentUser.role] || '#64748b';
+    roleEl.textContent = roleLabels[role] || role;
+    roleEl.style.color = roleColors[role] || '#64748b';
   }
   if (avatarEl) {
     if (_currentUser.avatar_url) {
@@ -3347,8 +3396,6 @@ function applyRoleVisibility() {
       avatarEl.textContent = (_currentUser.display_name || _currentUser.email || 'RH').slice(0,2).toUpperCase();
     }
   }
-  // Restringir botones de edición/eliminación para visualizadores
-  // (se aplica dinámicamente en renderTable)
 }
 
 // ── AUDITORÍA ──────────────────────────────────────────────────────────────
