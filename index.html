@@ -337,6 +337,42 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .cert-empty{text-align:center;padding:60px 24px;color:var(--text3)}
 @media print{body>*{display:none!important}#cert-print-area{display:block!important;position:fixed;inset:0;background:#fff;padding:18mm 22mm;font-family:Georgia,serif;font-size:12pt;line-height:1.8;color:#000}}
 /* SPINNER */ @keyframes spin{to{transform:rotate(360deg)}}
+
+/* ── PERFIL / CONFIGURACION ── */
+#panel-perfil-usuario{position:fixed;right:-420px;top:0;width:400px;height:100vh;background:var(--card);z-index:500;box-shadow:-4px 0 32px rgba(0,0,0,.15);transition:right .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#panel-perfil-usuario.open{right:0}
+.ppu-header{background:linear-gradient(135deg,#001a4d,#003c9d);padding:28px 24px 20px;display:flex;align-items:flex-end;gap:16px}
+.ppu-avatar-big{width:72px;height:72px;border-radius:50%;background:linear-gradient(135deg,#003c9d,#f5d400);display:flex;align-items:center;justify-content:center;font-size:24px;font-weight:800;color:#fff;flex-shrink:0;border:3px solid rgba(255,255,255,.3);overflow:hidden;cursor:pointer}
+.ppu-name{font-size:16px;font-weight:700;color:#fff;margin-bottom:2px}
+.ppu-email-small{font-size:11px;color:rgba(255,255,255,.6)}
+.ppu-role-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:5px}
+.ppu-role-badge.admin{background:#f5d400;color:#001a4d}
+.ppu-role-badge.editor{background:#60a5fa;color:#fff}
+.ppu-role-badge.viewer{background:rgba(255,255,255,.2);color:#fff}
+.ppu-body{flex:1;overflow-y:auto;padding:20px 24px}
+.ppu-section-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px}
+.ppu-section-label:first-child{margin-top:4px}
+.ppu-footer{padding:16px 24px;border-top:1px solid var(--border)}
+/* ── AUDIT LOG ── */
+.audit-row{display:flex;align-items:flex-start;gap:12px;padding:11px 16px;border-bottom:1px solid #f8fafc;transition:background .1s}
+.audit-row:hover{background:#fafbfc}
+.audit-icon{width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;flex-shrink:0;margin-top:1px}
+.audit-icon.create{background:#dcfce7}
+.audit-icon.update{background:#dbeafe}
+.audit-icon.delete{background:#fee2e2}
+.audit-icon.login{background:#f3e8ff}
+.audit-icon.import_{background:#fef9c3}
+.audit-desc{font-size:13px;font-weight:500;color:var(--text)}
+.audit-meta{font-size:11px;color:var(--text3);margin-top:2px;display:flex;gap:8px;flex-wrap:wrap}
+.audit-user{font-weight:600;color:var(--text2)}
+/* ── USUARIOS ── */
+.user-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px 18px;display:flex;align-items:center;gap:14px;margin-bottom:10px;box-shadow:var(--shadow)}
+.user-avatar-md{width:44px;height:44px;border-radius:50%;background:linear-gradient(135deg,#003c9d,#f5d400);display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden}
+.role-select{padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;outline:none;cursor:pointer;background:var(--bg)}
+.role-select.admin{border-color:#f5d400;color:#001a4d;background:#fefce8}
+.role-select.editor{border-color:#60a5fa;color:#1d4ed8;background:#eff6ff}
+.role-select.viewer{border-color:var(--border);color:var(--text2)}
+
 /* ── LOGIN SCREEN — diseño corporativo panel dividido ── */
 #login-screen{position:fixed;inset:0;display:flex;align-items:stretch;z-index:9999}
 /* Panel izquierdo: azul Don Aseo */
@@ -589,9 +625,18 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
   <div id="sb-nav-certificados" class="sb-item" onclick="showSection('certificados',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 11h6"/></svg>
     Certificados
-    
   </div>
-  <div class="sb-section" style="margin-top:8px">Próximamente</div>
+  <div class="sb-section" style="margin-top:8px">Sistema</div>
+  <div id="sb-nav-auditoria" class="sb-item" onclick="showSection('auditoria',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+    Auditor&#237;a
+  </div>
+  <div id="sb-nav-usuarios" class="sb-item" style="display:none" onclick="showSection('usuarios',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+    Gesti&#243;n de Usuarios
+    <span class="sb-badge" style="background:#f5d400;color:#001a4d;font-size:9px">Admin</span>
+  </div>
+  <div class="sb-section" style="margin-top:8px">Pr&#243;ximamente</div>
   <div class="sb-item" style="opacity:.4;cursor:not-allowed">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
     Contratos
@@ -605,13 +650,15 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
     Incapacidades
   </div>
   <div class="sb-footer">
-    <div class="sb-user">
-      <div class="sb-avatar">RH</div>
-      <div style="flex:1"><div class="sb-user-name" id="sb-user-email">Jefe de RH</div><div class="sb-user-role">Acceso completo</div></div>
-      <button onclick="doLogout()" title="Cerrar sesi&oacute;n"
-        style="background:none;border:none;cursor:pointer;color:#64748b;padding:4px 6px;border-radius:6px;transition:color .15s"
-        onmouseover="this.style.color='#ef4444'" onmouseout="this.style.color='#64748b'">
-        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+    <div class="sb-user" style="cursor:pointer" onclick="abrirPerfilUsuario()" title="Mi perfil y configuración">
+      <div class="sb-avatar" id="sb-avatar-display">RH</div>
+      <div style="flex:1;min-width:0">
+        <div class="sb-user-name" id="sb-user-email">Jefe de RH</div>
+        <div class="sb-user-role" id="sb-user-role-badge" style="font-size:10px">&#9711; Visualizador</div>
+      </div>
+      <button onclick="event.stopPropagation();doLogout()" title="Cerrar sesi&oacute;n"
+        style="background:none;border:none;cursor:pointer;color:#64748b;padding:4px 6px;border-radius:6px;flex-shrink:0">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
       </button>
     </div>
   </div>
@@ -1303,11 +1350,123 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 
       </div><!-- /cert-container -->
     </div><!-- /certificados -->
+
+    <!-- ════════════════════════════════════ AUDITORÍA ══ -->
+    <div id="section-auditoria" class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Auditor&#237;a del Sistema</div>
+          <div class="section-sub">Registro completo de todas las acciones realizadas por cualquier usuario</div>
+        </div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <select class="filter-select" id="audit-filter-action" onchange="loadAuditLog()">
+            <option value="">Todas las acciones</option>
+            <option value="login">Login / Logout</option>
+            <option value="create">Creaciones</option>
+            <option value="update">Ediciones</option>
+            <option value="delete">Eliminaciones</option>
+            <option value="import">Importaciones</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="loadAuditLog()">&#8635; Actualizar</button>
+        </div>
+      </div>
+      <div class="table-wrap" id="audit-container">
+        <div class="empty-state" style="padding:40px">
+          <p>Cargando registro de auditor&#237;a...</p>
+        </div>
+      </div>
+    </div><!-- /auditoria -->
+
+    <!-- ════════════════════════════════════ USUARIOS ══ -->
+    <div id="section-usuarios" class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Gesti&#243;n de Usuarios</div>
+          <div class="section-sub">Solo visible para administradores &#8212; crea usuarios y asigna roles</div>
+        </div>
+        <button class="btn btn-primary" onclick="abrirFormNuevoUsuario()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Invitar usuario
+        </button>
+      </div>
+
+      <!-- Formulario nuevo usuario (oculto por defecto) -->
+      <div id="form-nuevo-usuario" style="display:none" class="cert-form-card">
+        <div class="cert-section-label">Nuevo usuario</div>
+        <div class="form-grid">
+          <div class="form-group"><label class="form-label">Nombre completo *</label>
+            <input type="text" class="form-input" id="nu-nombre" placeholder="Ej: Erika Padilla"></div>
+          <div class="form-group"><label class="form-label">Cargo</label>
+            <input type="text" class="form-input" id="nu-cargo" placeholder="Ej: Coordinadora de RH"></div>
+          <div class="form-group"><label class="form-label">Correo *</label>
+            <input type="email" class="form-input" id="nu-email" placeholder="correo@donaseo.com"></div>
+          <div class="form-group"><label class="form-label">Contrase&#241;a temporal *</label>
+            <input type="password" class="form-input" id="nu-pass" placeholder="M&#237;nimo 8 caracteres"></div>
+          <div class="form-group"><label class="form-label">Rol *</label>
+            <select class="form-select" id="nu-role">
+              <option value="viewer">Visualizador &#8212; solo lectura</option>
+              <option value="editor">Editor &#8212; puede editar empleados</option>
+              <option value="admin">Admin &#8212; acceso total</option>
+            </select></div>
+        </div>
+        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
+          <button class="btn btn-ghost" onclick="document.getElementById('form-nuevo-usuario').style.display='none'">Cancelar</button>
+          <button class="btn btn-primary" onclick="crearNuevoUsuario()">Crear usuario</button>
+        </div>
+      </div>
+
+      <div id="lista-usuarios"></div>
+    </div><!-- /usuarios -->
   </div><!-- /content -->
 </div><!-- /main -->
 
 
-<!-- PANEL PERFIL -->
+<!-- PANEL PERFIL USUARIO (configuración personal) -->
+<div id="overlay-perfil-usuario" onclick="cerrarPerfilUsuario()"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:499;backdrop-filter:blur(2px)"></div>
+<div id="panel-perfil-usuario">
+  <div class="ppu-header">
+    <div class="ppu-avatar-big" id="ppu-avatar" onclick="triggerAvatarUpload()">RH
+      <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)">
+    </div>
+    <div style="flex:1">
+      <div class="ppu-name" id="ppu-nombre-display">Usuario</div>
+      <div class="ppu-email-small" id="ppu-email-display">—</div>
+      <span class="ppu-role-badge viewer" id="ppu-role-display">Visualizador</span>
+    </div>
+    <button onclick="cerrarPerfilUsuario()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:18px;padding:4px;align-self:flex-start">&#215;</button>
+  </div>
+  <div class="ppu-body">
+    <div class="ppu-section-label">Editar mi perfil</div>
+    <div class="form-group" style="margin-bottom:12px">
+      <label class="form-label">Nombre completo</label>
+      <input type="text" class="form-input" id="ppu-input-nombre" placeholder="Tu nombre">
+    </div>
+    <div class="form-group" style="margin-bottom:16px">
+      <label class="form-label">Cargo</label>
+      <input type="text" class="form-input" id="ppu-input-cargo" placeholder="Tu cargo en la empresa">
+    </div>
+    <button class="btn btn-primary" style="width:100%" onclick="guardarPerfil()">Guardar cambios</button>
+    <div class="ppu-section-label" style="margin-top:20px">Foto de perfil</div>
+    <div style="display:flex;align-items:center;gap:12px">
+      <div id="ppu-foto-preview" style="width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#003c9d,#f5d400);display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0"></div>
+      <div>
+        <button class="btn btn-ghost btn-sm" onclick="triggerAvatarUpload()">&#128247; Cambiar foto</button>
+        <div style="font-size:11px;color:var(--text3);margin-top:4px">JPG o PNG, m&#225;x 2MB</div>
+      </div>
+    </div>
+    <div class="ppu-section-label" style="margin-top:20px">Mi rol actual</div>
+    <div id="ppu-permisos-info" style="font-size:12px;color:var(--text2);background:#f8fafc;border-radius:8px;padding:12px"></div>
+  </div>
+  <div class="ppu-footer">
+    <button class="btn btn-ghost" style="width:100%;color:var(--red)" onclick="doLogout()">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+      Cerrar sesi&#243;n
+    </button>
+  </div>
+</div>
+
+<!-- PANEL PERFIL EMPLEADO (existente) -->
 <div id="panel-overlay" onclick="closePanel()"></div>
 <div id="panel-perfil">
   <div class="panel-header">
@@ -1534,7 +1693,12 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 // ══════════════════════════════════════════════════════════════════════════
 const SUPABASE_URL = 'https://eimprmejytunsgzazdkh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbXBybWVqeXR1bnNnemF6ZGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMjc4NDEsImV4cCI6MjA5NTcwMzg0MX0.IG7Ou9YcIMQn7TdHd5WJuhNvAKL-LqVmuxWfkEo1_wQ';
-const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+  auth: {
+    persistSession: false,  // Cerrar el navegador cierra la sesion automaticamente
+    autoRefreshToken: true
+  }
+});
 
 // EMPLEADOS: array local que actúa como caché de Supabase.
 // Se carga al iniciar la página y se sincroniza en cada operación.
@@ -1639,8 +1803,10 @@ function showSection(id, el) {
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales'};
+  const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios'};
   document.getElementById('breadcrumb').textContent = titles[id]||id;
+  if (id === 'auditoria') loadAuditLog();
+  if (id === 'usuarios' && isAdmin()) cargarListaUsuarios();
 }
 
 // ───────────────────── TABLE ─────────────────────
@@ -2034,6 +2200,7 @@ async function saveEdit(){
     if (supUpdate.error) { showToast('Error al guardar: ' + supUpdate.error.message); console.error(supUpdate.error); return; }
     const idx = EMPLEADOS.findIndex(e => e.id === _editingEmpId);
     if (idx !== -1) Object.assign(EMPLEADOS[idx], datosNuevos);
+    await logAudit('update', 'empleados', _editingEmpId, 'Actualiz&#243; datos de: ' + (datosNuevos.nombre||'empleado'));
     showToast('Empleado actualizado en Supabase');
   } else {
     // Crear en Supabase
@@ -2041,6 +2208,7 @@ async function saveEdit(){
     const supInsert = await sb.from('empleados').insert([nuevoRow]).select();
     if (supInsert.error) { showToast('Error al crear: ' + supInsert.error.message); console.error(supInsert.error); return; }
     if (supInsert.data) EMPLEADOS.push(...supInsert.data);
+    await logAudit('create', 'empleados', supInsert.data?.[0]?.id||'', 'Cre&#243; nuevo empleado: ' + (datosNuevos.nombre||'—'));
     showToast('Empleado creado en Supabase');
   }
 
@@ -2246,7 +2414,10 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Verificar si ya hay sesion activa (usuario ya habia iniciado sesion antes)
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
+    await loadUserProfile(session.user);
     mostrarApp(session.user.email);
+    applyRoleVisibility();
+    _resetInactivity();
     await loadFromSupabase();
   }
   // Si no hay sesion, la pantalla de login ya esta visible por defecto
@@ -2534,6 +2705,7 @@ async function commitImport() {
       logEl.innerHTML += `<div style="color:var(--text3);margin-top:6px">... y ${_importData.length-200} registros m\xe1s. Total procesado: ${_importData.length} filas.</div>`;
   }
 
+  await logAudit('import', 'empleados', '', 'Import&#243; ' + imported + ' empleados (' + withErrors + ' con errores)');
   goImportStep(4);
   const toastMsg = withErrors > 0
     ? `✓ ${imported} empleados cargados — ${withErrors} con errores críticos por corregir`
@@ -3104,6 +3276,255 @@ function removeAccents(str) {
   return String(str).normalize('NFD').replace(/[̀-ͯ]/g, '');
 }
 
+// ══════════════════════════════════════════════════════════════════════════
+// SESIÓN, ROLES, PERFIL Y AUDITORÍA
+// ══════════════════════════════════════════════════════════════════════════
+let _currentUser = null;  // { id, email, role, display_name, cargo, avatar_url }
+let _inactivityTimer = null;
+const INACTIVITY_LIMIT = 4 * 60 * 60 * 1000;  // 4 horas sin actividad = cierra sesión
+
+// Reiniciar el contador de inactividad con cada interacción
+function _resetInactivity() {
+  clearTimeout(_inactivityTimer);
+  _inactivityTimer = setTimeout(() => {
+    showToast('Sesión cerrada por inactividad (4 horas)');
+    doLogout();
+  }, INACTIVITY_LIMIT);
+}
+['click','keydown','mousemove','scroll','touchstart'].forEach(ev =>
+  document.addEventListener(ev, _resetInactivity, { passive: true })
+);
+
+// Helpers de rol
+function isAdmin()  { return _currentUser?.role === 'admin'; }
+function isEditor() { return ['admin','editor'].includes(_currentUser?.role); }
+
+// Cargar perfil de Supabase y crearlo si no existe
+async function loadUserProfile(user) {
+  _currentUser = { id: user.id, email: user.email, role: 'viewer', display_name: '', cargo: '', avatar_url: '' };
+  let { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
+  if (!data) {
+    const newP = { id: user.id, display_name: user.email.split('@')[0], cargo: '', avatar_url: '', role: 'viewer' };
+    const { data: created } = await sb.from('profiles').insert([newP]).select().single();
+    data = created || newP;
+  }
+  _currentUser = { id: user.id, email: user.email, ...data };
+}
+
+// Aplicar visibilidad según rol
+function applyRoleVisibility() {
+  if (!_currentUser) return;
+  // Mostrar Gestión de Usuarios solo a admin
+  const usersNav = document.getElementById('sb-nav-usuarios');
+  if (usersNav) usersNav.style.display = isAdmin() ? '' : 'none';
+  // Actualizar sidebar footer
+  const nameEl   = document.getElementById('sb-user-email');
+  const roleEl   = document.getElementById('sb-user-role-badge');
+  const avatarEl = document.getElementById('sb-avatar-display');
+  if (nameEl) nameEl.textContent = _currentUser.display_name || _currentUser.email;
+  const roleLabels = { admin: '&#9830; Admin', editor: '&#9998; Editor', viewer: '&#9711; Visualizador' };
+  const roleColors = { admin: '#f5d400', editor: '#60a5fa', viewer: '#64748b' };
+  if (roleEl) {
+    roleEl.innerHTML = roleLabels[_currentUser.role] || _currentUser.role;
+    roleEl.style.color = roleColors[_currentUser.role] || '#64748b';
+  }
+  if (avatarEl) {
+    if (_currentUser.avatar_url) {
+      avatarEl.innerHTML = '<img src="' + escapeHTML(_currentUser.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">';
+    } else {
+      avatarEl.textContent = (_currentUser.display_name || _currentUser.email || 'RH').slice(0,2).toUpperCase();
+    }
+  }
+  // Restringir botones de edición/eliminación para visualizadores
+  // (se aplica dinámicamente en renderTable)
+}
+
+// ── AUDITORÍA ──────────────────────────────────────────────────────────────
+async function logAudit(action, entity, entityId, description, metadata) {
+  if (!_currentUser) return;
+  try {
+    await sb.from('audit_log').insert({
+      user_id:    _currentUser.id,
+      user_email: _currentUser.email,
+      user_name:  _currentUser.display_name || _currentUser.email,
+      action,
+      entity:     entity || '',
+      entity_id:  String(entityId || ''),
+      description,
+      metadata:   metadata || {}
+    });
+  } catch(e) { console.warn('Audit log error:', e); }
+}
+
+async function loadAuditLog() {
+  const container = document.getElementById('audit-container');
+  if (!container) return;
+  container.innerHTML = '<div class="empty-state" style="padding:30px"><p>Cargando...</p></div>';
+
+  const filter = document.getElementById('audit-filter-action')?.value || '';
+  let query = sb.from('audit_log').select('*').order('created_at', { ascending: false }).limit(200);
+  if (filter) query = query.eq('action', filter);
+  const { data, error } = await query;
+
+  if (error) { container.innerHTML = '<div class="empty-state"><p style="color:var(--red)">Error: ' + escapeHTML(error.message) + '</p></div>'; return; }
+  if (!data || !data.length) { container.innerHTML = '<div class="empty-state" style="padding:40px"><p>No hay registros de auditor&#237;a a&#250;n</p></div>'; return; }
+
+  const icons = { create:'&#43;', update:'&#9998;', delete:'&#215;', login:'&#9654;', logout:'&#8592;', import_:'&#8593;' };
+  const iClass = { create:'create', update:'update', delete:'delete', login:'login', logout:'login', import_:'import_' };
+  container.innerHTML = data.map(r => {
+    const d = new Date(r.created_at);
+    const fecha = d.toLocaleDateString('es-CO') + ' ' + d.toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'});
+    return '<div class="audit-row">'
+      + '<div class="audit-icon ' + (iClass[r.action]||'update') + '">' + (icons[r.action]||'&#9998;') + '</div>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div class="audit-desc">' + escapeHTML(r.description) + '</div>'
+      + '<div class="audit-meta"><span class="audit-user">&#9679; ' + escapeHTML(r.user_name||r.user_email||'Sistema') + '</span>'
+      + '<span class="audit-time">' + escapeHTML(fecha) + '</span>'
+      + (r.entity ? '<span style="background:#f1f5f9;padding:0 6px;border-radius:4px">' + escapeHTML(r.entity) + '</span>' : '')
+      + '</div></div></div>';
+  }).join('');
+}
+
+// ── PANEL DE PERFIL USUARIO ────────────────────────────────────────────────
+function abrirPerfilUsuario() {
+  if (!_currentUser) return;
+  const panel = document.getElementById('panel-perfil-usuario');
+  const overlay = document.getElementById('overlay-perfil-usuario');
+  // Rellenar datos
+  document.getElementById('ppu-nombre-display').textContent = _currentUser.display_name || _currentUser.email;
+  document.getElementById('ppu-email-display').textContent  = _currentUser.email;
+  document.getElementById('ppu-input-nombre').value = _currentUser.display_name || '';
+  document.getElementById('ppu-input-cargo').value  = _currentUser.cargo || '';
+  // Role badge
+  const rb = document.getElementById('ppu-role-display');
+  const rl = { admin:'Admin', editor:'Editor', viewer:'Visualizador' };
+  rb.textContent  = rl[_currentUser.role] || _currentUser.role;
+  rb.className    = 'ppu-role-badge ' + (_currentUser.role||'viewer');
+  // Avatar
+  const avBig = document.getElementById('ppu-avatar');
+  const avPrev = document.getElementById('ppu-foto-preview');
+  const avContent = _currentUser.avatar_url
+    ? '<img src="' + escapeHTML(_currentUser.avatar_url) + '" style="width:100%;height:100%;object-fit:cover">'
+    : (_currentUser.display_name||_currentUser.email||'RH').slice(0,2).toUpperCase();
+  if (avBig) avBig.innerHTML = avContent + '<input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)">';
+  if (avPrev) avPrev.innerHTML = avContent;
+  // Permisos info
+  const permisos = {
+    admin:  '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a y gesti&oacute;n de usuarios.',
+    editor: '&#9998; <strong>Editor</strong> &#8212; Puede ver y editar empleados, importar, usar cat&aacute;logos y certificados. No puede crear ni eliminar usuarios.',
+    viewer: '&#9711; <strong>Visualizador</strong> &#8212; Solo lectura: puede ver empleados y reportes pero no puede editar ni importar datos.'
+  };
+  const pi = document.getElementById('ppu-permisos-info');
+  if (pi) pi.innerHTML = permisos[_currentUser.role] || '—';
+  if (overlay) overlay.style.display = 'block';
+  if (panel) panel.classList.add('open');
+}
+
+function cerrarPerfilUsuario() {
+  document.getElementById('panel-perfil-usuario').classList.remove('open');
+  document.getElementById('overlay-perfil-usuario').style.display = 'none';
+}
+
+async function guardarPerfil() {
+  const nombre = document.getElementById('ppu-input-nombre').value.trim();
+  const cargo  = document.getElementById('ppu-input-cargo').value.trim();
+  if (!nombre) { showToast('El nombre no puede estar vacío'); return; }
+  const { error } = await sb.from('profiles').update({ display_name: nombre, cargo, updated_at: new Date().toISOString() }).eq('id', _currentUser.id);
+  if (error) { showToast('Error: ' + error.message); return; }
+  _currentUser.display_name = nombre;
+  _currentUser.cargo        = cargo;
+  applyRoleVisibility();
+  await logAudit('update', 'perfil', _currentUser.id, 'Actualiz&oacute; su nombre o cargo');
+  showToast('&#10003; Perfil actualizado');
+  cerrarPerfilUsuario();
+}
+
+function triggerAvatarUpload() {
+  document.getElementById('avatar-file-input').click();
+}
+
+async function subirFotoPerfil(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 2 * 1024 * 1024) { showToast('La imagen no debe superar 2MB'); return; }
+  showToast('Subiendo foto...');
+  const ext  = file.name.split('.').pop();
+  const path = _currentUser.id + '/avatar.' + ext;
+  const { error: upErr } = await sb.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: true });
+  if (upErr) { showToast('Error subiendo foto: ' + upErr.message); return; }
+  const { data: { publicUrl } } = sb.storage.from('avatars').getPublicUrl(path);
+  const url = publicUrl + '?t=' + Date.now();  // busto caché
+  await sb.from('profiles').update({ avatar_url: url }).eq('id', _currentUser.id);
+  _currentUser.avatar_url = url;
+  applyRoleVisibility();
+  abrirPerfilUsuario();  // refrescar panel
+  await logAudit('update', 'perfil', _currentUser.id, 'Actualiz&oacute; su foto de perfil');
+  showToast('&#10003; Foto actualizada');
+}
+
+// ── GESTIÓN DE USUARIOS (solo admin) ──────────────────────────────────────
+function abrirFormNuevoUsuario() {
+  document.getElementById('form-nuevo-usuario').style.display = 'block';
+}
+
+async function crearNuevoUsuario() {
+  const nombre = document.getElementById('nu-nombre').value.trim();
+  const cargo  = document.getElementById('nu-cargo').value.trim();
+  const email  = document.getElementById('nu-email').value.trim();
+  const pass   = document.getElementById('nu-pass').value;
+  const role   = document.getElementById('nu-role').value;
+  if (!nombre || !email || !pass) { showToast('Nombre, correo y contrase&#241;a son obligatorios'); return; }
+  if (pass.length < 8) { showToast('La contrase&#241;a debe tener m&#237;nimo 8 caracteres'); return; }
+
+  const { data: signUpData, error } = await sb.auth.signUp({ email, password: pass });
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  if (signUpData.user) {
+    await sb.from('profiles').upsert({ id: signUpData.user.id, display_name: nombre, cargo, role });
+    await logAudit('create', 'usuario', signUpData.user.id, 'Cre&oacute; usuario ' + nombre + ' (' + email + ') con rol ' + role);
+  }
+
+  document.getElementById('form-nuevo-usuario').style.display = 'none';
+  ['nu-nombre','nu-cargo','nu-email','nu-pass'].forEach(id => { document.getElementById(id).value = ''; });
+  showToast('&#10003; Usuario creado. Se envi&oacute; email de confirmaci&oacute;n a ' + email);
+  cargarListaUsuarios();
+}
+
+async function cargarListaUsuarios() {
+  const container = document.getElementById('lista-usuarios');
+  if (!container) return;
+  container.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:13px">Cargando usuarios...</div>';
+  const { data, error } = await sb.from('profiles').select('*').order('created_at');
+  if (error || !data) { container.innerHTML = '<div style="color:var(--red);padding:16px">' + (error?.message||'Error') + '</div>'; return; }
+
+  const roleLabels = { admin: 'Administrador', editor: 'Editor', viewer: 'Visualizador' };
+  container.innerHTML = data.map(p => {
+    const initials = (p.display_name || p.id).slice(0,2).toUpperCase();
+    const avatarHtml = p.avatar_url
+      ? '<img src="' + escapeHTML(p.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
+      : initials;
+    const isCurrentUser = p.id === _currentUser?.id;
+    return '<div class="user-card">'
+      + '<div class="user-avatar-md">' + avatarHtml + '</div>'
+      + '<div style="flex:1"><div style="font-weight:600;font-size:13px">' + escapeHTML(p.display_name||'Sin nombre')
+      + (isCurrentUser ? ' <span style="font-size:10px;color:var(--blue)">(t&uacute;)</span>' : '')
+      + '</div><div style="font-size:11px;color:var(--text3)">' + escapeHTML(p.cargo||'Sin cargo') + '</div></div>'
+      + '<select class="role-select ' + p.role + '" onchange="cambiarRol(\'' + p.id + '\',this)"'
+      + (isCurrentUser ? ' disabled title="No puedes cambiar tu propio rol"' : '') + '>'
+      + ['admin','editor','viewer'].map(r => '<option value="' + r + '"' + (r===p.role?' selected':'') + '>' + roleLabels[r] + '</option>').join('')
+      + '</select></div>';
+  }).join('');
+}
+
+async function cambiarRol(userId, select) {
+  const newRole = select.value;
+  const { error } = await sb.from('profiles').update({ role: newRole }).eq('id', userId);
+  if (error) { showToast('Error: ' + error.message); select.value = select.dataset.prev || 'viewer'; return; }
+  select.className = 'role-select ' + newRole;
+  await logAudit('update', 'usuario', userId, 'Cambi&oacute; rol a ' + newRole);
+  showToast('&#10003; Rol actualizado');
+}
+
 // ── AUTENTICACIÓN — Login / Logout ─────────────────────────────────────────
 function mostrarApp(email) {
   document.getElementById('login-screen').style.display = 'none';
@@ -3132,7 +3553,11 @@ async function doLogin() {
     return;
   }
 
+  await loadUserProfile(data.user);
   mostrarApp(data.user.email);
+  applyRoleVisibility();
+  _resetInactivity();
+  await logAudit('login', 'sesion', data.user.id, 'Inici&#243; sesi&#243;n en el sistema');
   btn.textContent = 'Cargando datos...';
   await loadFromSupabase();
   btn.disabled = false;
@@ -3141,7 +3566,10 @@ async function doLogin() {
 
 async function doLogout() {
   if (!confirm('Cerrar sesion?')) return;
+  await logAudit('logout', 'sesion', _currentUser?.id||'', 'Cerr&#243; sesi&#243;n');
   await sb.auth.signOut();
+  _currentUser = null;
+  clearTimeout(_inactivityTimer);
   EMPLEADOS.length = 0;
   filteredData = [];
   renderTable();
