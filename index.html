@@ -11,7 +11,7 @@
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
-  --sidebar:#0f172a;--sidebar-hover:#1e293b;--sidebar-active:#3b82f6;
+  --sidebar:#001a4d;--sidebar-hover:rgba(255,255,255,.06);--sidebar-active:#f5d400;
   --bg:#f1f5f9;--card:#ffffff;--border:#e2e8f0;
   --text:#1e293b;--text2:#64748b;--text3:#94a3b8;
   --blue:#3b82f6;--blue-light:#eff6ff;--blue-dark:#1d4ed8;
@@ -25,26 +25,31 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:14px}
 
 /* SIDEBAR */
-#sidebar{width:240px;min-width:240px;background:var(--sidebar);display:flex;flex-direction:column;height:100vh;overflow-y:auto}
-.sb-logo{padding:20px 20px 16px;border-bottom:1px solid rgba(255,255,255,.08)}
-.sb-logo-title{color:#fff;font-size:15px;font-weight:700;letter-spacing:-.3px}
-.sb-logo-sub{color:#94a3b8;font-size:11px;margin-top:2px}
-.sb-section{padding:12px 0 4px;color:#475569;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;padding-left:20px}
-.sb-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;color:#94a3b8;transition:all .15s;border-left:3px solid transparent;font-size:13px;font-weight:500}
-.sb-item:hover{background:var(--sidebar-hover);color:#e2e8f0}
-.sb-item.active{background:rgba(59,130,246,.15);color:#93c5fd;border-left-color:var(--sidebar-active)}
-.sb-item svg{width:16px;height:16px;flex-shrink:0;opacity:.7}
-.sb-item.active svg{opacity:1}
+#sidebar{width:248px;min-width:248px;background:linear-gradient(180deg,#001a4d 0%,#002d7a 60%,#001a4d 100%);display:flex;flex-direction:column;height:100vh;overflow-y:auto;border-right:1px solid rgba(245,212,0,.15)}
+/* Cabecera con logo */
+.sb-logo{padding:18px 18px 14px;border-bottom:1px solid rgba(255,255,255,.08);display:flex;align-items:center;gap:12px}
+.sb-logo-img{height:38px;width:auto;flex-shrink:0;border-radius:3px}
+.sb-logo-title{color:#fff;font-size:14px;font-weight:800;letter-spacing:.2px;line-height:1.2}
+.sb-logo-sub{color:rgba(255,255,255,.45);font-size:10px;margin-top:2px;letter-spacing:.3px}
+/* Línea decorativa amarilla bajo el header */
+.sb-yellow-bar{height:2px;background:linear-gradient(90deg,#f5d400,rgba(245,212,0,.1));margin-bottom:6px}
+.sb-section{padding:14px 0 5px;color:rgba(255,255,255,.3);font-size:9.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;padding-left:20px}
+.sb-item{display:flex;align-items:center;gap:10px;padding:9px 20px;cursor:pointer;color:rgba(255,255,255,.55);transition:all .15s;border-left:3px solid transparent;font-size:13px;font-weight:500;border-radius:0 6px 6px 0;margin-right:8px}
+.sb-item:hover{background:rgba(255,255,255,.07);color:rgba(255,255,255,.9)}
+.sb-item.active{background:rgba(245,212,0,.12);color:#fff;border-left-color:#f5d400;font-weight:600}
+.sb-item svg{width:16px;height:16px;flex-shrink:0;opacity:.6}
+.sb-item:hover svg{opacity:.9}
+.sb-item.active svg{opacity:1;color:#f5d400}
 .sb-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700}
-.sb-footer{margin-top:auto;padding:16px 20px;border-top:1px solid rgba(255,255,255,.08)}
+.sb-footer{margin-top:auto;padding:14px 18px;border-top:1px solid rgba(255,255,255,.08)}
 .sb-user{display:flex;align-items:center;gap:10px}
-.sb-avatar{width:32px;height:32px;border-radius:50%;background:var(--sidebar-active);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:700;flex-shrink:0}
-.sb-user-name{color:#e2e8f0;font-size:12px;font-weight:600}
-.sb-user-role{color:#64748b;font-size:11px}
+.sb-avatar{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,#003c9d,#f5d400);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0;box-shadow:0 2px 8px rgba(0,0,0,.3)}
+.sb-user-name{color:#fff;font-size:12px;font-weight:600}
+.sb-user-role{color:rgba(255,255,255,.4);font-size:10px}
 
 /* MAIN */
 #main{flex:1;display:flex;flex-direction:column;overflow:hidden}
-#topbar{background:var(--card);border-bottom:1px solid var(--border);padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+#topbar{background:#fff;border-bottom:2px solid #f5d400;padding:0 24px;height:52px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 1px 8px rgba(0,26,77,.08)}
 .topbar-left{display:flex;align-items:center;gap:8px;color:var(--text2);font-size:13px}
 .topbar-title{color:var(--text);font-weight:600;font-size:15px}
 .topbar-right{display:flex;align-items:center;gap:12px}
@@ -545,9 +550,13 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 <!-- SIDEBAR -->
 <nav id="sidebar">
   <div class="sb-logo">
-    <div class="sb-logo-title">&#9632; RH Sistema</div>
-    <div class="sb-logo-sub">Módulo de Empleados</div>
+    <img id="sb-logo-img" class="sb-logo-img" alt="Don Aseo">
+    <div>
+      <div class="sb-logo-title">RH Sistema</div>
+      <div class="sb-logo-sub">DON ASEO Ltda.</div>
+    </div>
   </div>
+  <div class="sb-yellow-bar"></div>
   <div class="sb-section">Principal</div>
   <div id="sb-nav-dashboard" class="sb-item active" onclick="showSection('dashboard',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -2226,9 +2235,13 @@ document.addEventListener('DOMContentLoaded', async () => {
   initCatalogs();
   renderChangeLog(null);
 
-  // Poner el logo de Don Aseo en la pantalla de login (usa la constante base64 del certificado)
-  const loginLogoEl = document.getElementById('login-logo-img');
-  if (loginLogoEl && typeof LOGO_B64 !== 'undefined') loginLogoEl.src = LOGO_B64;
+  // Poner logo en login Y en sidebar
+  if (typeof LOGO_B64 !== 'undefined') {
+    const loginLogoEl = document.getElementById('login-logo-img');
+    const sbLogoEl    = document.getElementById('sb-logo-img');
+    if (loginLogoEl) loginLogoEl.src = LOGO_B64;
+    if (sbLogoEl)    sbLogoEl.src    = LOGO_B64;
+  }
 
   // Verificar si ya hay sesion activa (usuario ya habia iniciado sesion antes)
   const { data: { session } } = await sb.auth.getSession();
