@@ -2200,7 +2200,7 @@ async function saveEdit(){
     if (supUpdate.error) { showToast('Error al guardar: ' + supUpdate.error.message); console.error(supUpdate.error); return; }
     const idx = EMPLEADOS.findIndex(e => e.id === _editingEmpId);
     if (idx !== -1) Object.assign(EMPLEADOS[idx], datosNuevos);
-    await logAudit('update', 'empleados', _editingEmpId, 'Actualiz&#243; datos de: ' + (datosNuevos.nombre||'empleado'));
+    await logAudit('update', 'empleados', _editingEmpId, 'Actualizo datos de: ' + (datosNuevos.nombre||'empleado'));
     showToast('Empleado actualizado en Supabase');
   } else {
     // Crear en Supabase
@@ -2208,7 +2208,7 @@ async function saveEdit(){
     const supInsert = await sb.from('empleados').insert([nuevoRow]).select();
     if (supInsert.error) { showToast('Error al crear: ' + supInsert.error.message); console.error(supInsert.error); return; }
     if (supInsert.data) EMPLEADOS.push(...supInsert.data);
-    await logAudit('create', 'empleados', supInsert.data?.[0]?.id||'', 'Cre&#243; nuevo empleado: ' + (datosNuevos.nombre||'—'));
+    await logAudit('create', 'empleados', supInsert.data?.[0]?.id||'', 'Creo nuevo empleado: ' + (datosNuevos.nombre||'—'));
     showToast('Empleado creado en Supabase');
   }
 
@@ -2705,7 +2705,7 @@ async function commitImport() {
       logEl.innerHTML += `<div style="color:var(--text3);margin-top:6px">... y ${_importData.length-200} registros m\xe1s. Total procesado: ${_importData.length} filas.</div>`;
   }
 
-  await logAudit('import', 'empleados', '', 'Import&#243; ' + imported + ' empleados (' + withErrors + ' con errores)');
+  await logAudit('import', 'empleados', '', 'Importo ' + imported + ' empleados (' + withErrors + ' con errores)');
   goImportStep(4);
   const toastMsg = withErrors > 0
     ? `✓ ${imported} empleados cargados — ${withErrors} con errores críticos por corregir`
@@ -3434,7 +3434,7 @@ async function guardarPerfil() {
   _currentUser.display_name = nombre;
   _currentUser.cargo        = cargo;
   applyRoleVisibility();
-  await logAudit('update', 'perfil', _currentUser.id, 'Actualiz&oacute; su nombre o cargo');
+  await logAudit('update', 'perfil', _currentUser.id, 'Actualizo nombre/cargo');
   showToast('&#10003; Perfil actualizado');
   cerrarPerfilUsuario();
 }
@@ -3458,7 +3458,7 @@ async function subirFotoPerfil(input) {
   _currentUser.avatar_url = url;
   applyRoleVisibility();
   abrirPerfilUsuario();  // refrescar panel
-  await logAudit('update', 'perfil', _currentUser.id, 'Actualiz&oacute; su foto de perfil');
+  await logAudit('update', 'perfil', _currentUser.id, 'Actualizo foto de perfil');
   showToast('&#10003; Foto actualizada');
 }
 
@@ -3481,7 +3481,7 @@ async function crearNuevoUsuario() {
 
   if (signUpData.user) {
     await sb.from('profiles').upsert({ id: signUpData.user.id, display_name: nombre, cargo, role });
-    await logAudit('create', 'usuario', signUpData.user.id, 'Cre&oacute; usuario ' + nombre + ' (' + email + ') con rol ' + role);
+    await logAudit('create', 'usuario', signUpData.user.id, 'Creo usuario ' + nombre + ' (' + email + ') con rol ' + role);
   }
 
   document.getElementById('form-nuevo-usuario').style.display = 'none';
@@ -3521,7 +3521,7 @@ async function cambiarRol(userId, select) {
   const { error } = await sb.from('profiles').update({ role: newRole }).eq('id', userId);
   if (error) { showToast('Error: ' + error.message); select.value = select.dataset.prev || 'viewer'; return; }
   select.className = 'role-select ' + newRole;
-  await logAudit('update', 'usuario', userId, 'Cambi&oacute; rol a ' + newRole);
+  await logAudit('update', 'usuario', userId, 'Cambio rol a ' + newRole);
   showToast('&#10003; Rol actualizado');
 }
 
@@ -3557,7 +3557,7 @@ async function doLogin() {
   mostrarApp(data.user.email);
   applyRoleVisibility();
   _resetInactivity();
-  await logAudit('login', 'sesion', data.user.id, 'Inici&#243; sesi&#243;n en el sistema');
+  await logAudit('login', 'sesion', data.user.id, 'Inicio de sesion');
   btn.textContent = 'Cargando datos...';
   await loadFromSupabase();
   btn.disabled = false;
@@ -3566,7 +3566,7 @@ async function doLogin() {
 
 async function doLogout() {
   if (!confirm('Cerrar sesion?')) return;
-  await logAudit('logout', 'sesion', _currentUser?.id||'', 'Cerr&#243; sesi&#243;n');
+  await logAudit('logout', 'sesion', _currentUser?.id||'', 'Cierre de sesion');
   await sb.auth.signOut();
   _currentUser = null;
   clearTimeout(_inactivityTimer);
