@@ -1368,6 +1368,8 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
             <option value="import">Importaciones</option>
           </select>
           <button class="btn btn-ghost btn-sm" onclick="loadAuditLog()">↻ Actualizar</button>
+          <button id="btn-limpiar-audit" class="btn btn-ghost btn-sm" style="display:none;color:var(--red)"
+            onclick="limpiarAuditoria()">🗑 Limpiar historial</button>
         </div>
       </div>
       <div class="table-wrap" id="audit-container">
@@ -3312,11 +3314,13 @@ async function loadUserProfile(user) {
   _currentUser = { id: user.id, email: user.email, role: 'viewer', display_name: '', cargo: '', avatar_url: '' };
   let { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
   if (!data) {
-    const newP = { id: user.id, display_name: user.email.split('@')[0], cargo: '', avatar_url: '', role: 'viewer' };
+    const newP = { id: user.id, display_name: user.email.split('@')[0], cargo: '', avatar_url: '', role: 'viewer', email: user.email };
     const { data: created } = await sb.from('profiles').insert([newP]).select().single();
     data = created || newP;
   }
   _currentUser = { id: user.id, email: user.email, ...data };
+  // Guardar email en profiles si no estaba
+  if (!data.email) sb.from('profiles').update({ email: user.email }).eq('id', user.id).then(() => {});
 }
 
 // Aplicar visibilidad según rol
@@ -3375,22 +3379,65 @@ async function loadAuditLog() {
   const { data, error } = await query;
 
   if (error) { container.innerHTML = '<div class="empty-state"><p style="color:var(--red)">Error: ' + escapeHTML(error.message) + '</p></div>'; return; }
-  if (!data || !data.length) { container.innerHTML = '<div class="empty-state" style="padding:40px"><p>No hay registros de auditor&#237;a a&#250;n</p></div>'; return; }
+  if (!data || !data.length) { container.innerHTML = '<div class="empty-state" style="padding:40px"><p>No hay registros de auditoria aun</p></div>'; return; }
 
-  const icons = { create:'&#43;', update:'&#9998;', delete:'&#215;', login:'&#9654;', logout:'←', import_:'↑' };
+  // Mostrar botón "Limpiar historial" solo al admin
+  const btnLimpiar = document.getElementById('btn-limpiar-audit');
+  if (btnLimpiar) btnLimpiar.style.display = isAdmin() ? '' : 'none';
+
+  const icons = { create:'+', update:'✎', delete:'✗', login:'▶', logout:'←', import_:'↑' };
   const iClass = { create:'create', update:'update', delete:'delete', login:'login', logout:'login', import_:'import_' };
+
   container.innerHTML = data.map(r => {
     const d = new Date(r.created_at);
     const fecha = d.toLocaleDateString('es-CO') + ' ' + d.toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'});
-    return '<div class="audit-row">'
-      + '<div class="audit-icon ' + (iClass[r.action]||'update') + '">' + (icons[r.action]||'&#9998;') + '</div>'
+    // Botón eliminar solo para admin
+    const delBtn = isAdmin()
+      ? '<button class="btn-icon red" title="Eliminar este registro" style="flex-shrink:0;margin-left:8px"'
+        + ' onclick="eliminarAuditLog(' + r.id + ')">'
+        + '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>'
+        + '</button>'
+      : '';
+    return '<div class="audit-row" id="audit-row-' + r.id + '">'
+      + '<div class="audit-icon ' + (iClass[r.action]||'update') + '">' + (icons[r.action]||'✎') + '</div>'
       + '<div style="flex:1;min-width:0">'
       + '<div class="audit-desc">' + escapeHTML(r.description) + '</div>'
-      + '<div class="audit-meta"><span class="audit-user">&#9679; ' + escapeHTML(r.user_name||r.user_email||'Sistema') + '</span>'
+      + '<div class="audit-meta"><span class="audit-user">● ' + escapeHTML(r.user_name||r.user_email||'Sistema') + '</span>'
       + '<span class="audit-time">' + escapeHTML(fecha) + '</span>'
       + (r.entity ? '<span style="background:#f1f5f9;padding:0 6px;border-radius:4px">' + escapeHTML(r.entity) + '</span>' : '')
-      + '</div></div></div>';
+      + '</div></div>'
+      + delBtn
+      + '</div>';
   }).join('');
+}
+
+async function eliminarAuditLog(id) {
+  if (!isAdmin()) return;
+  const row = document.getElementById('audit-row-' + id);
+  if (row) row.style.opacity = '0.4';
+  const { error } = await sb.from('audit_log').delete().eq('id', id);
+  if (error) {
+    showToast('Error al eliminar: ' + error.message);
+    if (row) row.style.opacity = '1';
+    return;
+  }
+  if (row) row.remove();
+}
+
+async function limpiarAuditoria() {
+  if (!isAdmin()) return;
+  const filter = document.getElementById('audit-filter-action')?.value || '';
+  const msg = filter
+    ? 'Eliminar todos los registros de "' + filter + '" del historial?'
+    : 'Eliminar TODO el historial de auditoria? Esta accion no se puede deshacer.';
+  if (!confirm(msg)) return;
+
+  let query = sb.from('audit_log').delete().neq('id', 0);  // delete all matching filter
+  if (filter) query = sb.from('audit_log').delete().eq('action', filter);
+  const { error } = await query;
+  if (error) { showToast('Error: ' + error.message); return; }
+  showToast('✓ Historial limpiado');
+  loadAuditLog();
 }
 
 // ── PANEL DE PERFIL USUARIO ────────────────────────────────────────────────
@@ -3488,7 +3535,7 @@ async function crearNuevoUsuario() {
   if (error) { showToast('Error: ' + error.message); return; }
 
   if (signUpData.user) {
-    await sb.from('profiles').upsert({ id: signUpData.user.id, display_name: nombre, cargo, role });
+    await sb.from('profiles').upsert({ id: signUpData.user.id, display_name: nombre, cargo, role, email });
     await logAudit('create', 'usuario', signUpData.user.id, 'Creo usuario ' + nombre + ' (' + email + ') con rol ' + role);
   }
 
@@ -3512,12 +3559,18 @@ async function cargarListaUsuarios() {
       ? '<img src="' + escapeHTML(p.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
       : initials;
     const isCurrentUser = p.id === _currentUser?.id;
+    const emailDisplay = p.email ? escapeHTML(p.email) : '<span style="color:var(--text3);font-style:italic">email no registrado</span>';
+
     return '<div class="user-card">'
       + '<div class="user-avatar-md">' + avatarHtml + '</div>'
-      + '<div style="flex:1"><div style="font-weight:600;font-size:13px">' + escapeHTML(p.display_name||'Sin nombre')
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-weight:600;font-size:13px">' + escapeHTML(p.display_name||'Sin nombre')
       + (isCurrentUser ? ' <span style="font-size:10px;color:var(--blue)">(t&uacute;)</span>' : '')
-      + '</div><div style="font-size:11px;color:var(--text3)">' + escapeHTML(p.cargo||'Sin cargo') + '</div></div>'
-      // Solo el admin puede cambiar roles — el resto ve el rol como texto estático
+      + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">' + escapeHTML(p.cargo||'Sin cargo') + '</div>'
+      + '<div style="font-size:11px;color:var(--text3);margin-top:1px">' + emailDisplay + '</div>'
+      + '</div>'
+      // Controles de rol
       + (isAdmin()
           ? '<select class="role-select ' + p.role + '" onchange="cambiarRol(\'' + p.id + '\',this)"'
             + (isCurrentUser ? ' disabled title="No puedes cambiar tu propio rol"' : '') + '>'
@@ -3525,8 +3578,27 @@ async function cargarListaUsuarios() {
             + '</select>'
           : '<span class="role-select ' + p.role + '" style="cursor:default;user-select:none">' + (roleLabels[p.role]||p.role) + '</span>'
         )
+      // Boton reset contraseña (solo admin, no en cuenta propia)
+      + (isAdmin() && !isCurrentUser && p.email
+          ? ' <button class="btn-icon" title="Enviar reset de contrasena" style="margin-left:6px;color:var(--orange)"'
+            + ' onclick="resetearPassword(\'' + escapeHTML(p.email) + '\',\'' + escapeHTML(p.display_name||'usuario') + '\')">'
+            + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
+            + '</button>'
+          : '')
       + '</div>';
   }).join('');
+}
+
+// Envía email de reset de contraseña al usuario
+async function resetearPassword(email, nombre) {
+  if (!isAdmin()) { showToast('Solo el administrador puede hacer esto'); return; }
+  if (!confirm('Enviar email de recuperacion de contrasena a ' + nombre + ' (' + email + ')?')) return;
+  const { error } = await sb.auth.resetPasswordForEmail(email, {
+    redirectTo: window.location.origin + window.location.pathname
+  });
+  if (error) { showToast('Error: ' + error.message); return; }
+  await logAudit('update', 'usuario', '', 'Envio reset de contrasena a ' + email);
+  showToast('✓ Email de recuperacion enviado a ' + email);
 }
 
 async function cambiarRol(userId, select) {
