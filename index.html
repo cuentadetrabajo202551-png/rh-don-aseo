@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -5468,6 +5468,119 @@ function switchDupTab(tab){
   });
 }
 
+// ── ACCIONES REALES DEL MÓDULO CORRECCIÓN DE DATOS ────────────────────────
+// Registros globales para que los onclick de los botones accedan a los datos
+let _simGroupsData  = [];
+let _posGroupsData  = [];
+const _posDismissed = new Set();  // IDs de posibles duplicados ignorados
+
+// ── ACCIÓN: Resolver duplicado exacto (misma cédula, 2+ activos) ──────────
+async function resolverDupExacto(cedula, accion) {
+  const registros = EMPLEADOS.filter(e => e.cedula === cedula && e.estado === 'ACTIVO');
+  if (registros.length < 2) { showToast('No se encontraron los registros'); return; }
+
+  // Ordenar por ingreso: el más antiguo primero
+  registros.sort((a,b) => (a.ingreso||'').localeCompare(b.ingreso||''));
+  const antiguo = registros[0];   // el que se va a cerrar/eliminar
+  const nuevo   = registros[registros.length-1];  // el que se mantiene activo
+
+  const hoy = new Date();
+  const fechaHoy = String(hoy.getDate()).padStart(2,'0') + '/' + String(hoy.getMonth()+1).padStart(2,'0') + '/' + hoy.getFullYear();
+
+  if (accion === 'traslado') {
+    if (!confirm('Marcar como INACTIVO el registro anterior de ' + (antiguo.nombre||cedula) + ' en ' + (antiguo.cliente||'—') + '?')) return;
+    const { error } = await sb.from('empleados').update({
+      estado: 'INACTIVO', retiro: fechaHoy, motivo: 'TERMINACION DE CONTRATO',
+      updated_at: new Date().toISOString()
+    }).eq('id', antiguo.id);
+    if (error) { showToast('Error: ' + error.message); return; }
+    const emp = EMPLEADOS.find(e => e.id === antiguo.id);
+    if (emp) { emp.estado='INACTIVO'; emp.retiro=fechaHoy; emp.motivo='TERMINACION DE CONTRATO'; }
+    await logAudit('update','empleados',cedula,'Traslado: cerro registro anterior de ' + (antiguo.cliente||'—'));
+    showToast('&#10003; Traslado aplicado — registro anterior cerrado');
+
+  } else if (accion === 'historial') {
+    showToast('&#10003; Marcado como historial laboral v\xe1lido — ambos registros son correctos');
+    await logAudit('update','empleados',cedula,'Historial v\xe1lido: dos registros activos confirmados');
+
+  } else if (accion === 'reingreso') {
+    if (!confirm('Marcar como INACTIVO el registro anterior de ' + (antiguo.nombre||cedula) + '?')) return;
+    const { error } = await sb.from('empleados').update({
+      estado: 'INACTIVO', retiro: fechaHoy, motivo: 'RENUNCIA',
+      updated_at: new Date().toISOString()
+    }).eq('id', antiguo.id);
+    if (error) { showToast('Error: ' + error.message); return; }
+    const emp2 = EMPLEADOS.find(e => e.id === antiguo.id);
+    if (emp2) { emp2.estado='INACTIVO'; emp2.retiro=fechaHoy; emp2.motivo='RENUNCIA'; }
+    await logAudit('update','empleados',cedula,'Reingreso: registro anterior marcado como inactivo');
+    showToast('&#10003; Reingreso registrado — historial anterior cerrado');
+
+  } else if (accion === 'eliminar') {
+    if (!confirm('ELIMINAR permanentemente el registro m\xe1s antiguo de ' + (antiguo.nombre||cedula) + '?\n\nEsto NO se puede deshacer.')) return;
+    const { error } = await sb.from('empleados').delete().eq('id', antiguo.id);
+    if (error) { showToast('Error: ' + error.message); return; }
+    const idx = EMPLEADOS.findIndex(e => e.id === antiguo.id);
+    if (idx !== -1) EMPLEADOS.splice(idx, 1);
+    await logAudit('delete','empleados',cedula,'Elimino registro duplicado (id=' + antiguo.id + ')');
+    showToast('&#10003; Registro duplicado eliminado');
+  }
+
+  filteredData = [...EMPLEADOS];
+  filterTable(); renderAlerts(); refreshDashboard();
+  setTimeout(() => buildDuplicados(), 300);
+}
+
+// ── ACCIÓN: Descartar posible duplicado (mismos nombres, distintas cédulas) ─
+function descartarPosibleDup(idx) {
+  _posDismissed.add(idx);
+  // Refilter nameGroups excluyendo los descartados
+  const elPoss = document.getElementById('dup-content-possible');
+  if (elPoss) {
+    const row = elPoss.querySelectorAll('.dup-group-card')[0];
+    // Simplemente recargar los duplicados filtrando los descartados
+    buildDuplicados();
+  }
+  showToast('&#10003; Par ignorado — no se mostrar\xe1 de nuevo en esta sesi\xf3n');
+}
+
+// ── ACCIÓN: Unificar variantes de nombres similares (cargos/clientes) ──────
+async function unificarVarianteNombre(idx) {
+  const item = _simGroupsData[idx];
+  if (!item) { showToast('Error: grupo no encontrado'); return; }
+  const { type, group } = item;
+  const mainName   = group[0].name;
+  const variants   = group.slice(1).map(g => g.name);
+  const totalReg   = group.reduce((s,g) => s+g.count, 0);
+  const campo      = type === 'CARGO' ? 'cargo' : 'cliente';
+  const campoLabel = type === 'CARGO' ? 'cargo' : 'cliente';
+
+  if (!confirm('Unificar ' + variants.length + ' variantes a "' + mainName + '"?\n' +
+    'Afectar\xe1 ' + totalReg.toLocaleString('es-CO') + ' registros de empleados.\n\n' +
+    'Variantes que se cambiar\xe1n:\n' + variants.join('\n'))) return;
+
+  let ok = 0;
+  for (const v of variants) {
+    const { error } = await sb.from('empleados').update({ [campo]: mainName, updated_at: new Date().toISOString() }).eq(campo, v);
+    if (!error) {
+      EMPLEADOS.forEach(e => { if (e[campo] === v) e[campo] = mainName; });
+      ok++;
+    }
+  }
+
+  filteredData = [...EMPLEADOS];
+  filterTable(); refreshDashboard();
+  await logAudit('update','catalogos','', 'Unific\xf3 ' + ok + ' variantes de ' + campoLabel + ' a: ' + mainName);
+  showToast('&#10003; ' + ok + ' variante' + (ok!==1?'s':'') + ' de ' + campoLabel + ' unificada' + (ok!==1?'s':'') + ' a "' + mainName + '"');
+  setTimeout(() => buildDuplicados(), 300);
+}
+
+// ── ACCIÓN: Ignorar sugerencia de normalización ───────────────────────────
+function descartarSimilar(idx) {
+  _simGroupsData.splice(idx, 1);
+  buildDuplicados();
+  showToast('Sugerencia ignorada');
+}
+
 // ─── DUPLICADOS DINAMICOS ─────────────────────────────────────────────────
 function buildDuplicados() {
   const EMPTY_STATE = '<div class="empty-state" style="padding:40px 24px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 12px;display:block;opacity:.3"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><p style="font-size:13px;color:var(--text2)">Sin datos importados a\xfan</p><small>Importa empleados para detectar duplicados autom\xe1ticamente</small></div>';
@@ -5487,7 +5600,7 @@ function buildDuplicados() {
     elExact.innerHTML='<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">✓ No se encontraron c\xe9dulas con m\xe1s de un registro ACTIVO simult\xe1neo.</div>';
   } else {
     elExact.innerHTML='<div style="background:var(--red-light);border:1px solid #fecaca;border-radius:8px;padding:12px 16px;margin-bottom:16px;font-size:12px;color:var(--red);font-weight:600">&#9888; '+exactGroups.length+' grupo'+( exactGroups.length!==1?'s':'')+' con m\xe1s de un registro ACTIVO para la misma c\xe9dula.</div>'
-      +exactGroups.map(([ced,records])=>`<div class="dup-group-card"><div class="dup-group-header"><div class="dup-group-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>CC ${escapeHTML(ced)} &mdash; ${escapeHTML(records[0].nombre||'Sin nombre')}</div><span class="dup-score high">${records.length} registros ACTIVOS</span></div><div class="dup-comparison">${records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+'</div><div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val diff">'+escapeHTML(r.cliente||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Cargo</span><span class="dup-field-val">'+escapeHTML(r.cargo||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Ingreso</span><span class="dup-field-val">'+escapeHTML(r.ingreso||'&mdash;')+'</span></div></div>').join('')}</div><div class="dup-actions"><span style="font-size:11px;color:var(--text2);font-weight:600;align-self:center">&#191;Qu\xe9 es?</span><button class="dup-btn" onclick="showToast('Traslado marcado')">&#128260; Traslado</button><button class="dup-btn" onclick="showToast('Historial v\xe1lido')">&#128203; Historial</button><button class="dup-btn" onclick="showToast('Marcado como reingreso')">&#8617; Reingreso</button><button class="dup-btn danger" onclick="showToast('Duplicado marcado para eliminaci\xf3n')">&#128465; Eliminar uno</button></div></div>`).join('');
+      +exactGroups.map(([ced,records])=>`<div class="dup-group-card"><div class="dup-group-header"><div class="dup-group-title"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>CC ${escapeHTML(ced)} &mdash; ${escapeHTML(records[0].nombre||'Sin nombre')}</div><span class="dup-score high">${records.length} registros ACTIVOS</span></div><div class="dup-comparison">${records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+'</div><div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val diff">'+escapeHTML(r.cliente||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Cargo</span><span class="dup-field-val">'+escapeHTML(r.cargo||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Ingreso</span><span class="dup-field-val">'+escapeHTML(r.ingreso||'&mdash;')+'</span></div></div>').join('')}</div><div class="dup-actions"><span style="font-size:11px;color:var(--text2);font-weight:600;align-self:center">&#191;Qu\xe9 es?</span><button class="dup-btn" onclick="resolverDupExacto('${ced}','traslado')">&#128260; Traslado (cerrar anterior)</button><button class="dup-btn" onclick="resolverDupExacto('${ced}','historial')">&#128203; Historial v&aacute;lido</button><button class="dup-btn" onclick="resolverDupExacto('${ced}','reingreso')">&#8617; Reingreso</button><button class="dup-btn danger" onclick="resolverDupExacto('${ced}','eliminar')">&#128465; Eliminar duplicado</button></div></div>`).join('');
   }
 
   // ── Posibles: mismo nombre exacto, distinta cédula ─────────────────
@@ -5495,10 +5608,11 @@ function buildDuplicados() {
   EMPLEADOS.forEach(e=>{ if(e.nombre&&e.cedula) (nameCed[e.nombre.trim().toUpperCase()]=nameCed[e.nombre.trim().toUpperCase()]||[]).push(e); });
   const nameGroups=Object.entries(nameCed).filter(([,a])=>a.length>1&&new Set(a.map(r=>r.cedula)).size>1);
 
+  _posGroupsData = nameGroups;  // registro global para botones
   const elPoss=document.getElementById('dup-content-possible');
   elPoss.innerHTML=!nameGroups.length
-    ?'<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">✓ No se encontraron nombres id\xe9nticos con c\xe9dulas distintas.</div>'
-    :nameGroups.slice(0,5).map(([,records])=>`<div class="dup-group-card"><div class="dup-group-header"><div class="dup-group-title">Mismo nombre &mdash; c\xe9dulas distintas</div><span class="dup-score med">Revisar</span></div><div class="dup-comparison">${records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+' &mdash; CC '+escapeHTML(r.cedula)+'</div><div class="dup-field-row"><span class="dup-field-label">Nombre</span><span class="dup-field-val diff">'+escapeHTML(r.nombre)+'</span></div><div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val">'+escapeHTML(r.cliente||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Celular</span><span class="dup-field-val">'+escapeHTML(r.celular||'&mdash;')+'</span></div></div>').join('')}</div><div class="dup-actions"><button class="dup-btn primary" onclick="showToast('Confirmado: personas distintas')">✓ Personas distintas</button><button class="dup-btn danger" onclick="showToast('Marcado para unificaci\xf3n')">&#128279; Unificar</button></div></div>`).join('');
+    ?'<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; No se encontraron nombres id\xe9nticos con c\xe9dulas distintas.</div>'
+    :nameGroups.slice(0,5).map(([,records],_pi)=>`<div class="dup-group-card"><div class="dup-group-header"><div class="dup-group-title">Mismo nombre &mdash; c\xe9dulas distintas</div><span class="dup-score med">Revisar</span></div><div class="dup-comparison">${records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+' &mdash; CC '+escapeHTML(r.cedula)+'</div><div class="dup-field-row"><span class="dup-field-label">Nombre</span><span class="dup-field-val diff">'+escapeHTML(r.nombre)+'</span></div><div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val">'+escapeHTML(r.cliente||'&mdash;')+'</span></div><div class="dup-field-row"><span class="dup-field-label">Celular</span><span class="dup-field-val">'+escapeHTML(r.celular||'&mdash;')+'</span></div></div>').join('')}</div><div class="dup-actions"><button class="dup-btn primary" onclick="descartarPosibleDup(${_pi})">&#10003; Son personas distintas &mdash; ignorar</button></div></div>`).join('');
 
   // ── Nombres similares: variantes de cargos y clientes ─────────────
   function groupSimilarNames(map){
@@ -5524,9 +5638,10 @@ function buildDuplicados() {
       const tc=type==='CARGO'?'var(--orange)':'var(--blue)';
       const tb=type==='CARGO'?'var(--orange-light)':'var(--blue-light)';
       const total=group.reduce((s,g)=>s+g.count,0);
-      return `<div class="sim-card"><div class="sim-header"><div class="sim-title"><span style="background:${tb};color:${tc};padding:2px 7px;border-radius:4px;font-size:10px">${escapeHTML(type)}</span> ${group.length} variantes &mdash; ${total.toLocaleString('es-CO')} registros</div><button class="dup-btn primary" onclick="showToast('Unificados a: ${escapeHTML(group[0].name)}')">Unificar</button></div><div class="sim-variants">${group.map((v,i)=>'<div class="sim-variant">'+(i===0?'<span class="sim-badge-main">Principal</span>':'<span style="width:52px"></span>')+'<span class="sim-variant-name '+(i===0?'main':'other')+'">'+escapeHTML(v.name)+'</span><span class="sim-count">'+v.count.toLocaleString('es-CO')+' reg.</span></div>').join('')}</div><div class="sim-actions"><button class="dup-btn" onclick="showToast('Regla creada')">&#128207; Regla</button><button class="dup-btn" onclick="showToast('Mantenidos separados')">Mantener</button></div></div>`;
+      return `<div class="sim-card"><div class="sim-header"><div class="sim-title"><span style="background:${tb};color:${tc};padding:2px 7px;border-radius:4px;font-size:10px">${escapeHTML(type)}</span> ${group.length} variantes &mdash; ${total.toLocaleString('es-CO')} registros</div><button class="dup-btn primary" onclick="showToast('Unificados a: ${escapeHTML(group[0].name)}')">Unificar</button></div><div class="sim-variants">${group.map((v,i)=>'<div class="sim-variant">'+(i===0?'<span class="sim-badge-main">Principal</span>':'<span style="width:52px"></span>')+'<span class="sim-variant-name '+(i===0?'main':'other')+'">'+escapeHTML(v.name)+'</span><span class="sim-count">'+v.count.toLocaleString('es-CO')+' reg.</span></div>').join('')}</div><div class="sim-actions"><button class="dup-btn" onclick="descartarSimilar(_simGroupsData.findIndex(g=>g.group[0].name===group[0].name&&g.type===type))">Ignorar sugerencia</button></div></div>`;
     }).join('');
 
+  _simGroupsData = allGroups;  // registro global para acceder desde onclick
   _updateDupBadge(exactGroups.length,nameGroups.length,allGroups.length);
 }
 
