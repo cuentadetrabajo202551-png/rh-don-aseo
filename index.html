@@ -5472,7 +5472,8 @@ function switchDupTab(tab){
 // Registros globales para que los onclick de los botones accedan a los datos
 let _simGroupsData  = [];
 let _posGroupsData  = [];
-const _posDismissed = new Set();  // IDs de posibles duplicados ignorados
+const _posDismissed = new Set();  // nombres UPPER ignorados en posibles duplicados
+const _simDismissed = new Set();  // claves "TYPE_mainName" ignoradas en similares
 
 // ── ACCIÓN: Resolver duplicado exacto (misma cédula, 2+ activos) ──────────
 async function resolverDupExacto(cedula, accion) {
@@ -5530,6 +5531,49 @@ async function resolverDupExacto(cedula, accion) {
   setTimeout(() => buildDuplicados(), 300);
 }
 
+// ── ACCIÓN: Unificar posibles duplicados — mantener el elegido, inactivar el otro ──
+async function unificarPosiblesDup(idMantener, nameKey) {
+  // Encontrar el par de registros por nombre
+  const nombre = nameKey.replace(/\\'/g,"'");
+  const pares  = EMPLEADOS.filter(e => e.nombre && e.nombre.trim().toUpperCase() === nombre);
+  if (pares.length < 2) { showToast('No se encontraron los registros a unificar'); return; }
+
+  const mantener = EMPLEADOS.find(e => e.id === idMantener);
+  const otros    = pares.filter(e => e.id !== idMantener);
+
+  if (!mantener) { showToast('Registro no encontrado'); return; }
+
+  const nombresOtros = otros.map(e => (e.cliente||'—') + ' (CC ' + (e.cedula||'—') + ')').join(', ');
+  if (!confirm('Mantener: ' + (mantener.cliente||'—') + ' (CC ' + (mantener.cedula||'—') + ')\n'
+    + 'Marcar como INACTIVO: ' + nombresOtros + '\n\n'
+    + '¿Confirmar unificación?')) return;
+
+  const hoy = new Date();
+  const fechaHoy = String(hoy.getDate()).padStart(2,'0') + '/' + String(hoy.getMonth()+1).padStart(2,'0') + '/' + hoy.getFullYear();
+
+  for (const otro of otros) {
+    const { error } = await sb.from('empleados').update({
+      estado: 'INACTIVO', retiro: fechaHoy,
+      motivo: 'TERMINACION DE CONTRATO',
+      notas: ((otro.notas||'') + ' | Unificado: se mantiene registro CC ' + (mantener.cedula||'—')).trim(),
+      updated_at: new Date().toISOString()
+    }).eq('id', otro.id);
+    if (!error) {
+      const e = EMPLEADOS.find(x => x.id === otro.id);
+      if (e) { e.estado='INACTIVO'; e.retiro=fechaHoy; e.motivo='TERMINACION DE CONTRATO'; }
+    }
+  }
+
+  _posDismissed.add(nombre.toUpperCase());
+  await logAudit('update','empleados',String(idMantener),
+    'Unific\xf3 duplicado: mantuvo CC '+(mantener.cedula||'—')+', cerr\xf3 '+otros.length+' registro(s)');
+
+  filteredData = [...EMPLEADOS];
+  filterTable(); renderAlerts(); refreshDashboard();
+  showToast('&#10003; Unificaci\xf3n aplicada &mdash; registro de CC ' + (mantener.cedula||'—') + ' es el principal');
+  setTimeout(() => buildDuplicados(), 300);
+}
+
 // ── ACCIÓN: Descartar posible duplicado (mismos nombres, distintas cédulas) ─
 // nameKey = nombre en MAYÚSCULAS (clave estable que no cambia entre rebuilds)
 function descartarPosibleDup(nameKey) {
@@ -5570,10 +5614,14 @@ async function unificarVarianteNombre(idx) {
 }
 
 // ── ACCIÓN: Ignorar sugerencia de normalización ───────────────────────────
+// Usa Set persistente como _posDismissed — no splice (buildDuplicados lo sobreescribiría)
 function descartarSimilar(idx) {
-  _simGroupsData.splice(idx, 1);
+  const item = _simGroupsData[idx];
+  if (!item) { showToast('Error: grupo no encontrado'); return; }
+  const key = item.type + '_' + item.group[0].name;
+  _simDismissed.add(key);
   buildDuplicados();
-  showToast('Sugerencia ignorada');
+  showToast('Sugerencia ignorada — no aparecer\xe1 de nuevo en esta sesi\xf3n');
 }
 
 // ─── DUPLICADOS DINAMICOS ─────────────────────────────────────────────────
@@ -5610,25 +5658,45 @@ function buildDuplicados() {
   if(!nameGroups.length){
     elPoss.innerHTML='<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; No se encontraron nombres id\xe9nticos con c\xe9dulas distintas.</div>';
   } else {
-    // Mostrar TODOS (sin slice) — el usuario puede ignorar los que quiera
-    const info = nameGroupsAll.length > nameGroups.length
-      ? '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">Mostrando '+nameGroups.length+' de '+nameGroupsAll.length+' grupos ('+(nameGroupsAll.length-nameGroups.length)+' ignorados en esta sesi\xf3n)</div>'
-      : '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+nameGroups.length+' grupos detectados</div>';
-    elPoss.innerHTML = info + nameGroups.map(([nombre,records])=>{
-      // Embed nombre as a safe key (escape single quotes)
+    const ignoradosPos = nameGroupsAll.length - nameGroups.length;
+    const infoPos = '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'
+      + nameGroups.length + ' grupos detectados'
+      + (ignoradosPos ? ' &mdash; ' + ignoradosPos + ' ignorados en esta sesi\xf3n' : '') + '</div>';
+
+    elPoss.innerHTML = infoPos + nameGroups.map(([nombre, records]) => {
       const nameKey = nombre.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      return '<div class="dup-group-card"><div class="dup-group-header">'
-        + '<div class="dup-group-title">Mismo nombre &mdash; c\xe9dulas distintas: <strong>'+escapeHTML(records[0].nombre)+'</strong></div>'
-        + '<span class="dup-score med">'+records.length+' registros</span></div>'
-        + '<div class="dup-comparison">'
-        + records.slice(0,2).map((r,i)=>'<div class="dup-col"><div class="dup-col-title">Registro '+(i+1)+' &mdash; CC '+escapeHTML(r.cedula||'—')+'</div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val diff">'+escapeHTML(r.cliente||'—')+'</span></div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Estado</span><span class="dup-field-val" style="color:'+(r.estado==='ACTIVO'?'var(--green)':'var(--red)')+'">'+escapeHTML(r.estado||'—')+'</span></div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Celular</span><span class="dup-field-val">'+escapeHTML(r.celular||'—')+'</span></div>'
-          + '</div>').join('')
+      const cols = records.slice(0, 2).map((r, i) => {
+        const g = r.genero === 'FEMENINO' ? 'f' : 'm';
+        const ini = r.cedula ? getInitials(r.nombre) : '?';
+        const edBadge = r.estado === 'ACTIVO'
+          ? '<span style="color:var(--green);font-weight:700">ACTIVO</span>'
+          : '<span style="color:var(--red)">INACTIVO</span>';
+        return '<div class="dup-col">'
+          + '<div class="dup-col-title" style="display:flex;align-items:center;gap:8px">'
+          + '<div class="emp-avatar ' + g + '" style="width:28px;height:28px;font-size:10px;flex-shrink:0">' + escapeHTML(ini) + '</div>'
+          + 'Registro ' + (i+1) + (r.cedula ? ' &mdash; CC <strong>' + escapeHTML(r.cedula) + '</strong>' : '') + '</div>'
+          + '<div class="dup-field-row"><span class="dup-field-label">Estado</span><span class="dup-field-val">' + edBadge + '</span></div>'
+          + '<div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val diff">' + escapeHTML(r.cliente||'—') + '</span></div>'
+          + '<div class="dup-field-row"><span class="dup-field-label">Cargo</span><span class="dup-field-val">' + escapeHTML(r.cargo||'—') + '</span></div>'
+          + '<div class="dup-field-row"><span class="dup-field-label">Celular</span><span class="dup-field-val">' + escapeHTML(r.celular||'—') + '</span></div>'
+          + '<div class="dup-field-row"><span class="dup-field-label">Ingreso</span><span class="dup-field-val">' + escapeHTML(r.ingreso||'—') + '</span></div>'
+          + '<div class="dup-field-row"><span class="dup-field-label">EPS</span><span class="dup-field-val">' + escapeHTML(r.eps||'—') + '</span></div>'
+          + '<div style="margin-top:8px;display:flex;gap:6px">'
+          + '<button class="btn-icon" onclick="openPanel(' + r.id + ')" title="Ver perfil completo">&#128065;</button>'
+          + (isEditor() ? '<button class="btn-icon" onclick="openEditModal(' + r.id + ')" title="Editar">&#9998;</button>' : '')
+          + (isEditor() ? '<button class="dup-btn primary" style="font-size:10px;padding:3px 8px" onclick="unificarPosiblesDup(' + r.id + ',\'' + nameKey + '\')" title="Mantener ESTE y marcar el otro como inactivo">&#128081; Mantener este</button>' : '')
+          + '</div>'
+          + '</div>';
+      }).join('');
+
+      return '<div class="dup-group-card">'
+        + '<div class="dup-group-header">'
+        + '<div class="dup-group-title">Mismo nombre &mdash; c\xe9dulas distintas: <strong>' + escapeHTML(records[0].nombre) + '</strong></div>'
+        + '<span class="dup-score med">' + records.length + ' registros</span>'
         + '</div>'
+        + '<div class="dup-comparison">' + cols + '</div>'
         + '<div class="dup-actions">'
-        + '<button class="dup-btn primary" onclick="descartarPosibleDup(\''+nameKey+'\')">&#10003; Son personas distintas &mdash; ignorar</button>'
+        + '<button class="dup-btn primary" onclick="descartarPosibleDup(\'' + nameKey + '\')">&#10003; Son personas distintas &mdash; ignorar</button>'
         + '</div></div>';
     }).join('');
   }
@@ -5650,17 +5718,21 @@ function buildDuplicados() {
   EMPLEADOS.forEach(e=>{ if(e.cargo){const k=e.cargo.trim().toUpperCase();cargoMap[k]=(cargoMap[k]||0)+1;} if(e.cliente){const k=e.cliente.trim().toUpperCase();cliMap[k]=(cliMap[k]||0)+1;} });
   const allGroups=[...groupSimilarNames(cliMap).map(g=>({type:'CLIENTE',group:g})),...groupSimilarNames(cargoMap).map(g=>({type:'CARGO',group:g}))];
 
-  // ── IMPORTANTE: guardar ANTES de renderizar para que el índice sea correcto
-  _simGroupsData = allGroups;
+  // ── Filtrar grupos ignorados y guardar ANTES de renderizar (índices estables)
+  const filteredSim = allGroups.filter(({type,group}) => !_simDismissed.has(type + '_' + group[0].name));
+  _simGroupsData = filteredSim;
 
   const elNames=document.getElementById('dup-content-names');
-  if(!allGroups.length){
-    elNames.innerHTML='<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; No se detectaron variantes similares en clientes ni cargos.</div>';
+  if(!filteredSim.length){
+    const totalIgnorados = allGroups.length - filteredSim.length;
+    elNames.innerHTML='<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; No hay sugerencias pendientes.'+(totalIgnorados?' ('+totalIgnorados+' ignoradas en esta sesi\xf3n)')+'</div>';
   } else {
-    // Se usa _si (índice numérico) embebido en el onclick al momento de renderizar
-    // Así no hay referencias a variables de scope en el evento
-    elNames.innerHTML = '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'+allGroups.length+' grupos con variantes detectados</div>'
-      + allGroups.map(({type,group},_si)=>{
+    const ignorados = allGroups.length - filteredSim.length;
+    const infoSim = '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'
+      + filteredSim.length+' sugerencias pendientes'+(ignorados?' &mdash; '+ignorados+' ignoradas en esta sesi\xf3n':'')+'</div>';
+    // Se usa _si (índice en filteredSim) embebido en el onclick al renderizar
+    elNames.innerHTML = infoSim
+      + filteredSim.map(({type,group},_si)=>{
         const tc=type==='CARGO'?'var(--orange)':'var(--blue)';
         const tb=type==='CARGO'?'var(--orange-light)':'var(--blue-light)';
         const total=group.reduce((s,g)=>s+g.count,0);
@@ -5684,7 +5756,7 @@ function buildDuplicados() {
           + '</div></div>';
       }).join('');
   }
-  _updateDupBadge(exactGroups.length,nameGroups.length,allGroups.length);
+  _updateDupBadge(exactGroups.length, nameGroups.length, filteredSim.length);
 }
 
 function _updateDupBadge(exact,possible,names){
