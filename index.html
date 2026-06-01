@@ -2107,9 +2107,9 @@ async function loadFromSupabase() {
 
   initFilters();
   filterTable();
-  renderAlerts();
-  refreshDashboard();
-  buildDuplicados();
+  try { renderAlerts(); } catch(e) { console.error('renderAlerts error:', e); }
+  try { refreshDashboard(); } catch(e) { console.error('refreshDashboard error:', e); }
+  try { buildDuplicados(); } catch(e) { console.error('buildDuplicados error:', e); }
 
   if (EMPLEADOS.length > 0) {
     showToast('✓ ' + EMPLEADOS.length.toLocaleString('es-CO') + ' empleados cargados desde Supabase');
@@ -3407,7 +3407,8 @@ function renderAlerts(){
   const bSCargo = document.getElementById('badge-sin-cargo');
   if(bSCargo) bSCargo.textContent = sinCargo.length;
   const cargoOpts = CATALOGS.cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-  document.getElementById('alertSinCargo').innerHTML = sinCargo.length
+  const elSinCargo = document.getElementById('alertSinCargo');
+  if(elSinCargo) elSinCargo.innerHTML = sinCargo.length
     ? sinCargo.slice(0,10).map(e=>`
         <div class="alert-emp-row" id="arow-cargo-${e.id}">
           <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${escapeHTML(getInitials(e.nombre))}</div>
@@ -3432,7 +3433,8 @@ function renderAlerts(){
   const bSCli = document.getElementById('badge-sin-cliente');
   if(bSCli) bSCli.textContent = sinCliente.length;
   const clienteOpts = CATALOGS.clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-  document.getElementById('alertSinCliente').innerHTML = sinCliente.length
+  const elSinCliente = document.getElementById('alertSinCliente');
+  if(elSinCliente) elSinCliente.innerHTML = sinCliente.length
     ? sinCliente.slice(0,10).map(e=>`
         <div class="alert-emp-row" id="arow-cliente-${e.id}">
           <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${escapeHTML(getInitials(e.nombre))}</div>
