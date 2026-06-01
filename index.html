@@ -4397,13 +4397,12 @@ async function renderChangeLog(empId){
   const dotClass    = { import:'import', create:'create', traslado:'', update:'', baja:'', delete:'' };
 
   el.innerHTML = data.map(c => {
-    const dt   = new Date(c.created_at);
+    const dt    = new Date(c.created_at);
     const fecha = dt.toLocaleDateString('es-CO', {day:'2-digit',month:'2-digit',year:'numeric'});
     const hora  = dt.toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'});
     const label = actionLabel[c.action] || escapeHTML(c.action);
     const dc    = dotClass[c.action] ?? '';
-    return `
-    <div class="change-log-item">
+    return `<div class="change-log-item">
       <div class="change-log-dot ${dc}"></div>
       <div class="change-log-body">
         <div class="change-log-field">${label}</div>
@@ -4411,11 +4410,12 @@ async function renderChangeLog(empId){
           <span class="change-log-new">${escapeHTML(c.description||'—')}</span>
         </div>
         <div class="change-log-meta">
-          <span>${fecha} · ${hora}</span>
+          <span>${fecha} &middot; ${hora}</span>
           <span>${escapeHTML(c.user_name||c.user_email||'Sistema')}</span>
         </div>
       </div>
-    </div>`).join('');
+    </div>`;
+  }).join('');
 }
 
 // Patch openPanel to also render change log (async)
