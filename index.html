@@ -3411,9 +3411,9 @@ function renderAlerts(){
   if(elSinCargo) elSinCargo.innerHTML = sinCargo.length
     ? sinCargo.slice(0,10).map(e=>`
         <div class="alert-emp-row" id="arow-cargo-${e.id}">
-          <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${escapeHTML(getInitials(e.nombre))}</div>
+          <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${e.nombre?escapeHTML(getInitials(e.nombre)):'?'}</div>
           <div style="flex:1;min-width:0">
-            <div class="alert-emp-name">${escapeHTML(e.nombre)}</div>
+            <div class="alert-emp-name">${escapeHTML(e.nombre||'Sin nombre')}</div>
             <div class="alert-emp-detail">${escapeHTML(e.cliente||'Sin cliente')} &middot; Ingreso: ${escapeHTML(e.ingreso||'—')}</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
@@ -3437,9 +3437,9 @@ function renderAlerts(){
   if(elSinCliente) elSinCliente.innerHTML = sinCliente.length
     ? sinCliente.slice(0,10).map(e=>`
         <div class="alert-emp-row" id="arow-cliente-${e.id}">
-          <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${escapeHTML(getInitials(e.nombre))}</div>
+          <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${e.nombre?escapeHTML(getInitials(e.nombre)):'?'}</div>
           <div style="flex:1;min-width:0">
-            <div class="alert-emp-name">${escapeHTML(e.nombre)}</div>
+            <div class="alert-emp-name">${escapeHTML(e.nombre||'Sin nombre')}</div>
             <div class="alert-emp-detail">${escapeHTML(e.cargo||'Sin cargo')} &middot; Ingreso: ${escapeHTML(e.ingreso||'—')}</div>
           </div>
           <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
