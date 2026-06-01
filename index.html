@@ -5616,6 +5616,57 @@ function togglePosHistorico() {
   buildDuplicados();
 }
 
+// ── ACCIÓN: Corregir cédula — actualiza todos los demás registros del grupo
+//    con la cédula del registro elegido (fix permanente de datos)
+async function adoptarCedula(idReferencia, nameKey) {
+  const nombre = nameKey.replace(/\\'/g, "'");
+  const pares  = EMPLEADOS.filter(e => e.nombre && e.nombre.trim().toUpperCase() === nombre);
+  const ref    = EMPLEADOS.find(e => e.id === idReferencia);
+  if (!ref || !ref.cedula) { showToast('Registro sin c\xe9dula — edita el campo manualmente'); return; }
+
+  const otros = pares.filter(e => e.id !== idReferencia);
+  if (!otros.length) { showToast('No hay otros registros en este grupo'); return; }
+
+  const cedulasOtras = [...new Set(otros.map(e => e.cedula).filter(Boolean))].join(', ');
+
+  if (!confirm(
+    'C\xe9dula correcta: CC ' + ref.cedula + '\n\n' +
+    'Se corregir\xe1n ' + otros.length + ' registro(s).\n' +
+    'C\xe9dulas que se reemplazar\xe1n: ' + (cedulasOtras || '—') + '\n\n' +
+    'Los registros corregidos quedar\xe1n con CC ' + ref.cedula +
+    ' y pasar\xe1n a ser parte del historial de ' + (ref.nombre || 'este empleado') + '.\n\n' +
+    '¿Confirmar? Esta acci\xf3n no se puede deshacer.'
+  )) return;
+
+  let errCount = 0;
+  for (const otro of otros) {
+    const { error } = await sb.from('empleados').update({
+      cedula: ref.cedula,
+      updated_at: new Date().toISOString()
+    }).eq('id', otro.id);
+    if (error) { errCount++; }
+    else {
+      const e = EMPLEADOS.find(x => x.id === otro.id);
+      if (e) e.cedula = ref.cedula;
+    }
+  }
+
+  if (errCount > 0) {
+    showToast('Advertencia: ' + errCount + ' registro(s) no se pudieron actualizar en Supabase');
+  }
+
+  await logAudit('update', 'empleados', ref.cedula,
+    'Correcci\xf3n de c\xe9dula: ' + otros.length + ' registro(s) actualizados a CC ' + ref.cedula +
+    (cedulasOtras ? ' (antes: ' + cedulasOtras + ')' : '')
+  );
+
+  _posDismissed.add(nombre.toUpperCase());
+  filteredData = [...EMPLEADOS];
+  filterTable(); renderAlerts(); refreshDashboard();
+  showToast('✓ C\xe9dula corregida — ' + otros.length + ' registro(s) actualizados a CC ' + ref.cedula);
+  setTimeout(() => buildDuplicados(), 300);
+}
+
 // ── ACCIÓN: Unificar variantes de nombres similares (cargos/clientes) ──────
 async function unificarVarianteNombre(idx) {
   const item = _simGroupsData[idx];
@@ -5733,9 +5784,9 @@ function buildDuplicados() {
         const estadoBadge = r.estado === 'ACTIVO'
           ? '<span style="color:var(--green);font-weight:700;font-size:11px">ACTIVO</span>'
           : '<span style="color:var(--red);font-size:11px">INACTIVO</span>';
-        // Botón "Mantener este" solo aplica cuando hay activos en el grupo
-        const btnMantener = (!esHistorico && isEditor())
-          ? '<button class="dup-btn primary" style="font-size:10px;padding:3px 8px;white-space:nowrap" onclick="unificarPosiblesDup(' + r.id + ',\'' + nameKey + '\')" title="Mantener este registro y marcar los dem\xe1s como inactivos">&#128081; Mantener este</button>'
+        // Botón "Esta CC es la correcta" — corrige la cédula de los otros registros del grupo
+        const btnMantener = isEditor()
+          ? '<button class="dup-btn" style="font-size:10px;padding:3px 8px;white-space:nowrap;background:var(--green);color:#fff;border-color:var(--green)" onclick="adoptarCedula(' + r.id + ',\'' + nameKey + '\')" title="Actualizar los dem\xe1s registros del grupo para que tengan esta c\xe9dula (correcci\xf3n permanente)">&#10003; Esta CC es la correcta</button>'
           : '';
         return '<tr style="border-bottom:1px solid var(--border)">'
           + '<td style="padding:8px 10px;font-size:12px;color:var(--text3);font-weight:600;text-align:center">' + (i+1) + '</td>'
@@ -5764,7 +5815,7 @@ function buildDuplicados() {
       const badgeColor = esHistorico ? 'color:var(--text2);background:var(--bg2);border:1px solid var(--border)' : '';
       const badgeLabel = esHistorico ? records.length + ' registros (hist\xf3rico)' : records.length + ' registros';
       const notaHistorico = esHistorico
-        ? '<div style="font-size:11px;color:var(--text3);font-style:italic;padding:6px 4px 2px">Todos los registros son inactivos &mdash; historial laboral. No requiere acci\xf3n urgente.</div>'
+        ? '<div style="font-size:11px;color:var(--text3);font-style:italic;padding:6px 4px 2px">Todos los registros son inactivos — historial laboral. Si hay un error tipogr\xe1fico en alguna c\xe9dula, usa <strong>Esta CC es la correcta</strong> en la fila con la c\xe9dula correcta para corregirla.</div>'
         : '';
 
       return '<div class="dup-group-card" style="' + (esHistorico ? 'opacity:0.85' : '') + '">'
