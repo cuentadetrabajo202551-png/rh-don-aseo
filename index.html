@@ -798,9 +798,6 @@ tr.bg-selected td{background:#eff6ff!important}
           </div>
         </div>
 
-      <!-- Widget: Hoy en la empresa (cumpleaños y aniversarios del día) -->
-      <div id="dash-widget-hoy" style="display:none;margin-bottom:20px"></div>
-
       <div class="charts-grid">
         <!-- Género donut -->
         <div class="chart-card">
@@ -3451,7 +3448,6 @@ function refreshDashboard() {
   // Alertas del dashboard (calcula desde EMPLEADOS)
   buildDashAlerts();
   buildCharts();
-  buildWidgetHoy();   // Widget de cumpleanos/aniversarios del dia
   buildDuplicados();
 
   // Actualizar chips del topbar
@@ -5701,28 +5697,42 @@ function buildDuplicados() {
 
     elPoss.innerHTML = infoPos + nameGroups.map(([nombre, records]) => {
       const nameKey = nombre.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
-      const cols = records.slice(0, 2).map((r, i) => {
+
+      // Ordenar: primero ACTIVOS, luego INACTIVOS, dentro de cada grupo por fecha de ingreso desc
+      const sorted = [...records].sort((a,b) => {
+        if (a.estado === 'ACTIVO' && b.estado !== 'ACTIVO') return -1;
+        if (a.estado !== 'ACTIVO' && b.estado === 'ACTIVO') return 1;
+        return 0;
+      });
+
+      const filas = sorted.map((r, i) => {
         const g = r.genero === 'FEMENINO' ? 'f' : 'm';
         const ini = r.cedula ? getInitials(r.nombre) : '?';
-        const edBadge = r.estado === 'ACTIVO'
-          ? '<span style="color:var(--green);font-weight:700">ACTIVO</span>'
-          : '<span style="color:var(--red)">INACTIVO</span>';
-        return '<div class="dup-col">'
-          + '<div class="dup-col-title" style="display:flex;align-items:center;gap:8px">'
-          + '<div class="emp-avatar ' + g + '" style="width:28px;height:28px;font-size:10px;flex-shrink:0">' + escapeHTML(ini) + '</div>'
-          + 'Registro ' + (i+1) + (r.cedula ? ' &mdash; CC <strong>' + escapeHTML(r.cedula) + '</strong>' : '') + '</div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Estado</span><span class="dup-field-val">' + edBadge + '</span></div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Cliente</span><span class="dup-field-val diff">' + escapeHTML(r.cliente||'—') + '</span></div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Cargo</span><span class="dup-field-val">' + escapeHTML(r.cargo||'—') + '</span></div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Celular</span><span class="dup-field-val">' + escapeHTML(r.celular||'—') + '</span></div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">Ingreso</span><span class="dup-field-val">' + escapeHTML(r.ingreso||'—') + '</span></div>'
-          + '<div class="dup-field-row"><span class="dup-field-label">EPS</span><span class="dup-field-val">' + escapeHTML(r.eps||'—') + '</span></div>'
-          + '<div style="margin-top:8px;display:flex;gap:6px">'
-          + '<button class="btn-icon" onclick="openPanel(' + r.id + ')" title="Ver perfil completo">&#128065;</button>'
-          + (isEditor() ? '<button class="btn-icon" onclick="openEditModal(' + r.id + ')" title="Editar">&#9998;</button>' : '')
-          + (isEditor() ? '<button class="dup-btn primary" style="font-size:10px;padding:3px 8px" onclick="unificarPosiblesDup(' + r.id + ',\'' + nameKey + '\')" title="Mantener ESTE y marcar el otro como inactivo">&#128081; Mantener este</button>' : '')
-          + '</div>'
-          + '</div>';
+        const estadoBadge = r.estado === 'ACTIVO'
+          ? '<span style="color:var(--green);font-weight:700;font-size:11px">ACTIVO</span>'
+          : '<span style="color:var(--red);font-size:11px">INACTIVO</span>';
+        return '<tr style="border-bottom:1px solid var(--border)">'
+          + '<td style="padding:8px 10px;font-size:12px;color:var(--text3);font-weight:600;text-align:center">' + (i+1) + '</td>'
+          + '<td style="padding:8px 10px">'
+          +   '<div style="display:flex;align-items:center;gap:7px">'
+          +     '<div class="emp-avatar ' + g + '" style="width:26px;height:26px;font-size:9px;flex-shrink:0">' + escapeHTML(ini) + '</div>'
+          +     '<span style="font-size:12px;font-weight:700">' + escapeHTML(r.cedula||'—') + '</span>'
+          +   '</div>'
+          + '</td>'
+          + '<td style="padding:8px 10px">' + estadoBadge + '</td>'
+          + '<td style="padding:8px 10px;font-size:12px;color:var(--text1);max-width:180px;word-break:break-word">' + escapeHTML(r.cliente||'—') + '</td>'
+          + '<td style="padding:8px 10px;font-size:11px;color:var(--text2)">' + escapeHTML(r.cargo||'—') + '</td>'
+          + '<td style="padding:8px 10px;font-size:11px;color:var(--text2);white-space:nowrap">' + escapeHTML(r.ingreso||'—') + '</td>'
+          + '<td style="padding:8px 10px;font-size:11px;color:var(--text2)">' + escapeHTML(r.celular||'—') + '</td>'
+          + '<td style="padding:8px 10px;font-size:11px;color:var(--text2)">' + escapeHTML(r.eps||'—') + '</td>'
+          + '<td style="padding:8px 10px;white-space:nowrap">'
+          +   '<div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">'
+          +     '<button class="btn-icon" onclick="openPanel(' + r.id + ')" title="Ver perfil completo">&#128065;</button>'
+          +     (isEditor() ? '<button class="btn-icon" onclick="openEditModal(' + r.id + ')" title="Editar">&#9998;</button>' : '')
+          +     (isEditor() ? '<button class="dup-btn primary" style="font-size:10px;padding:3px 8px;white-space:nowrap" onclick="unificarPosiblesDup(' + r.id + ',\'' + nameKey + '\')" title="Mantener este registro y marcar los dem\xe1s como inactivos">&#128081; Mantener este</button>' : '')
+          +   '</div>'
+          + '</td>'
+          + '</tr>';
       }).join('');
 
       return '<div class="dup-group-card">'
@@ -5730,9 +5740,24 @@ function buildDuplicados() {
         + '<div class="dup-group-title">Mismo nombre &mdash; c\xe9dulas distintas: <strong>' + escapeHTML(records[0].nombre) + '</strong></div>'
         + '<span class="dup-score med">' + records.length + ' registros</span>'
         + '</div>'
-        + '<div class="dup-comparison">' + cols + '</div>'
-        + '<div class="dup-actions">'
-        + '<button class="dup-btn primary" onclick="descartarPosibleDup(\'' + nameKey + '\')">&#10003; Son personas distintas &mdash; ignorar</button>'
+        + '<div style="overflow-x:auto;margin:0 -4px">'
+        +   '<table style="width:100%;border-collapse:collapse;min-width:680px">'
+        +     '<thead><tr style="background:var(--bg2);border-bottom:2px solid var(--border)">'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:center">#</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">C\xe9dula</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">Estado</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">Cliente</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">Cargo</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">Ingreso</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">Celular</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">EPS</th>'
+        +       '<th style="padding:6px 10px;font-size:11px;font-weight:700;color:var(--text2);text-align:left">Acciones</th>'
+        +     '</tr></thead>'
+        +     '<tbody>' + filas + '</tbody>'
+        +   '</table>'
+        + '</div>'
+        + '<div class="dup-actions" style="padding-top:10px">'
+        + '<button class="dup-btn primary" onclick="descartarPosibleDup(\'' + nameKey + '\')">&#10003; Son personas distintas &mdash; ignorar grupo</button>'
         + '</div></div>';
     }).join('');
   }
