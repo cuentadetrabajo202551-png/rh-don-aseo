@@ -373,35 +373,78 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .role-select.editor{border-color:#60a5fa;color:#1d4ed8;background:#eff6ff}
 .role-select.viewer{border-color:var(--border);color:var(--text2)}
 
-/* ── LOGIN SCREEN — diseño corporativo panel dividido ── */
-#login-screen{position:fixed;inset:0;display:flex;align-items:stretch;z-index:9999}
-/* Panel izquierdo: azul Don Aseo */
-.login-left{flex:1;background:linear-gradient(150deg,#003c9d 0%,#001f5c 100%);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:48px 40px;position:relative;overflow:hidden;min-width:0}
-.login-left::after{content:'';position:absolute;bottom:-80px;right:-80px;width:300px;height:300px;border-radius:50%;background:rgba(245,212,0,.07)}
-.login-left::before{content:'';position:absolute;top:-60px;left:-60px;width:200px;height:200px;border-radius:50%;background:rgba(255,255,255,.04)}
-.login-logo-big{height:86px;width:auto;margin-bottom:22px;position:relative;z-index:1}
-.login-brand-name{font-size:30px;font-weight:900;color:#fff;letter-spacing:1px;font-family:Arial,sans-serif;text-align:center;position:relative;z-index:1}
-.login-brand-sub{font-size:13px;color:rgba(255,255,255,.6);margin-top:6px;margin-bottom:24px;text-align:center;position:relative;z-index:1}
-.login-yellow-line{width:50px;height:3px;background:#f5d400;border-radius:2px;margin-bottom:28px;position:relative;z-index:1}
-.login-features{display:flex;flex-direction:column;gap:12px;width:100%;max-width:240px;position:relative;z-index:1}
-.login-feature{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.75)}
-.login-feature-dot{width:6px;height:6px;border-radius:50%;background:#f5d400;flex-shrink:0}
-/* Panel derecho: formulario blanco */
-.login-right{width:420px;min-width:360px;background:#fff;display:flex;align-items:center;justify-content:center;padding:40px 36px}
-.login-form-inner{width:100%;max-width:320px}
-.login-form-title{font-size:24px;font-weight:800;color:#0f172a;margin-bottom:6px}
-.login-form-sub{font-size:13px;color:#64748b;margin-bottom:28px}
-.login-label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block}
-.login-field{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;transition:border-color .15s,box-shadow .15s;box-sizing:border-box;background:#f8fafc;margin-bottom:16px}
-.login-field:focus{border-color:#003c9d;background:#fff;box-shadow:0 0 0 3px rgba(0,60,157,.1)}
-.login-btn{width:100%;padding:13px;background:#003c9d;color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:background .15s,transform .1s;letter-spacing:.3px}
-.login-btn:hover{background:#002d80;transform:translateY(-1px)}
-.login-btn:active{transform:translateY(0)}
-.login-btn:disabled{background:#94a3b8;cursor:not-allowed;transform:none}
-.login-error{color:#dc2626;font-size:12px;margin-top:10px;min-height:16px;font-weight:500}
-.login-nit{font-size:11px;color:#94a3b8;margin-top:24px;text-align:center}
-@media(max-width:720px){.login-left{display:none}.login-right{width:100%;background:linear-gradient(150deg,#003c9d,#001f5c)}
-.login-form-inner{background:#fff;padding:32px 24px;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.4)}}
+/* ── LOGIN SCREEN — diseño institucional, fondo a pantalla completa ── */
+#login-screen{
+  position:fixed;inset:0;z-index:9999;
+  display:grid;place-items:center;padding:28px;
+  background:
+    linear-gradient(108deg,rgba(3,11,26,.93) 0%,rgba(4,16,36,.82) 36%,rgba(4,16,36,.20) 100%),
+    url("login-bg-don-aseo.png") center/cover no-repeat,
+    linear-gradient(140deg,#020a18 0%,#071b35 50%,#0a2540 100%);
+}
+/* Grid dos columnas: branding · formulario */
+.login-shell{
+  width:min(1100px,100%);
+  display:grid;
+  grid-template-columns:minmax(0,1.15fr) 430px;
+  gap:52px;
+  align-items:center;
+}
+/* ── Branding izquierdo ── */
+.login-left{color:#fff;padding:16px 0;}
+.login-brand-lockup{display:flex;align-items:center;gap:16px;margin-bottom:40px;}
+.login-logo-big{height:72px;width:auto;max-width:200px;}
+.login-brand-name{font-size:17px;font-weight:900;color:#fff;letter-spacing:.4px;line-height:1.15;}
+.login-brand-sub{font-size:11px;color:rgba(255,255,255,.55);margin-top:3px;}
+.login-yellow-line{width:50px;height:3px;background:#f5d400;border-radius:2px;margin-bottom:26px;}
+.login-main-title{
+  font-size:clamp(32px,4.2vw,50px);line-height:1.0;font-weight:900;
+  margin:0 0 16px;max-width:580px;letter-spacing:-.5px;color:#fff;
+}
+.login-main-desc{
+  font-size:15.5px;color:rgba(255,255,255,.72);line-height:1.65;
+  max-width:460px;margin:0 0 34px;
+}
+.login-features{display:flex;flex-direction:column;gap:11px;max-width:380px;}
+.login-feature{display:flex;align-items:center;gap:10px;font-size:13px;color:rgba(255,255,255,.68);}
+.login-feature-dot{width:6px;height:6px;border-radius:50%;background:#f5d400;flex-shrink:0;}
+/* ── Tarjeta formulario ── */
+.login-right{
+  background:rgba(255,255,255,.97);
+  border:1px solid rgba(255,255,255,.55);
+  border-radius:14px;
+  box-shadow:0 28px 72px rgba(0,0,0,.42),0 6px 22px rgba(0,0,0,.18);
+  padding:38px 34px;
+}
+.login-form-inner{width:100%;}
+.login-form-title{font-size:22px;font-weight:800;color:#0f172a;margin-bottom:5px;}
+.login-form-sub{font-size:13px;color:#64748b;margin-bottom:26px;}
+.login-label{font-size:11px;font-weight:700;color:#475569;text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;display:block;}
+.login-field{width:100%;padding:12px 14px;border:1.5px solid #e2e8f0;border-radius:8px;font-size:14px;color:#0f172a;outline:none;transition:border-color .15s,box-shadow .15s;box-sizing:border-box;background:#f8fafc;margin-bottom:16px;}
+.login-field:focus{border-color:#003c9d;background:#fff;box-shadow:0 0 0 3px rgba(0,60,157,.1);}
+.login-btn{width:100%;padding:13px;background:linear-gradient(135deg,#003c9d 0%,#0051c8 100%);color:#fff;border:none;border-radius:8px;font-size:14px;font-weight:700;cursor:pointer;transition:opacity .15s,transform .1s;letter-spacing:.3px;box-shadow:0 4px 16px rgba(0,60,157,.38);}
+.login-btn:hover{opacity:.88;transform:translateY(-1px);}
+.login-btn:active{transform:translateY(0);opacity:1;}
+.login-btn:disabled{background:#94a3b8;cursor:not-allowed;transform:none;box-shadow:none;}
+.login-error{color:#dc2626;font-size:12px;margin-top:10px;min-height:16px;font-weight:500;}
+.login-nit{font-size:11px;color:#94a3b8;margin-top:22px;text-align:center;}
+/* Conexión segura pill */
+.login-secure-pill{
+  display:flex;align-items:center;gap:7px;margin-top:20px;
+  padding:9px 12px;background:#f0fdf4;border:1px solid #bbf7d0;
+  border-radius:7px;font-size:11px;color:#166534;
+}
+.login-secure-dot{width:7px;height:7px;border-radius:50%;background:#16a34a;flex-shrink:0;}
+/* Responsive */
+@media(max-width:860px){
+  .login-shell{grid-template-columns:1fr;gap:0;}
+  .login-left{display:none;}
+  .login-right{width:100%;max-width:420px;margin:0 auto;}
+}
+@media(max-width:480px){
+  #login-screen{padding:18px;}
+  .login-right{padding:26px 20px;}
+}
 /* ── SELECCIÓN MASIVA ── */
 .bulk-bar{background:linear-gradient(135deg,#001a4d,#003c9d);border-radius:10px;padding:12px 16px;margin-bottom:12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;box-shadow:0 4px 16px rgba(0,26,77,.3);animation:slideDown .2s ease}
 @keyframes slideDown{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:translateY(0)}}
@@ -603,46 +646,56 @@ tr.bg-selected td{background:#eff6ff!important}
 </style>
 </head>
 <body>
-<!-- ══ PANTALLA DE LOGIN — diseño corporativo Don Aseo ══ -->
+<!-- ══ PANTALLA DE LOGIN — diseño institucional Don Aseo ══ -->
 <div id="login-screen">
+  <div class="login-shell">
 
-  <!-- Panel izquierdo: identidad corporativa -->
-  <div class="login-left">
-    <img id="login-logo-img" class="login-logo-big" alt="DON ASEO Ltda.">
-    <div class="login-brand-name">DON ASEO <span style="font-weight:400;font-size:20px">Ltda.</span></div>
-    <div class="login-brand-sub">M&oacute;dulo de Recursos Humanos</div>
-    <div class="login-yellow-line"></div>
-    <div class="login-features">
-      <div class="login-feature"><span class="login-feature-dot"></span>Gesti&oacute;n completa de empleados</div>
-      <div class="login-feature"><span class="login-feature-dot"></span>Importaci&oacute;n masiva desde Excel</div>
-      <div class="login-feature"><span class="login-feature-dot"></span>Detecci&oacute;n autom&aacute;tica de errores</div>
-      <div class="login-feature"><span class="login-feature-dot"></span>Certificados laborales en segundos</div>
-      <div class="login-feature"><span class="login-feature-dot"></span>Respaldado por Supabase Cloud</div>
+    <!-- Branding izquierdo sobre el fondo -->
+    <div class="login-left">
+      <div class="login-yellow-line"></div>
+      <h1 class="login-main-title">Sistema&nbsp;RH<br>Don&nbsp;Aseo</h1>
+      <p class="login-main-desc">Gesti&oacute;n centralizada de empleados, documentos, alertas y auditor&iacute;a.</p>
+      <div class="login-features">
+        <div class="login-feature"><span class="login-feature-dot"></span>Gesti&oacute;n completa de empleados</div>
+        <div class="login-feature"><span class="login-feature-dot"></span>Importaci&oacute;n masiva desde Excel</div>
+        <div class="login-feature"><span class="login-feature-dot"></span>Detecci&oacute;n autom&aacute;tica de errores</div>
+        <div class="login-feature"><span class="login-feature-dot"></span>Certificados laborales en segundos</div>
+        <div class="login-feature"><span class="login-feature-dot"></span>Respaldado por Supabase Cloud</div>
+      </div>
     </div>
-  </div>
 
-  <!-- Panel derecho: formulario -->
-  <div class="login-right">
-    <div class="login-form-inner">
-      <div class="login-form-title">Iniciar sesi&oacute;n</div>
-      <div class="login-form-sub">Accede con tus credenciales de RH</div>
+    <!-- Tarjeta formulario -->
+    <div class="login-right">
+      <div class="login-form-inner">
+        <!-- Logo real de Don Aseo arriba de la tarjeta -->
+        <div style="text-align:center;margin-bottom:20px;padding-bottom:18px;border-bottom:1px solid #f1f5f9">
+          <img id="login-logo-img" class="login-logo-big" alt="DON ASEO Ltda.">
+        </div>
+        <div class="login-form-title">Iniciar sesi&oacute;n</div>
+        <div class="login-form-sub">Acceso privado para personal autorizado.</div>
 
-      <label class="login-label" for="login-email">Correo electr&oacute;nico</label>
-      <input type="email" id="login-email" class="login-field"
-        placeholder="correo@donaseo.com"
-        onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
+        <label class="login-label" for="login-email">Correo electr&oacute;nico</label>
+        <input type="email" id="login-email" class="login-field"
+          placeholder="correo@donaseo.com"
+          onkeydown="if(event.key==='Enter')document.getElementById('login-password').focus()">
 
-      <label class="login-label" for="login-password">Contrase&ntilde;a</label>
-      <input type="password" id="login-password" class="login-field"
-        placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
-        onkeydown="if(event.key==='Enter')doLogin()">
+        <label class="login-label" for="login-password">Contrase&ntilde;a</label>
+        <input type="password" id="login-password" class="login-field"
+          placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
+          onkeydown="if(event.key==='Enter')doLogin()">
 
-      <button class="login-btn" id="login-btn" onclick="doLogin()">Iniciar sesi&oacute;n</button>
-      <div class="login-error" id="login-error"></div>
-      <div class="login-nit">NIT: 812 000 152-7 &nbsp;&bull;&nbsp; Monter&iacute;a, C&oacute;rdoba</div>
+        <button class="login-btn" id="login-btn" onclick="doLogin()">Iniciar sesi&oacute;n</button>
+        <div class="login-error" id="login-error"></div>
+
+        <div class="login-secure-pill">
+          <span class="login-secure-dot"></span>
+          Conexi&oacute;n segura con Supabase Cloud
+        </div>
+        <div class="login-nit">NIT: 812 000 152-7 &nbsp;&bull;&nbsp; Monter&iacute;a, C&oacute;rdoba</div>
+      </div>
     </div>
-  </div>
 
+  </div>
 </div>
 
 
@@ -987,6 +1040,28 @@ tr.bg-selected td{background:#eff6ff!important}
             <span class="alert-count-badge orange" id="badge-sin-cedula">0</span>
           </div>
           <div class="alert-emp-list" id="alertSinCedula"></div>
+        </div>
+
+        <div class="alert-section-card">
+          <div class="alert-section-header">
+            <div class="alert-section-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--purple,#7c3aed)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8"/><line x1="12" y1="11" x2="12" y2="15"/></svg>
+              Activos sin cargo asignado
+            </div>
+            <span class="alert-count-badge" style="background:#ede9fe;color:#7c3aed" id="badge-sin-cargo">0</span>
+          </div>
+          <div class="alert-emp-list" id="alertSinCargo"></div>
+        </div>
+
+        <div class="alert-section-card">
+          <div class="alert-section-header">
+            <div class="alert-section-title">
+              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              Activos sin cliente / entidad
+            </div>
+            <span class="alert-count-badge blue" id="badge-sin-cliente">0</span>
+          </div>
+          <div class="alert-emp-list" id="alertSinCliente"></div>
         </div>
 
         <div class="alert-section-card">
@@ -3265,7 +3340,7 @@ function updateExportButton() {
 
 function showToast(msg){
   const t=document.getElementById('toast');
-  document.getElementById('toastMsg').textContent=msg;
+  document.getElementById('toastMsg').innerHTML=msg;
   t.classList.add('show');
   setTimeout(()=>t.classList.remove('show'),3200);
 }
@@ -3282,10 +3357,10 @@ function renderAlerts(){
 
   // Resetear badges a 0 cuando est\xe1 vac\xedo
   if(empty){
-    ['badge-sin-celular','badge-sin-cedula','badge-cargos-inc','badge-historial'].forEach(id=>{
+    ['badge-sin-celular','badge-sin-cedula','badge-sin-cargo','badge-sin-cliente','badge-cargos-inc','badge-historial'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.textContent='0';
     });
-    ['alertSinCelular','alertSinCedula','alertCargosInconsistentes','alertHistorial'].forEach(id=>{
+    ['alertSinCelular','alertSinCedula','alertSinCargo','alertSinCliente','alertCargosInconsistentes','alertHistorial'].forEach(id=>{
       const el=document.getElementById(id); if(el) el.innerHTML='';
     });
     return;
@@ -3326,6 +3401,56 @@ function renderAlerts(){
           <span class="alert-emp-action" onclick="openPanel(${e.id})">Ver perfil</span>
         </div>`).join('')
     : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">✓ Todos los registros tienen c\xe9dula</div>`;
+
+  // ── Sin cargo ─────────────────────────────────────────────────────────
+  const sinCargo = EMPLEADOS.filter(e=>e.estado==='ACTIVO'&&!e.cargo);
+  const bSCargo = document.getElementById('badge-sin-cargo');
+  if(bSCargo) bSCargo.textContent = sinCargo.length;
+  const cargoOpts = CATALOGS.cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+  document.getElementById('alertSinCargo').innerHTML = sinCargo.length
+    ? sinCargo.slice(0,10).map(e=>`
+        <div class="alert-emp-row" id="arow-cargo-${e.id}">
+          <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${escapeHTML(getInitials(e.nombre))}</div>
+          <div style="flex:1;min-width:0">
+            <div class="alert-emp-name">${escapeHTML(e.nombre)}</div>
+            <div class="alert-emp-detail">${escapeHTML(e.cliente||'Sin cliente')} &middot; Ingreso: ${escapeHTML(e.ingreso||'—')}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <select onchange="asignarCampoAlerta(${e.id},'cargo',this.value,this)"
+              style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:180px">
+              <option value="">— Asignar cargo —</option>
+              ${cargoOpts}
+              <option value="__nuevo__">✏ Agregar nuevo...</option>
+            </select>
+          </div>
+        </div>`).join('')
+      + (sinCargo.length>10?`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">y ${sinCargo.length-10} m\xe1s...</div>`:'')
+    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">&#10003; Todos los activos tienen cargo asignado</div>`;
+
+  // ── Sin cliente ───────────────────────────────────────────────────────
+  const sinCliente = EMPLEADOS.filter(e=>e.estado==='ACTIVO'&&!e.cliente);
+  const bSCli = document.getElementById('badge-sin-cliente');
+  if(bSCli) bSCli.textContent = sinCliente.length;
+  const clienteOpts = CATALOGS.clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+  document.getElementById('alertSinCliente').innerHTML = sinCliente.length
+    ? sinCliente.slice(0,10).map(e=>`
+        <div class="alert-emp-row" id="arow-cliente-${e.id}">
+          <div class="emp-avatar ${e.genero==='FEMENINO'?'f':'m'}" style="width:28px;height:28px;font-size:10px">${escapeHTML(getInitials(e.nombre))}</div>
+          <div style="flex:1;min-width:0">
+            <div class="alert-emp-name">${escapeHTML(e.nombre)}</div>
+            <div class="alert-emp-detail">${escapeHTML(e.cargo||'Sin cargo')} &middot; Ingreso: ${escapeHTML(e.ingreso||'—')}</div>
+          </div>
+          <div style="display:flex;gap:6px;align-items:center;flex-shrink:0">
+            <select onchange="asignarCampoAlerta(${e.id},'cliente',this.value,this)"
+              style="font-size:11px;padding:3px 6px;border:1px solid var(--border);border-radius:6px;background:var(--bg1);color:var(--text1);max-width:180px">
+              <option value="">— Asignar cliente —</option>
+              ${clienteOpts}
+              <option value="__nuevo__">✏ Agregar nuevo...</option>
+            </select>
+          </div>
+        </div>`).join('')
+      + (sinCliente.length>10?`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">y ${sinCliente.length-10} m\xe1s...</div>`:'')
+    : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">&#10003; Todos los activos tienen cliente asignado</div>`;
 
   // ── Cargos inconsistentes (calculado din\xe1micamente) ───────────────────
   const cargoCount = {};
@@ -3379,6 +3504,52 @@ function renderAlerts(){
       +`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">Total: ${conHistorial.toLocaleString('es-CO')} c\xe9dulas con m\xe1s de un registro en el sistema</div>`
     : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">✓ No hay c\xe9dulas con registros duplicados</div>`;
 }
+
+// ── Asignar cargo o cliente desde alerta inline ────────────────────────
+async function asignarCampoAlerta(empId, campo, valor, selectEl) {
+  if (!valor) return;
+
+  // Opción "Agregar nuevo": pedir nombre y agregar al catálogo
+  if (valor === '__nuevo__') {
+    const catKey = campo === 'cargo' ? 'cargos' : 'clientes';
+    const nuevo = prompt('Escribe el nuevo ' + campo + ' para agregar al cat\xe1logo:');
+    if (!nuevo || !nuevo.trim()) { if(selectEl) selectEl.value=''; return; }
+    const norm = nuevo.trim();
+    if (!CATALOGS[catKey].includes(norm)) {
+      CATALOGS[catKey].push(norm);
+      CATALOGS[catKey].sort();
+      persistCatalog(catKey);
+      initCatalogs();
+    }
+    valor = norm;
+  }
+
+  const { error } = await sb.from('empleados').update({
+    [campo]: valor,
+    updated_at: new Date().toISOString()
+  }).eq('id', empId);
+
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  const e = EMPLEADOS.find(x => x.id === empId);
+  if (e) e[campo] = valor;
+  filteredData = [...EMPLEADOS];
+  filterTable();
+
+  // Animar la fila antes de quitarla
+  const row = document.getElementById('arow-' + campo + '-' + empId);
+  if (row) {
+    row.style.transition = 'opacity .35s';
+    row.style.opacity = '0';
+    setTimeout(() => renderAlerts(), 380);
+  } else {
+    renderAlerts();
+  }
+
+  await logAudit('update', 'empleados', String(empId), 'Asign\xf3 ' + campo + ': ' + valor + ' desde alerta');
+  showToast('&#10003; ' + (campo==='cargo'?'Cargo':'Cliente') + ' asignado: ' + escapeHTML(valor));
+}
+// ───────────────────────────────────────────────────────────────────────
 
 // ───────────────────── CHARTS ─────────────────────
 // initCharts() eliminado — reemplazado por buildCharts() dinamico en refreshDashboard()
@@ -3453,9 +3624,11 @@ function refreshDashboard() {
   // Actualizar chips del topbar
   const ca=document.getElementById('chip-activos'), cl=document.getElementById('chip-alertas');
   if(ca){ca.textContent=activos+' activo'+(activos!==1?'s':'');ca.style.display=activos>0?'':'none';}
-  const sinCelD=EMPLEADOS.filter(e=>e.estado==='ACTIVO'&&!e.celular).length;
-  const sinCedD=EMPLEADOS.filter(e=>!e.cedula).length;
-  const totalAlerts=sinCelD+sinCedD;
+  const sinCelD   = EMPLEADOS.filter(e=>e.estado==='ACTIVO'&&!e.celular).length;
+  const sinCedD   = EMPLEADOS.filter(e=>!e.cedula).length;
+  const sinCargoD = EMPLEADOS.filter(e=>e.estado==='ACTIVO'&&!e.cargo).length;
+  const sinCliD   = EMPLEADOS.filter(e=>e.estado==='ACTIVO'&&!e.cliente).length;
+  const totalAlerts=sinCelD+sinCedD+sinCargoD+sinCliD;
   if(cl){cl.textContent=totalAlerts+' alerta'+(totalAlerts!==1?'s':'');cl.style.display=totalAlerts>0?'':'none';}
   // Badge alertas sidebar
   const sa=document.getElementById('sb-alertas-badge');
@@ -5672,29 +5845,57 @@ async function unificarVarianteNombre(idx) {
   const item = _simGroupsData[idx];
   if (!item) { showToast('Error: grupo no encontrado'); return; }
   const { type, group } = item;
-  const mainName   = group[0].name;
-  const variants   = group.slice(1).map(g => g.name);
-  const totalReg   = group.reduce((s,g) => s+g.count, 0);
   const campo      = type === 'CARGO' ? 'cargo' : 'cliente';
   const campoLabel = type === 'CARGO' ? 'cargo' : 'cliente';
+  const catKey     = type === 'CARGO' ? 'cargos' : 'clientes';
+  const totalReg   = group.reduce((s,g) => s+g.count, 0);
 
-  if (!confirm('Unificar ' + variants.length + ' variantes a "' + mainName + '"?\n' +
-    'Afectar\xe1 ' + totalReg.toLocaleString('es-CO') + ' registros de empleados.\n\n' +
-    'Variantes que se cambiar\xe1n:\n' + variants.join('\n'))) return;
+  // Leer nombre destino desde el select; si es "nuevo" leer el input
+  const selEl = document.getElementById('sim-target-' + idx);
+  let targetName;
+  if (selEl && selEl.value === '__nuevo__') {
+    const inp = document.getElementById('sim-target-custom-input-' + idx);
+    targetName = inp?.value?.trim();
+    if (!targetName) { showToast('Escribe el nombre nuevo antes de unificar'); return; }
+  } else if (selEl && selEl.value) {
+    targetName = selEl.value;
+  } else {
+    showToast('Selecciona el nombre destino antes de unificar'); return;
+  }
+
+  // Variantes a cambiar: todas las del grupo que sean distintas del target
+  const variants = group.map(g => g.name).filter(n => n !== targetName.toUpperCase() && n !== targetName);
+
+  if (!variants.length) { showToast('Todas las variantes ya tienen ese nombre'); return; }
+
+  if (!confirm(
+    'Unificar ' + variants.length + ' variante' + (variants.length!==1?'s':'') + ' a:\n"' + targetName + '"\n\n' +
+    'Afectar\xe1 ' + totalReg.toLocaleString('es-CO') + ' registros.\n\n' +
+    'Variantes que se cambiar\xe1n:\n' + variants.join('\n')
+  )) return;
 
   let ok = 0;
   for (const v of variants) {
-    const { error } = await sb.from('empleados').update({ [campo]: mainName, updated_at: new Date().toISOString() }).eq(campo, v);
+    const { error } = await sb.from('empleados').update({ [campo]: targetName, updated_at: new Date().toISOString() }).eq(campo, v);
     if (!error) {
-      EMPLEADOS.forEach(e => { if (e[campo] === v) e[campo] = mainName; });
+      EMPLEADOS.forEach(e => { if (e[campo] === v) e[campo] = targetName; });
       ok++;
     }
   }
 
+  // Si el nombre nuevo no está en el catálogo, agregarlo
+  if (!CATALOGS[catKey].some(c => c.toUpperCase() === targetName.toUpperCase())) {
+    CATALOGS[catKey].push(targetName);
+    CATALOGS[catKey].sort();
+    persistCatalog(catKey);
+    initCatalogs();
+    showToast('&#10003; "' + escapeHTML(targetName) + '" agregado al cat\xe1logo de ' + campoLabel + 's');
+  }
+
   filteredData = [...EMPLEADOS];
   filterTable(); refreshDashboard();
-  await logAudit('update','catalogos','', 'Unific\xf3 ' + ok + ' variantes de ' + campoLabel + ' a: ' + mainName);
-  showToast('&#10003; ' + ok + ' variante' + (ok!==1?'s':'') + ' de ' + campoLabel + ' unificada' + (ok!==1?'s':'') + ' a "' + mainName + '"');
+  await logAudit('update','catalogos','', 'Unific\xf3 ' + ok + ' variantes de ' + campoLabel + ' a: ' + targetName);
+  showToast('&#10003; ' + ok + ' variante' + (ok!==1?'s':'') + ' de ' + campoLabel + ' unificada' + (ok!==1?'s':'') + ' a "' + escapeHTML(targetName) + '"');
   setTimeout(() => buildDuplicados(), 300);
 }
 
@@ -5861,6 +6062,24 @@ function buildDuplicados() {
   }
   const cargoMap={},cliMap={};
   EMPLEADOS.forEach(e=>{ if(e.cargo){const k=e.cargo.trim().toUpperCase();cargoMap[k]=(cargoMap[k]||0)+1;} if(e.cliente){const k=e.cliente.trim().toUpperCase();cliMap[k]=(cliMap[k]||0)+1;} });
+
+  // Función que busca la mejor coincidencia en el catálogo para un grupo de variantes
+  function findCatMatch(groupVariants, type) {
+    const catalog = type === 'CARGO' ? CATALOGS.cargos : CATALOGS.clientes;
+    let best = null, bestSc = 0.78;
+    groupVariants.forEach(v => {
+      // Coincidencia exacta (insensible a mayúsculas/tilde)
+      const exact = catalog.find(c => removeAccents(c.toUpperCase()) === removeAccents(v.name));
+      if (exact) { best = exact; bestSc = 1; return; }
+      // Coincidencia fuzzy
+      catalog.forEach(c => {
+        const sc = simScore(removeAccents(v.name), removeAccents(c.toUpperCase()));
+        if (sc > bestSc) { bestSc = sc; best = c; }
+      });
+    });
+    return best; // null si no hay match
+  }
+
   const allGroups=[...groupSimilarNames(cliMap).map(g=>({type:'CLIENTE',group:g})),...groupSimilarNames(cargoMap).map(g=>({type:'CARGO',group:g}))];
 
   // ── Filtrar grupos ignorados y guardar ANTES de renderizar (índices estables)
@@ -5875,13 +6094,48 @@ function buildDuplicados() {
     const ignorados = allGroups.length - filteredSim.length;
     const infoSim = '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'
       + filteredSim.length+' sugerencias pendientes'+(ignorados?' &mdash; '+ignorados+' ignoradas en esta sesi\xf3n':'')+'</div>';
-    // Se usa _si (índice en filteredSim) embebido en el onclick al renderizar
+
     elNames.innerHTML = infoSim
       + filteredSim.map(({type,group},_si)=>{
         const tc=type==='CARGO'?'var(--orange)':'var(--blue)';
         const tb=type==='CARGO'?'var(--orange-light)':'var(--blue-light)';
         const total=group.reduce((s,g)=>s+g.count,0);
-        const idx = _si;  // índice numérico embebido en los onclick
+        const idx = _si;
+        const catMatch = findCatMatch(group.map(v=>v), type);
+        const catKey   = type === 'CARGO' ? 'cargos' : 'clientes';
+        const catalog  = CATALOGS[catKey] || [];
+
+        // Select de destino: catálogo + opción nueva
+        const optsHtml = catalog.map(c =>
+          '<option value="'+escapeHTML(c)+'"'+(catMatch&&c===catMatch?' selected':'')+'>'+escapeHTML(c)+'</option>'
+        ).join('');
+        // Si no hay match, agregar encabezado de grupo con las variantes del grupo como opciones alternativas
+        const variantOpts = !catMatch
+          ? '<optgroup label="Variantes actuales en datos">'
+            + group.map(v=>'<option value="'+escapeHTML(v.name)+'">'+escapeHTML(v.name)+' ('+v.count+' reg.)</option>').join('')
+            +'</optgroup>'
+          : '';
+
+        const selectHtml = '<div style="margin:10px 0 6px">'
+          + '<label style="font-size:11px;font-weight:700;color:var(--text2);display:block;margin-bottom:4px">'
+          + (catMatch ? '&#10003; Nombre del cat\xe1logo (sugerido):' : '&#9888; Sin coincidencia en cat\xe1logo — elige o escribe el nombre unificado:')
+          + '</label>'
+          + '<div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap">'
+          + '<select id="sim-target-'+idx+'" onchange="document.getElementById(\'sim-target-custom-'+idx+'\').style.display=this.value===\'__nuevo__\'?\'flex\':\'none\'"'
+          + ' style="font-size:12px;padding:4px 8px;border:1px solid '+(catMatch?'var(--green)':'var(--orange)')+';border-radius:6px;background:var(--bg1);color:var(--text1);max-width:300px">'
+          + '<option value="">— Seleccionar —</option>'
+          + '<optgroup label="Catálogo ('+catalog.length+' entradas)">' + optsHtml + '</optgroup>'
+          + variantOpts
+          + '<option value="__nuevo__">✏ Escribir nombre nuevo...</option>'
+          + '</select>'
+          + (catMatch?'<span style="font-size:11px;color:var(--green);font-weight:600">&#10003; Del cat\xe1logo</span>':'<span style="font-size:11px;color:var(--orange)">&#9888; Elige del cat\xe1logo o escribe</span>')
+          + '</div>'
+          + '<div id="sim-target-custom-'+idx+'" style="display:none;margin-top:6px;gap:6px;align-items:center">'
+          + '<input type="text" id="sim-target-custom-input-'+idx+'" placeholder="Nombre nuevo para el cat\xe1logo..."'
+          + ' style="font-size:12px;padding:4px 8px;border:1px solid var(--border);border-radius:6px;flex:1;max-width:280px">'
+          + '</div>'
+          + '</div>';
+
         return '<div class="sim-card">'
           + '<div class="sim-header"><div class="sim-title">'
           + '<span style="background:'+tb+';color:'+tc+';padding:2px 7px;border-radius:4px;font-size:10px">'+escapeHTML(type)+'</span>'
@@ -5889,10 +6143,11 @@ function buildDuplicados() {
           + '</div>'
           + '<button class="dup-btn primary" onclick="unificarVarianteNombre('+idx+')">Unificar todos</button>'
           + '</div>'
+          + selectHtml
           + '<div class="sim-variants">'
           + group.map((v,i)=>'<div class="sim-variant">'
-            + (i===0?'<span class="sim-badge-main">Principal</span>':'<span style="width:52px"></span>')
-            + '<span class="sim-variant-name '+(i===0?'main':'other')+'">'+escapeHTML(v.name)+'</span>'
+            + '<span style="width:52px;font-size:10px;color:var(--text3)">'+(i+1)+'</span>'
+            + '<span class="sim-variant-name other">'+escapeHTML(v.name)+'</span>'
             + '<span class="sim-count">'+v.count.toLocaleString('es-CO')+' reg.</span>'
             + '</div>').join('')
           + '</div>'
