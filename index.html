@@ -2192,7 +2192,6 @@ function initFilters(){
 function filterTable(){
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   const estado = document.getElementById('filterEstado').value;
-  updateBulkBar();       // actualizar "Seleccionar todos N" con el nuevo filtro
   updateExportButton();  // actualizar label del botón exportar
   const cliente = document.getElementById('filterCliente').value;
   const cargo = document.getElementById('filterCargo').value;
@@ -2210,6 +2209,7 @@ function filterTable(){
   });
   currentPage=1;
   renderTable();
+  updateBulkBar();  // DESPUÉS de que filteredData se actualiza → cuenta correcta
   renderActiveFilters();
 }
 
@@ -2326,18 +2326,26 @@ async function ejecutarTrasladar() {
   const ids = [..._selectedEmps];
   const fecha = _fromInputDate(fechaRaw);
 
+  // Capturar cliente anterior de cada empleado antes de actualizar
+  const snapshots = ids.map(id => {
+    const emp = EMPLEADOS.find(e => e.id === id);
+    return { id, clienteAnterior: emp?.cliente || '—', nombre: emp?.nombre || '—' };
+  });
+
   const { error } = await sb.from('empleados')
     .update({ cliente: nuevoCliente, updated_at: new Date().toISOString() })
     .in('id', ids);
   if (error) { showToast('Error: ' + error.message); return; }
 
-  // Actualizar array local
-  ids.forEach(id => {
+  // Actualizar array local + loguear cada empleado individualmente
+  for (const { id, clienteAnterior, nombre } of snapshots) {
     const emp = EMPLEADOS.find(e => e.id === id);
     if (emp) emp.cliente = nuevoCliente;
-  });
+    await logAudit('traslado', 'empleados', String(id),
+      'Traslado de "' + clienteAnterior + '" → "' + nuevoCliente + '" (efectivo ' + fecha + ')',
+      { campo: 'cliente', anterior: clienteAnterior, nuevo: nuevoCliente, fecha });
+  }
 
-  await logAudit('update', 'empleados', '', 'Traslado masivo de ' + ids.length + ' empleados a: ' + nuevoCliente + ' (efectivo ' + fecha + ')');
   cerrarModalTrasladar();
   limpiarSeleccion();
   filterTable();
@@ -2459,11 +2467,11 @@ function renderTable(){
       <td><span class="td-cedula">${emp.cedula?escapeHTML(emp.cedula):'<span style="color:#fca5a5;font-style:italic">Sin c&eacute;dula</span>'}</span></td>
       <td><span class="badge ${emp.estado==='ACTIVO'?'badge-activo':'badge-inactivo'}">${escapeHTML(emp.estado)}</span></td>
       <td>
-        <div class="td-name" style="font-weight:500;font-size:12px">${escapeHTML(emp.cliente||'&mdash;')}</div>
+        <div class="td-name" style="font-weight:500;font-size:12px">${emp.cliente?escapeHTML(emp.cliente):'<span style="color:var(--text3);font-style:italic">Sin cliente</span>'}</div>
         ${retiroInfo}
       </td>
       <td><div style="font-size:12px;color:var(--text2)">${emp.cargo?escapeHTML(emp.cargo):'<span style="color:var(--text3)">Sin cargo</span>'}</div></td>
-      <td><div style="font-size:12px">${escapeHTML(emp.ingreso||'&mdash;')}</div></td>
+      <td><div style="font-size:12px">${escapeHTML(emp.ingreso||'—')}</div></td>
       <td>
         <div class="td-actions">
           <button class="btn-icon" onclick="openPanel(${emp.id})" title="Ver perfil">
@@ -4369,33 +4377,52 @@ const CHANGE_LOG_DATA = {
     {date:'01/06/1994',time:'—',user:'Sistema',origin:'import',field:'Alta en sistema',old:'—',new:'Registro creado'},
   ],
 };
-function renderChangeLog(empId){
+async function renderChangeLog(empId){
   const el = document.getElementById('infoCambios');
-  if(!el) return;
-  const log = CHANGE_LOG_DATA[empId] || [{date:'—',time:'—',user:'Sistema',origin:'import',field:'Sin historial de cambios',old:'—',new:'Este empleado no tiene cambios registrados aún'}];
-  el.innerHTML = log.map(c=>`
+  if(!el || !empId) return;
+  el.innerHTML = '<div style="padding:14px 18px;font-size:12px;color:var(--text3)">Cargando historial...</div>';
+
+  const { data, error } = await sb.from('audit_log')
+    .select('*')
+    .eq('entity_id', String(empId))
+    .order('created_at', { ascending: false })
+    .limit(60);
+
+  if (error || !data || !data.length) {
+    el.innerHTML = '<div style="padding:14px 18px;font-size:12px;color:var(--text3)">Sin cambios registrados para este empleado aún.</div>';
+    return;
+  }
+
+  const actionLabel = { update:'Edición', traslado:'Traslado', create:'Alta', import:'Importación', delete:'Eliminación', baja:'Baja laboral' };
+  const dotClass    = { import:'import', create:'create', traslado:'', update:'', baja:'', delete:'' };
+
+  el.innerHTML = data.map(c => {
+    const dt   = new Date(c.created_at);
+    const fecha = dt.toLocaleDateString('es-CO', {day:'2-digit',month:'2-digit',year:'numeric'});
+    const hora  = dt.toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'});
+    const label = actionLabel[c.action] || escapeHTML(c.action);
+    const dc    = dotClass[c.action] ?? '';
+    return `
     <div class="change-log-item">
-      <div class="change-log-dot ${c.origin==='import'?'import':c.field.includes('Alta')?'create':''}"></div>
+      <div class="change-log-dot ${dc}"></div>
       <div class="change-log-body">
-        <div class="change-log-field">${c.field}</div>
+        <div class="change-log-field">${label}</div>
         <div class="change-log-vals">
-          ${c.old!=='—'?`<span class="change-log-old">${c.old}</span><span class="change-log-arrow">→</span>`:''}
-          <span class="change-log-new ${c.field.includes('Alta')?'first':''}">${c.new}</span>
+          <span class="change-log-new">${escapeHTML(c.description||'—')}</span>
         </div>
         <div class="change-log-meta">
-          <span>${c.date} ${c.time!=='—'?'· '+c.time:''}</span>
-          <span>${c.user}</span>
-          <span class="change-log-origin ${c.origin==='import'?'import':''}">${c.origin==='import'?'Importación masiva':'Manual'}</span>
+          <span>${fecha} · ${hora}</span>
+          <span>${escapeHTML(c.user_name||c.user_email||'Sistema')}</span>
         </div>
       </div>
     </div>`).join('');
 }
 
-// Patch openPanel to also render change log
+// Patch openPanel to also render change log (async)
 const _origOpenPanel = openPanel;
 openPanel = function(id){
   _origOpenPanel(id);
-  renderChangeLog(id);
+  renderChangeLog(id).catch(e => console.warn('renderChangeLog error:', e));
 };
 
 // ───────────────────── IMPORT WIZARD ─────────────────────
