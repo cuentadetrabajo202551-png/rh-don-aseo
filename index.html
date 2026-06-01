@@ -3423,6 +3423,7 @@ function renderAlerts(){
               ${cargoOpts}
               <option value="__nuevo__">✏ Agregar nuevo...</option>
             </select>
+            <span class="alert-emp-action" onclick="openPanel(${e.id})">Ver perfil</span>
           </div>
         </div>`).join('')
       + (sinCargo.length>10?`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">y ${sinCargo.length-10} m\xe1s...</div>`:'')
@@ -3449,6 +3450,7 @@ function renderAlerts(){
               ${clienteOpts}
               <option value="__nuevo__">✏ Agregar nuevo...</option>
             </select>
+            <span class="alert-emp-action" onclick="openPanel(${e.id})">Ver perfil</span>
           </div>
         </div>`).join('')
       + (sinCliente.length>10?`<div style="padding:10px 18px;font-size:12px;color:var(--text3)">y ${sinCliente.length-10} m\xe1s...</div>`:'')
