@@ -5306,6 +5306,26 @@ async function vaciarBaseDeDatos() {
 // ── SINCRONIZACIÓN EN TIEMPO REAL (Supabase Realtime) ─────────────────────
 let _rtChannel = null;
 
+// Debounce para no re-renderizar 50 veces si llegan eventos masivos
+let _rtFlushTimer = null;
+let _rtPendingRefresh = false;
+
+function _rtFlushUI() {
+  if (!_rtPendingRefresh) return;
+  _rtPendingRefresh = false;
+  filteredData = [...EMPLEADOS];
+  filterTable();
+  try { renderAlerts(); }     catch(e) {}
+  try { refreshDashboard(); } catch(e) {}
+  // buildDuplicados es pesado — solo si la sección está visible
+  const dupSection = document.getElementById('section-duplicados');
+  if (dupSection?.classList.contains('active')) {
+    try { buildDuplicados(); } catch(e) {}
+  }
+  const dot = document.getElementById('sb-sync-dot');
+  if (dot) dot.style.opacity = '0.4';
+}
+
 function _startRealtimeSync() {
   _stopRealtimeSync();
 
@@ -5314,48 +5334,42 @@ function _startRealtimeSync() {
       { event: '*', schema: 'public', table: 'empleados' },
       (payload) => {
         const dot = document.getElementById('sb-sync-dot');
-        const txt = document.getElementById('sb-sync-txt');
         if (dot) dot.style.opacity = '1';
 
         const { eventType, new: newRec, old: oldRec } = payload;
 
         if (eventType === 'INSERT' && newRec?.id) {
-          // Solo agregar si no existe ya (evita duplicado por acción propia)
           if (!EMPLEADOS.find(e => e.id === newRec.id)) EMPLEADOS.push(newRec);
 
         } else if (eventType === 'UPDATE' && newRec?.id) {
           const idx = EMPLEADOS.findIndex(e => e.id === newRec.id);
           if (idx !== -1) Object.assign(EMPLEADOS[idx], newRec);
           else EMPLEADOS.push(newRec);
-          // Si el perfil de este empleado está abierto, refrescarlo
-          if (currentEmpId === newRec.id) openPanel(newRec.id);
+          // Si el perfil de este empleado está abierto Y no se está editando, refrescarlo
+          const modalOpen = document.getElementById('modal-overlay')?.classList.contains('open');
+          if (!modalOpen && currentEmpId === newRec.id) openPanel(newRec.id);
 
         } else if (eventType === 'DELETE' && oldRec?.id) {
           const idx = EMPLEADOS.findIndex(e => e.id === oldRec.id);
           if (idx !== -1) EMPLEADOS.splice(idx, 1);
-          // Si el perfil eliminado está abierto, cerrarlo
           if (currentEmpId === oldRec.id) closePanel();
         }
 
-        filteredData = [...EMPLEADOS];
-        initFilters();
-        filterTable();
-        try { renderAlerts(); }    catch(e) {}
-        try { refreshDashboard(); } catch(e) {}
-        try { buildDuplicados(); }  catch(e) {}
-
-        setTimeout(() => { if(dot) dot.style.opacity = '0.4'; }, 1200);
+        // Encolar refresh — el debounce agrupa eventos masivos en uno solo
+        _rtPendingRefresh = true;
+        clearTimeout(_rtFlushTimer);
+        _rtFlushTimer = setTimeout(_rtFlushUI, 400);
       }
     )
     .subscribe((status) => {
-      const dot  = document.getElementById('sb-sync-dot');
-      const txt  = document.getElementById('sb-sync-txt');
+      const dot = document.getElementById('sb-sync-dot');
+      const txt = document.getElementById('sb-sync-txt');
       if (status === 'SUBSCRIBED') {
-        if (dot) dot.style.background = '#4ade80';   // verde: conectado
+        if (dot) { dot.style.background = '#4ade80'; dot.style.opacity = '0.7'; }
         if (txt) txt.textContent = 'En vivo';
       } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
-        if (dot) dot.style.background = '#f87171';   // rojo: error
-        if (txt) txt.textContent = 'Sin sync';
+        if (dot) { dot.style.background = '#f87171'; dot.style.opacity = '1'; }
+        if (txt) txt.textContent = 'Sin conexión';
       }
     });
 }
