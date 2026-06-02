@@ -5728,7 +5728,7 @@ function simulateUpload(input) {
   reader.onload = function(e) {
     try {
       const data = new Uint8Array(e.target.result);
-      const wb = XLSX.read(data, {type:'array', cellDates:false, raw:false});
+      const wb = XLSX.read(data, {type:'array', cellDates:true, raw:false});
 
       // Elegir hoja por nombre (case-insensitive): Datos, DATOS, PLANTILLA, DATA, EMPLEADOS
       // "Datos" es el nombre usado en plantilla_empleados_rh final2.xlsx
