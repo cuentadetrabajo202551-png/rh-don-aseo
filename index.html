@@ -1821,14 +1821,7 @@ tr.bg-selected td{background:#eff6ff!important}
 
     <!-- ── TAB DOCUMENTOS ── -->
     <div class="panel-tab-content" id="tab-docs">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div style="font-size:12px;color:var(--text2)">Documentos adjuntos al perfil del empleado</div>
-        <label class="btn btn-ghost btn-sm" style="cursor:pointer" id="btn-subir-doc-top">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Subir documento
-          <input type="file" id="doc-file-top" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" style="display:none" onchange="subirDocDesdeBoton(this)">
-        </label>
-      </div>
+      <div style="margin-bottom:4px"></div>
       <div id="docs-grid"></div>
     </div>
   </div>
@@ -2175,6 +2168,15 @@ async function loadFromSupabase() {
   _resetDashEmpty();
 
   initFilters();
+  // Cargar conteo de documentos en paralelo (no bloquea la UI)
+  sb.from('documentos_empleados').select('empleado_id').then(({ data }) => {
+    _docsCounts = {};
+    (data || []).forEach(r => {
+      const id = Number(r.empleado_id);
+      _docsCounts[id] = (_docsCounts[id] || 0) + 1;
+    });
+    renderTable(); // refrescar tabla con indicadores
+  });
   filterTable();
   try { renderAlerts(); } catch(e) { console.error('renderAlerts error:', e); }
   try { refreshDashboard(); } catch(e) { console.error('refreshDashboard error:', e); }
@@ -2533,6 +2535,7 @@ function renderTable(){
             <div class="td-sub" style="display:flex;gap:5px;align-items:center">
               ${emp.genero==='FEMENINO'?'<span class="badge badge-f" style="padding:1px 6px;font-size:10px">&#9792; F</span>':'<span class="badge badge-m" style="padding:1px 6px;font-size:10px">&#9794; M</span>'}
               ${hist?'<span class="badge badge-hist">Historial</span>':''}
+              ${_docsCounts[emp.id]>0?`<span title="${_docsCounts[emp.id]} documento${_docsCounts[emp.id]!==1?'s':''} adjunto${_docsCounts[emp.id]!==1?'s':''}" style="display:inline-flex;align-items:center;gap:2px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:default"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${_docsCounts[emp.id]}</span>`:''}
             </div>
           </div>
         </div>
@@ -2845,7 +2848,16 @@ function closeEditModal(){
 
 async function saveEdit(){
   // Helper: leer valor de un campo del formulario
-  const fv = (fid) => (document.getElementById(fid)?.value || '').trim();
+  // Para comboboxes: si el <select> está vacío, leer del input visible como fallback
+  const fv = (fid) => {
+    const el = document.getElementById(fid);
+    if (!el) return '';
+    if (el.value) return el.value.trim();
+    // Fallback: combobox input visible
+    const cbInp = document.querySelector('[data-cb-for="' + fid + '"]');
+    if (cbInp && cbInp.value) return cbInp.value.trim();
+    return '';
+  };
 
   // Validación mínima
   const nombre = fv('f_nombre');
@@ -2926,6 +2938,7 @@ const DOC_TIPOS = [
   { key:'otro',      label:'Otros documentos',      emoji:'DC' },
 ];
 let _docsEmpId = null;
+let _docsCounts = {};  // { empId: count } — empleados con documentos adjuntos
 
 async function loadDocumentos() {
   const empId = currentEmpId;
@@ -3027,6 +3040,8 @@ async function subirDocumentoConTitulo(input) {
   }]);
   if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
 
+  _docsCounts[_docsEmpId] = (_docsCounts[_docsEmpId] || 0) + 1;
+  renderTable(); // actualizar indicador en tabla
   await logAudit('create', 'documentos', String(_docsEmpId), 'Adjunt\xf3 documento: ' + titulo + ' (' + file.name + ')');
   showToast('&#10003; "' + escapeHTML(titulo) + '" adjuntado correctamente');
   input.value = '';
@@ -3078,6 +3093,10 @@ async function eliminarDocumento(id, storagePath) {
   if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
   const { error: dbErr } = await sb.from('documentos_empleados').delete().eq('id', id);
   if (dbErr) { showToast('Archivo eliminado del storage pero error en base de datos: ' + dbErr.message); return; }
+  if (_docsEmpId && _docsCounts[_docsEmpId]) {
+    _docsCounts[_docsEmpId] = Math.max(0, _docsCounts[_docsEmpId] - 1);
+    renderTable();
+  }
   await logAudit('delete', 'documentos', String(_docsEmpId), 'Elimino documento');
   showToast('Documento eliminado');
   loadDocumentos();
@@ -6737,8 +6756,18 @@ openEditModal = function(id) {
         // Intento case-insensitive en el catálogo
         const opts = Array.from(sel.options);
         const match = opts.find(o => o.value && removeAccents(o.value.toUpperCase()) === removeAccents(rawVal.toUpperCase()));
-        if (match) { sel.value = match.value; inp.value = match.value; }
-        else { inp.value = rawVal; }   // mostrar el valor aunque no esté en catálogo
+        if (match) {
+          sel.value = match.value; inp.value = match.value;
+        } else {
+          // Sin coincidencia exacta: agregar opción temporal para que saveEdit() pueda leerla
+          const tempOpt = document.createElement('option');
+          tempOpt.value = rawVal;
+          tempOpt.textContent = rawVal;
+          tempOpt.setAttribute('data-temp', 'true');
+          sel.appendChild(tempOpt);
+          sel.value = rawVal;
+          inp.value = rawVal;
+        }
       }
     });
   }, 60);
