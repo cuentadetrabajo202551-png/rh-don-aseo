@@ -976,6 +976,12 @@ tr.bg-selected td{background:#eff6ff!important}
           <option value="FEMENINO">Femenino</option>
           <option value="MASCULINO">Masculino</option>
         </select>
+        <select class="filter-select" id="filterCriticos" onchange="filterTable()" style="color:var(--orange);font-weight:600">
+          <option value="" style="color:var(--text2);font-weight:400">&#9888; Datos críticos</option>
+          <option value="sin_nombre">Sin nombre</option>
+          <option value="sin_cliente">Sin cliente / entidad</option>
+          <option value="sin_cedula">Sin cédula</option>
+        </select>
         <button class="btn btn-ghost btn-sm" onclick="clearFilters()">Limpiar</button>
       </div>
 
@@ -1508,6 +1514,11 @@ tr.bg-selected td{background:#eff6ff!important}
                 </label>
                 <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
                   <input type="checkbox" id="certIncFechas" checked onchange="certUpdatePreview()"> Fechas de vinculación
+                </label>
+                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px">
+                  <input type="checkbox" id="certIncHistorial" checked onchange="certUpdatePreview()">
+                  <span style="color:#1d4ed8;font-weight:600">Historial laboral completo</span>
+                  <span style="font-size:10px;color:#64748b">(tabla con todos los contratos)</span>
                 </label>
               </div>
             </div>
@@ -2249,30 +2260,34 @@ function initFilters(){
 function filterTable(){
   const q = document.getElementById('searchInput').value.toLowerCase().trim();
   const estado = document.getElementById('filterEstado').value;
-  updateExportButton();  // actualizar label del botón exportar
-  const cliente = document.getElementById('filterCliente').value;
-  const cargo = document.getElementById('filterCargo').value;
-  const genero = document.getElementById('filterGenero').value;
+  const cliente   = document.getElementById('filterCliente').value;
+  const cargo     = document.getElementById('filterCargo').value;
+  const genero    = document.getElementById('filterGenero').value;
+  const criticos  = document.getElementById('filterCriticos')?.value || '';
   filteredData = EMPLEADOS.filter(e=>{
     if(estado && e.estado!==estado) return false;
     if(cliente && e.cliente!==cliente) return false;
     if(cargo && e.cargo!==cargo) return false;
     if(genero && e.genero!==genero) return false;
+    if(criticos === 'sin_nombre'  && e.nombre  && e.nombre.trim())  return false;
+    if(criticos === 'sin_cliente' && e.cliente && e.cliente.trim()) return false;
+    if(criticos === 'sin_cedula'  && e.cedula  && e.cedula.trim())  return false;
     if(q){
-      const hay = (e.nombre+e.cedula+e.cliente+e.cargo).toLowerCase();
+      const hay = ((e.nombre||'')+(e.cedula||'')+(e.cliente||'')+(e.cargo||'')).toLowerCase();
       if(!hay.includes(q)) return false;
     }
     return true;
   });
   currentPage=1;
   renderTable();
-  updateBulkBar();  // DESPUÉS de que filteredData se actualiza → cuenta correcta
+  updateBulkBar();       // después de filteredData → cuenta correcta
+  updateExportButton();  // después de filteredData → número correcto
   renderActiveFilters();
 }
 
 function clearFilters(){
   document.getElementById('searchInput').value='';
-  ['filterEstado','filterCliente','filterCargo','filterGenero'].forEach(id=>document.getElementById(id).value='');
+  ['filterEstado','filterCliente','filterCargo','filterGenero','filterCriticos'].forEach(id=>{const el=document.getElementById(id);if(el)el.value='';});
   filteredData=[...EMPLEADOS];
   currentPage=1;
   _selectedEmps.clear();
@@ -2595,7 +2610,7 @@ function openPanel(id){
   pb.className='badge '+(emp.estado==='ACTIVO'?'badge-activo':'badge-inactivo');
   // Botón eliminar: solo admin
   const delBtn=document.getElementById('panel-delete-btn');
-  if(delBtn) delBtn.style.display = isAdmin() ? '' : 'none';
+  if(delBtn) delBtn.style.display = isEditor() ? '' : 'none';
 
   // Missing fields
   const missing=getMissingFields(emp);
@@ -2920,41 +2935,104 @@ async function loadDocumentos() {
     .select('*').eq('empleado_id', String(empId)).order('created_at', {ascending:false});
   if (error) { grid.innerHTML = '<div style="color:var(--red);font-size:12px">Error: ' + escapeHTML(error.message) + '</div>'; return; }
 
+  const docs = data || [];
   const badge = document.getElementById('docs-badge');
-  if (badge) { badge.textContent = (data||[]).length; badge.style.display = (data||[]).length>0?'':'none'; }
+  if (badge) { badge.textContent = docs.length; badge.style.display = docs.length > 0 ? '' : 'none'; }
 
-  const byTipo = {};
-  DOC_TIPOS.forEach(t => byTipo[t.key] = []);
-  (data||[]).forEach(d => { if (!byTipo[d.tipo]) byTipo[d.tipo]=[]; byTipo[d.tipo].push(d); });
+  // ── Formulario inline para adjuntar ────────────────────────────────────
+  const formHtml = isEditor() ? `
+    <div id="doc-adjuntar-form" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+      <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">Adjuntar documento</div>
+      <input type="text" id="doc-titulo-input" placeholder="Título del documento (ej: Contrato 2025, Paz y salvo...)"
+        style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;box-sizing:border-box;margin-bottom:8px;outline:none"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
+      <div style="display:flex;gap:8px;align-items:center">
+        <label class="btn btn-primary btn-sm" style="cursor:pointer;margin:0">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+          Seleccionar archivo
+          <input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirDocumentoConTitulo(this)">
+        </label>
+        <button class="btn btn-ghost btn-sm" onclick="document.getElementById('doc-adjuntar-form').style.display='none'">Cancelar</button>
+      </div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">PDF, JPG, PNG, DOC, DOCX &middot; M&aacute;x. 10MB</div>
+    </div>` : '';
 
-  grid.innerHTML = DOC_TIPOS.map(tipo => {
-    const docs = byTipo[tipo.key]||[];
-    const itemsHtml = docs.length
-      ? docs.map(d => {
-          const ext = (d.nombre.split('.').pop()||'').toLowerCase();
-          const isPdf = ext==='pdf', isImg = ['jpg','jpeg','png'].includes(ext);
-          const ico = isPdf?'pdf':isImg?'img':ext.includes('doc')?'word':'otro';
-          const emo = isPdf?'📄':isImg?'🖼️':ext.includes('doc')?'📝':'📎';
-          const fecha = d.created_at ? new Date(d.created_at).toLocaleDateString('es-CO') : '';
-          const tam = d.tamanio ? (d.tamanio>1048576?(d.tamanio/1048576).toFixed(1)+'MB':(d.tamanio/1024).toFixed(0)+'KB') : '';
-          return '<div class="doc-item">'
-            + '<div class="doc-icon '+ico+'">'+emo+'</div>'
-            + '<div style="flex:1;min-width:0"><div class="doc-name">'+escapeHTML(d.nombre)+'</div>'
-            + '<div class="doc-meta">'+fecha+(d.subido_por?' · '+escapeHTML(d.subido_por):'')+' '+tam+'</div></div>'
-            + '<button class="btn-icon" title="Ver/Descargar" onclick="descargarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>'
-            + (isEditor() ? '<button class="btn-icon red" title="Eliminar" onclick="eliminarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>' : '')
-            + '</div>';
-        }).join('')
-      : '<div class="doc-empty">Sin documentos en esta categoria</div>';
+  // ── Botón adjuntar ──────────────────────────────────────────────────────
+  const btnHtml = isEditor() ? `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+      <button class="btn btn-primary btn-sm" onclick="
+        const f=document.getElementById('doc-adjuntar-form');
+        f.style.display='block';
+        document.getElementById('doc-titulo-input').focus()">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Adjuntar documento
+      </button>
+    </div>` : '';
 
-    return '<div class="doc-tipo-card">'
-      + '<div class="doc-tipo-header"><div class="doc-tipo-title" style="font-size:12px;font-weight:700">'+escapeHTML(tipo.label)+'</div>'
-      + (isEditor() ? '<label class="btn-icon" style="cursor:pointer;font-size:10px;gap:3px" title="Subir"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>Subir<input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirDocumento(this,\''+tipo.key+'\')"></label>' : '')
-      + '</div>'
-      + itemsHtml + '</div>';
-  }).join('');
+  // ── Lista de documentos ─────────────────────────────────────────────────
+  const listHtml = docs.length
+    ? docs.map(d => {
+        const ext   = (d.nombre.split('.').pop()||'').toLowerCase();
+        const isPdf = ext === 'pdf', isImg = ['jpg','jpeg','png'].includes(ext);
+        const ico   = isPdf ? 'pdf' : isImg ? 'img' : ext.includes('doc') ? 'word' : 'otro';
+        const emo   = isPdf ? '📄' : isImg ? '🖼️' : ext.includes('doc') ? '📝' : '📎';
+        const fecha = d.created_at ? new Date(d.created_at).toLocaleDateString('es-CO') : '';
+        const tam   = d.tamanio ? (d.tamanio > 1048576 ? (d.tamanio/1048576).toFixed(1)+'MB' : (d.tamanio/1024).toFixed(0)+'KB') : '';
+        const titulo = d.tipo || d.nombre;  // título personalizado guardado en 'tipo'
+        return '<div class="doc-item">'
+          + '<div class="doc-icon '+ico+'">'+emo+'</div>'
+          + '<div style="flex:1;min-width:0">'
+          + '<div class="doc-name">'+escapeHTML(titulo)+'</div>'
+          + '<div class="doc-meta">'+escapeHTML(d.nombre)+' &middot; '+fecha+(d.subido_por?' &middot; '+escapeHTML(d.subido_por):'')+(tam?' &middot; '+tam:'')+'</div>'
+          + '</div>'
+          + '<button class="btn-icon" title="Ver/Descargar" onclick="descargarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>'
+          + (isEditor() ? '<button class="btn-icon red" title="Eliminar" onclick="eliminarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>' : '')
+          + '</div>';
+      }).join('')
+    : '<div style="text-align:center;padding:28px 16px;color:var(--text3);font-size:12px">Sin documentos adjuntos a\xfan</div>';
+
+  grid.innerHTML = formHtml + btnHtml + listHtml;
 }
 
+// Nueva función: adjuntar con título personalizado
+async function subirDocumentoConTitulo(input) {
+  const file = input.files[0];
+  if (!file || !_docsEmpId) return;
+
+  const tituloEl = document.getElementById('doc-titulo-input');
+  const titulo   = tituloEl?.value?.trim();
+  if (!titulo) {
+    showToast('Escribe un t\xedtulo para el documento antes de adjuntarlo');
+    input.value = '';
+    return;
+  }
+  if (file.size > 10*1024*1024) { showToast('M\xe1ximo 10MB por archivo'); input.value = ''; return; }
+
+  showToast('Subiendo ' + file.name + '...');
+  const path = _docsEmpId + '/adjuntos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
+  if (upErr) { showToast('Error: ' + upErr.message); return; }
+
+  const { error: dbErr } = await sb.from('documentos_empleados').insert([{
+    empleado_id: String(_docsEmpId),
+    tipo:        titulo,   // título personalizado guardado en el campo 'tipo'
+    nombre:      file.name,
+    storage_path: path,
+    tamanio:     file.size,
+    subido_por:  _currentUser?.display_name || _currentUser?.email || 'Usuario'
+  }]);
+  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
+
+  await logAudit('create', 'documentos', String(_docsEmpId), 'Adjunt\xf3 documento: ' + titulo + ' (' + file.name + ')');
+  showToast('&#10003; "' + escapeHTML(titulo) + '" adjuntado correctamente');
+  input.value = '';
+  if (tituloEl) tituloEl.value = '';
+  const form = document.getElementById('doc-adjuntar-form');
+  if (form) form.style.display = 'none';
+  loadDocumentos();
+}
+
+// Función legacy (usada en otros lugares del código)
 async function subirDocumento(input, tipo) {
   const file = input.files[0];
   if (!file || !_docsEmpId) return;
@@ -6413,11 +6491,19 @@ function buildDuplicados() {
           + '</div>'
           + selectHtml
           + '<div class="sim-variants">'
-          + group.map((v,i)=>'<div class="sim-variant">'
-            + '<span style="width:52px;font-size:10px;color:var(--text3)">'+(i+1)+'</span>'
-            + '<span class="sim-variant-name other">'+escapeHTML(v.name)+'</span>'
-            + '<span class="sim-count">'+v.count.toLocaleString('es-CO')+' reg.</span>'
-            + '</div>').join('')
+          + group.map((v,i)=>{
+              const divId = 'sim-emps-'+idx+'-'+i;
+              const campo = type==='CARGO'?'cargo':'cliente';
+              const vSafe = v.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
+              return '<div class="sim-variant" style="flex-wrap:wrap;row-gap:4px">'
+                + '<span style="width:36px;font-size:10px;color:var(--text3)">'+(i+1)+'</span>'
+                + '<span class="sim-variant-name other">'+escapeHTML(v.name)+'</span>'
+                + '<span class="sim-count">'+v.count.toLocaleString('es-CO')+' reg.</span>'
+                + '<button style="font-size:10px;padding:2px 8px;border:1px solid var(--border);border-radius:5px;background:transparent;color:var(--text2);cursor:pointer;margin-left:6px"'
+                + ' onclick="toggleSimVariantEmps(\''+divId+'\',\''+campo+'\',\''+vSafe+'\')">&#128065; Ver empleados</button>'
+                + '</div>'
+                + '<div id="'+divId+'" style="display:none;border:1px solid var(--border);border-radius:7px;margin:2px 0 8px;overflow:hidden"></div>';
+            }).join('')
           + '</div>'
           + '<div class="sim-actions">'
           + '<button class="dup-btn" onclick="descartarSimilar('+idx+')">Ignorar sugerencia</button>'
@@ -6426,6 +6512,66 @@ function buildDuplicados() {
   }
   _updateDupBadge(exactGroups.length, nameGroupsUrgentes.length, filteredSim.length);
 }
+
+// ── Ver empleados de una variante (Nombres similares) ─────────────────────
+function toggleSimVariantEmps(divId, campo, variantName) {
+  const div = document.getElementById(divId);
+  if (!div) return;
+  if (div.style.display === 'block') { div.style.display = 'none'; return; }
+
+  const emps = EMPLEADOS.filter(e => e[campo] && e[campo].trim().toUpperCase() === variantName.toUpperCase());
+  if (!emps.length) {
+    div.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text3)">Sin empleados encontrados</div>';
+    div.style.display = 'block'; return;
+  }
+
+  div.innerHTML = '<div style="overflow-x:auto">'
+    + '<table style="width:100%;border-collapse:collapse;font-size:11px">'
+    + '<thead><tr style="background:#f8fafc">'
+    + ['Nombre','CC','Estado','Ingreso',''].map(h=>'<th style="padding:5px 10px;text-align:left;font-weight:700;color:var(--text3);border-bottom:1px solid var(--border)">'+h+'</th>').join('')
+    + '</tr></thead><tbody>'
+    + emps.slice(0, 25).map(e => {
+        const ec = e.estado==='ACTIVO'?'var(--green)':'var(--red)';
+        return '<tr style="border-bottom:1px solid #f1f5f9">'
+          + '<td style="padding:5px 10px;font-weight:600">' + escapeHTML(e.nombre||'Sin nombre') + '</td>'
+          + '<td style="padding:5px 10px;color:var(--text3)">' + escapeHTML(e.cedula||'—') + '</td>'
+          + '<td style="padding:5px 10px"><span style="color:'+ec+';font-weight:700;font-size:10px">'+ escapeHTML(e.estado||'—') +'</span></td>'
+          + '<td style="padding:5px 10px;color:var(--text3)">' + escapeHTML(e.ingreso||'—') + '</td>'
+          + '<td style="padding:5px 10px;white-space:nowrap">'
+          + '<button class="btn-icon" onclick="openPanel('+e.id+')" title="Ver perfil">&#128065;</button>'
+          + (isEditor() ? '<button class="btn-icon" onclick="openEditModal('+e.id+')" title="Editar">&#9998;</button>' : '')
+          + (isEditor() ? '<button class="btn-icon red" onclick="eliminarEmpleadoDirecto('+e.id+')" title="Eliminar registro">&#128465;</button>' : '')
+          + '</td></tr>';
+      }).join('')
+    + (emps.length > 25 ? '<tr><td colspan="5" style="padding:6px 10px;color:var(--text3);font-size:10px;font-style:italic">y '+(emps.length-25)+' más...</td></tr>' : '')
+    + '</tbody></table></div>';
+  div.style.display = 'block';
+}
+
+// ── Eliminar empleado sin abrir panel (desde Corrección de Datos) ──────────
+async function eliminarEmpleadoDirecto(id) {
+  const emp = EMPLEADOS.find(e => e.id === id);
+  if (!emp) { showToast('Registro no encontrado'); return; }
+  if (!confirm('¿Eliminar permanentemente a:\n\n' + (emp.nombre||'Sin nombre') + '\nCC: ' + (emp.cedula||'—') + '\n\nEsta acción no se puede deshacer.')) return;
+  try {
+    const { data: docs } = await sb.from('documentos_empleados').select('storage_path').eq('empleado_id', String(id));
+    if (docs?.length) {
+      const paths = docs.map(d => d.storage_path).filter(Boolean);
+      if (paths.length) await sb.storage.from('documentos').remove(paths);
+    }
+    await sb.from('documentos_empleados').delete().eq('empleado_id', String(id));
+    const { error } = await sb.from('empleados').delete().eq('id', id);
+    if (error) { showToast('Error: ' + error.message); return; }
+    const idx = EMPLEADOS.findIndex(e => e.id === id);
+    if (idx !== -1) EMPLEADOS.splice(idx, 1);
+    await logAudit('delete','empleados',String(id),'Eliminó registro de '+(emp.nombre||'—')+' (CC '+(emp.cedula||'—')+')');
+    filteredData = [...EMPLEADOS];
+    filterTable(); renderAlerts(); refreshDashboard();
+    showToast('&#10003; Registro de ' + escapeHTML(emp.nombre||'empleado') + ' eliminado');
+    setTimeout(() => buildDuplicados(), 300);
+  } catch(e) { showToast('Error: ' + e.message); }
+}
+// ───────────────────────────────────────────────────────────────────────────
 
 function _updateDupBadge(exact,possible,names){
   // El badge del sidebar solo cuenta duplicados reales (exactos + posibles).
@@ -6661,6 +6807,7 @@ function certUpdatePreview() {
   const incHor = document.getElementById('certIncHoras')?.checked;
   const incCar = document.getElementById('certIncCargo')?.checked;
   const incFec = document.getElementById('certIncFechas')?.checked;
+  const incHist= document.getElementById('certIncHistorial')?.checked;
 
   // Format date
   const [yy,mm,dd] = fecha.split('-');
@@ -6733,6 +6880,55 @@ function certUpdatePreview() {
 
   if (incHor && emp.horas) {
     cuerpo += '<p>Su jornada laboral es de <strong>' + escapeHTML(emp.horas) + '</strong>.</p>';
+  }
+
+  // ── Historial laboral completo (tabla) ─────────────────────────────────
+  if (incHist && emp.cedula) {
+    const historial = EMPLEADOS
+      .filter(e => e.cedula === emp.cedula)
+      .sort((a, b) => (a.ingreso || '').localeCompare(b.ingreso || ''));
+
+    if (historial.length >= 1) {
+      // Calcular tiempo trabajado por registro
+      function calcTiempo(ing, ret) {
+        if (!ing) return '—';
+        const dmy = s => { const p=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); return p?new Date(+p[3],+p[2]-1,+p[1]):null; };
+        const d1 = dmy(ing); if (!d1) return '—';
+        const d2 = ret ? dmy(ret) : new Date();
+        if (!d2) return '—';
+        const meses = (d2.getFullYear()-d1.getFullYear())*12 + (d2.getMonth()-d1.getMonth());
+        if (meses < 1) return 'Menos de 1 mes';
+        const a = Math.floor(meses/12), m = meses%12;
+        return (a>0 ? a+' año'+(a!==1?'s':'') : '') + (a>0&&m>0?' ':''+(m>0?m+' mes'+(m!==1?'es':''):''));
+      }
+
+      cuerpo += '<div style="margin:20px 0 16px">'
+        + '<div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#003c9d;margin-bottom:8px;border-bottom:2px solid #003c9d;padding-bottom:4px">Historial Laboral</div>'
+        + '<table style="width:100%;border-collapse:collapse;font-size:11px">'
+        + '<thead>'
+        + '<tr style="background:#003c9d;color:#fff">'
+        + '<th style="padding:6px 10px;text-align:left;font-weight:700">Cliente / Entidad</th>'
+        + '<th style="padding:6px 10px;text-align:left;font-weight:700">Cargo</th>'
+        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Ingreso</th>'
+        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Retiro</th>'
+        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Tiempo</th>'
+        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Estado</th>'
+        + '</tr></thead><tbody>'
+        + historial.map((r, i) => {
+            const bg = i % 2 === 0 ? '#f8fafc' : '#fff';
+            const estadoColor = r.estado === 'ACTIVO' ? '#16a34a' : '#64748b';
+            const retiroText = r.retiro || (r.estado === 'ACTIVO' ? '<em>Activo</em>' : '—');
+            return '<tr style="background:' + bg + ';border-bottom:1px solid #e2e8f0">'
+              + '<td style="padding:6px 10px;font-weight:600">' + escapeHTML(r.cliente || '—') + '</td>'
+              + '<td style="padding:6px 10px;color:#475569">' + escapeHTML(r.cargo || '—') + '</td>'
+              + '<td style="padding:6px 10px;text-align:center;color:#475569">' + escapeHTML(r.ingreso || '—') + '</td>'
+              + '<td style="padding:6px 10px;text-align:center;color:#475569">' + (r.retiro ? escapeHTML(r.retiro) : (r.estado==='ACTIVO'?'<span style="color:#16a34a;font-style:italic">Activo</span>':'—')) + '</td>'
+              + '<td style="padding:6px 10px;text-align:center;color:#475569">' + calcTiempo(r.ingreso, r.retiro || null) + '</td>'
+              + '<td style="padding:6px 10px;text-align:center;font-weight:700;font-size:10px;color:' + estadoColor + '">' + escapeHTML(r.estado || '—') + '</td>'
+              + '</tr>';
+          }).join('')
+        + '</tbody></table></div>';
+    }
   }
 
   cuerpo += '<p>La presente certificación se expide a solicitud del(a) interesado(a) para <strong>' + escapeHTML(prop) + '</strong>.</p>';
