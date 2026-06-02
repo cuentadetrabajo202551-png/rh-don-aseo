@@ -716,6 +716,11 @@ tr.bg-selected td{background:#eff6ff!important}
     </div>
   </div>
   <div class="sb-yellow-bar"></div>
+  <!-- Indicador de sincronización en tiempo real -->
+  <div style="display:flex;align-items:center;gap:5px;padding:3px 18px 4px" title="Sincronización en tiempo real">
+    <div id="sb-sync-dot" style="width:6px;height:6px;border-radius:50%;background:#94a3b8;flex-shrink:0;transition:background .3s,opacity .4s;opacity:.4"></div>
+    <span id="sb-sync-txt" style="font-size:9px;color:rgba(255,255,255,.45);font-weight:500">Conectando...</span>
+  </div>
   <div class="sb-section" id="sb-label-principal">Principal</div>
   <div id="sb-nav-dashboard" class="sb-item active" onclick="showSection('dashboard',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -3804,6 +3809,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     _resetInactivity();
     await loadCatalogsFromDB();
     await loadFromSupabase();
+    _startAutoSync();
   }
   // Si no hay sesion, la pantalla de login ya esta visible por defecto
 });
@@ -5232,6 +5238,7 @@ async function doLogin() {
   btn.textContent = 'Cargando datos...';
   await loadCatalogsFromDB();
   await loadFromSupabase();
+  _startRealtimeSync();  // tiempo real vía Supabase Realtime
   btn.disabled = false;
   btn.textContent = 'Iniciar sesion';
 }
@@ -5296,8 +5303,71 @@ async function vaciarBaseDeDatos() {
 }
 // ──────────────────────────────────────────────────────────────────────────
 
+// ── SINCRONIZACIÓN EN TIEMPO REAL (Supabase Realtime) ─────────────────────
+let _rtChannel = null;
+
+function _startRealtimeSync() {
+  _stopRealtimeSync();
+
+  _rtChannel = sb.channel('rt-empleados')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'empleados' },
+      (payload) => {
+        const dot = document.getElementById('sb-sync-dot');
+        const txt = document.getElementById('sb-sync-txt');
+        if (dot) dot.style.opacity = '1';
+
+        const { eventType, new: newRec, old: oldRec } = payload;
+
+        if (eventType === 'INSERT' && newRec?.id) {
+          // Solo agregar si no existe ya (evita duplicado por acción propia)
+          if (!EMPLEADOS.find(e => e.id === newRec.id)) EMPLEADOS.push(newRec);
+
+        } else if (eventType === 'UPDATE' && newRec?.id) {
+          const idx = EMPLEADOS.findIndex(e => e.id === newRec.id);
+          if (idx !== -1) Object.assign(EMPLEADOS[idx], newRec);
+          else EMPLEADOS.push(newRec);
+          // Si el perfil de este empleado está abierto, refrescarlo
+          if (currentEmpId === newRec.id) openPanel(newRec.id);
+
+        } else if (eventType === 'DELETE' && oldRec?.id) {
+          const idx = EMPLEADOS.findIndex(e => e.id === oldRec.id);
+          if (idx !== -1) EMPLEADOS.splice(idx, 1);
+          // Si el perfil eliminado está abierto, cerrarlo
+          if (currentEmpId === oldRec.id) closePanel();
+        }
+
+        filteredData = [...EMPLEADOS];
+        initFilters();
+        filterTable();
+        try { renderAlerts(); }    catch(e) {}
+        try { refreshDashboard(); } catch(e) {}
+        try { buildDuplicados(); }  catch(e) {}
+
+        setTimeout(() => { if(dot) dot.style.opacity = '0.4'; }, 1200);
+      }
+    )
+    .subscribe((status) => {
+      const dot  = document.getElementById('sb-sync-dot');
+      const txt  = document.getElementById('sb-sync-txt');
+      if (status === 'SUBSCRIBED') {
+        if (dot) dot.style.background = '#4ade80';   // verde: conectado
+        if (txt) txt.textContent = 'En vivo';
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        if (dot) dot.style.background = '#f87171';   // rojo: error
+        if (txt) txt.textContent = 'Sin sync';
+      }
+    });
+}
+
+function _stopRealtimeSync() {
+  if (_rtChannel) { sb.removeChannel(_rtChannel); _rtChannel = null; }
+}
+// ───────────────────────────────────────────────────────────────────────────
+
 async function doLogout() {
   if (!confirm('Cerrar sesion?')) return;
+  _stopRealtimeSync();
   await logAudit('logout', 'sesion', _currentUser?.id||'', 'Cierre de sesion');
   await sb.auth.signOut();
   _currentUser = null;
