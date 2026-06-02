@@ -5739,7 +5739,9 @@ function simulateUpload(input) {
       const ws = wb.Sheets[sheetName];
 
       // Convertir a array de arrays
-      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:false});
+      // raw:true → fechas como Date objects o seriales (no strings formateados por Excel)
+      // Evita el bug de día/mes invertido cuando el Excel tiene formato americano (M/D/YYYY)
+      const aoa = XLSX.utils.sheet_to_json(ws, {header:1, defval:'', raw:true});
       if(!aoa || aoa.length < 2) { showToast('El archivo parece vac\xedo o no tiene filas de datos'); return; }
 
       // Encontrar fila de encabezados: primera fila con >= 4 celdas no vac\xedas
