@@ -1762,6 +1762,10 @@ tr.bg-selected td{background:#eff6ff!important}
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Editar
       </button>
+      <button id="panel-delete-btn" class="btn btn-sm" onclick="eliminarEmpleado()" style="background:#fef2f2;color:#dc2626;border:1px solid #fecaca;display:none">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg>
+        Eliminar
+      </button>
       <button class="panel-close" onclick="closePanel()">✕ Cerrar</button>
     </div>
   </div>
@@ -2589,6 +2593,9 @@ function openPanel(id){
   const pb=document.getElementById('panelBadge');
   pb.textContent=emp.estado;
   pb.className='badge '+(emp.estado==='ACTIVO'?'badge-activo':'badge-inactivo');
+  // Botón eliminar: solo admin
+  const delBtn=document.getElementById('panel-delete-btn');
+  if(delBtn) delBtn.style.display = isAdmin() ? '' : 'none';
 
   // Missing fields
   const missing=getMissingFields(emp);
@@ -2704,6 +2711,61 @@ function switchTab(el, tabId){
 function closePanel(){
   document.getElementById('panel-overlay').classList.remove('open');
   document.getElementById('panel-perfil').classList.remove('open');
+}
+
+async function eliminarEmpleado() {
+  const emp = EMPLEADOS.find(e => e.id === currentEmpId);
+  if (!emp) { showToast('No se encontró el registro'); return; }
+
+  // Primera confirmación
+  if (!confirm(
+    '¿Eliminar permanentemente a:\n\n' +
+    (emp.nombre || 'Sin nombre') + '\n' +
+    'CC: ' + (emp.cedula || '—') + '  ·  ' + (emp.cliente || 'Sin cliente') + '\n\n' +
+    'Esta acción no se puede deshacer.\n¿Continuar?'
+  )) return;
+
+  // Segunda confirmación para registros activos (extra cuidado)
+  if (emp.estado === 'ACTIVO') {
+    if (!confirm(
+      '⚠️ Este empleado está ACTIVO.\n\n' +
+      '¿Seguro que quieres eliminar el registro completo\nen lugar de darle de baja?'
+    )) return;
+  }
+
+  try {
+    // 1. Eliminar documentos adjuntos de Storage
+    const { data: docs } = await sb.from('documentos_empleados')
+      .select('storage_path').eq('empleado_id', String(emp.id));
+    if (docs?.length) {
+      const paths = docs.map(d => d.storage_path).filter(Boolean);
+      if (paths.length) await sb.storage.from('documentos').remove(paths);
+    }
+    await sb.from('documentos_empleados').delete().eq('empleado_id', String(emp.id));
+
+    // 2. Eliminar de Supabase
+    const { error } = await sb.from('empleados').delete().eq('id', emp.id);
+    if (error) { showToast('Error al eliminar: ' + error.message); return; }
+
+    // 3. Quitar del array local
+    const idx = EMPLEADOS.findIndex(e => e.id === emp.id);
+    if (idx !== -1) EMPLEADOS.splice(idx, 1);
+
+    await logAudit('delete', 'empleados', String(emp.id),
+      'Eliminó registro de ' + (emp.nombre || '—') + ' (CC ' + (emp.cedula || '—') + ')');
+
+    // 4. Cerrar panel y refrescar
+    closePanel();
+    filteredData = [...EMPLEADOS];
+    filterTable();
+    renderAlerts();
+    refreshDashboard();
+    showToast('✓ Registro de ' + escapeHTML(emp.nombre || 'empleado') + ' eliminado');
+
+  } catch(e) {
+    showToast('Error inesperado: ' + e.message);
+    console.error('eliminarEmpleado error:', e);
+  }
 }
 
 // ───────────────────── EDIT MODAL ─────────────────────
