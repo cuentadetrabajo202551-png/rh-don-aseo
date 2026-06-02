@@ -4795,10 +4795,12 @@ function applyRoleVisibility() {
   if (sysLabel) sysLabel.style.display = isEditor() ? '' : 'none';
 
   // ── Botones en sección Empleados ──────────────────────────────────────
-  ['btn-nuevo-empleado', 'btn-exportar-excel'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.style.display = isEditor() ? '' : 'none';
-  });
+  // Nuevo empleado: solo editores/admins
+  const btnNuevo = document.getElementById('btn-nuevo-empleado');
+  if (btnNuevo) btnNuevo.style.display = isEditor() ? '' : 'none';
+  // Exportar Excel: todos los roles (incluyendo viewer)
+  const btnExport = document.getElementById('btn-exportar-excel');
+  if (btnExport) btnExport.style.display = '';
 
   // ── Botón Editar en panel de perfil del empleado ──────────────────────
   const editBtn = document.getElementById('panel-edit-btn');
