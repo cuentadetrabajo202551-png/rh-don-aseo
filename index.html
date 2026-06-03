@@ -1465,67 +1465,37 @@ tr.bg-selected td{background:#eff6ff!important}
           <div class="cert-section-label">2. Configurar certificado</div>
           <div class="cert-options-grid">
             <div class="form-group">
-              <label class="form-label">Tipo de certificado</label>
-              <select class="form-select" id="certTipo" onchange="certUpdatePreview()">
-                <option value="laboral">Certificado Laboral</option>
-                <option value="ingreso">Certificado de Ingreso y Salario</option>
-                <option value="permanencia">Certificado de Permanencia</option>
-                <option value="retiro">Certificado de Retiro</option>
-              </select>
-            </div>
-            <div class="form-group">
-              <label class="form-label">Dirigido a</label>
-              <input type="text" class="form-input" id="certDirigidoA" placeholder="Ej: A quien interese, Banco XXX..."
-                oninput="certUpdatePreview()" value="A QUIEN INTERESE">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Propósito (para trámite de...)</label>
-              <select class="form-select" id="certProposito" onchange="certUpdatePreview()">
-                <option value="los fines que el interesado estime convenientes">Propósito general</option>
-                <option value="trámite bancario">Trámite bancario</option>
-                <option value="solicitud de crédito">Solicitud de crédito</option>
-                <option value="trámite de visa">Trámite de visa</option>
-                <option value="arrendamiento de vivienda">Arrendamiento de vivienda</option>
-                <option value="trámite de pensión">Trámite de pensión</option>
-                <option value="trámite de caja de compensación">Caja de compensación</option>
-                <option value="presentación ante entidades externas">Entidades externas</option>
-              </select>
-            </div>
-            <div class="form-group">
               <label class="form-label">Fecha del certificado</label>
               <input type="date" class="form-input" id="certFecha" oninput="certUpdatePreview()">
             </div>
             <div class="form-group">
-              <label class="form-label">Nombre del firmante</label>
-              <input type="text" class="form-input" id="certFirmante" placeholder="Nombre completo del firmante"
-                oninput="certUpdatePreview()" value="FERNANDO CESAR LOPEZ CASTILLO">
-            </div>
-            <div class="form-group">
-              <label class="form-label">Cargo del firmante</label>
-              <input type="text" class="form-input" id="certCargoFirmante" placeholder="Ej: Gerente General"
-                oninput="certUpdatePreview()" value="Gerente General">
+              <label class="form-label">Firmante</label>
+              <input type="text" class="form-input" id="certFirmante" value="FERNANDO CESAR LOPEZ CASTILLO" oninput="certUpdatePreview()">
             </div>
             <div class="form-group" style="grid-column:span 2">
-              <label class="form-label">Incluir en el certificado</label>
-              <div style="display:flex;gap:12px;flex-wrap:wrap;margin-top:4px">
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                  <input type="checkbox" id="certIncSalario" checked onchange="certUpdatePreview()"> Salario
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                  <input type="checkbox" id="certIncHoras" checked onchange="certUpdatePreview()"> Jornada laboral
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                  <input type="checkbox" id="certIncCargo" checked onchange="certUpdatePreview()"> Cargo
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
-                  <input type="checkbox" id="certIncFechas" checked onchange="certUpdatePreview()"> Fechas de vinculación
-                </label>
-                <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:6px;padding:4px 10px">
-                  <input type="checkbox" id="certIncHistorial" checked onchange="certUpdatePreview()">
-                  <span style="color:#1d4ed8;font-weight:600">Historial laboral completo</span>
-                  <span style="font-size:10px;color:#64748b">(tabla con todos los contratos)</span>
-                </label>
-              </div>
+              <label class="form-label">Salario devengado (texto)</label>
+              <input type="text" class="form-input" id="certSalarioText"
+                value="UN SALARIO MINIMO LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY"
+                oninput="certUpdatePreview()">
+            </div>
+            <div class="form-group" id="certHorasRow">
+              <label class="form-label">Horas laboradas</label>
+              <input type="text" class="form-input" id="certHorasText" value="44 HORAS SEMANALES" oninput="certUpdatePreview()">
+            </div>
+            <div class="form-group" id="certDesempenoRow" style="display:none">
+              <label class="form-label">Desempe&ntilde;o</label>
+              <select class="form-select" id="certDesempeno" onchange="certUpdatePreview()">
+                <option value="BUENO">BUENO</option>
+                <option value="EXCELENTE">EXCELENTE</option>
+                <option value="REGULAR">REGULAR</option>
+              </select>
+            </div>
+            <div class="form-group" style="grid-column:span 2">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:8px 12px;width:fit-content">
+                <input type="checkbox" id="certIncHistorial" checked onchange="certUpdatePreview()">
+                <span style="color:#1d4ed8;font-weight:600">Incluir historial laboral completo</span>
+                <span style="font-size:11px;color:#64748b">(tabla con todos los contratos al final)</span>
+              </label>
             </div>
           </div>
         </div>
@@ -6934,174 +6904,182 @@ function certClearEmployee() {
   document.getElementById('certDocBody').innerHTML = '<div class="cert-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 10px;display:block;opacity:.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="font-size:13px;color:var(--text2)">Selecciona un empleado para ver la vista previa</p></div>';
 }
 
+// ── Helper: convierte "01/06/2015" → "01 DE JUNIO DEL 2015" ────────────────
+function fechaLargaCert(ddmmaaaa) {
+  const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
+  if (!ddmmaaaa) return '—';
+  const m = ddmmaaaa.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);
+  if (!m) return ddmmaaaa.toUpperCase();
+  return +m[1] + ' DE ' + (MESES[+m[2]-1] || m[2]) + ' DEL ' + m[3];
+}
+// Helper: convierte "2026-05-21" (ISO input) → "21 de mayo del 2026" (minúsculas para el cierre)
+function fechaLargaISO(iso) {
+  const MESES = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  if (!iso) return '—';
+  const [y,m,d] = iso.split('-');
+  return +d + ' de ' + (MESES[+m-1]||m) + ' del ' + y;
+}
+// ────────────────────────────────────────────────────────────────────────────
+
 function certUpdatePreview() {
   const emp = _certEmp;
   if (!emp) return;
 
-  const tipo   = document.getElementById('certTipo')?.value || 'laboral';
-  const dest   = document.getElementById('certDirigidoA')?.value || 'A QUIEN INTERESE';
-  const prop   = document.getElementById('certProposito')?.value || 'los fines que el interesado estime convenientes';
-  const fecha  = document.getElementById('certFecha')?.value || new Date().toISOString().slice(0,10);
-  const firma  = document.getElementById('certFirmante')?.value || '___________________________';
-  const cFirma = document.getElementById('certCargoFirmante')?.value || 'Jefe de Recursos Humanos';
-  const incSal = document.getElementById('certIncSalario')?.checked;
-  const incHor = document.getElementById('certIncHoras')?.checked;
-  const incCar = document.getElementById('certIncCargo')?.checked;
-  const incFec = document.getElementById('certIncFechas')?.checked;
-  const incHist= document.getElementById('certIncHistorial')?.checked;
+  const fecha     = document.getElementById('certFecha')?.value || new Date().toISOString().slice(0,10);
+  const firma     = (document.getElementById('certFirmante')?.value || 'FERNANDO CESAR LOPEZ CASTILLO').trim().toUpperCase();
+  const salTxt    = (document.getElementById('certSalarioText')?.value || 'UN SALARIO MINIMO LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY').trim();
+  const horasTxt  = (document.getElementById('certHorasText')?.value || '44 HORAS SEMANALES').trim();
+  const desempeno = document.getElementById('certDesempeno')?.value || 'BUENO';
+  const incHist   = document.getElementById('certIncHistorial')?.checked;
 
-  // Format date
-  const [yy,mm,dd] = fecha.split('-');
-  const meses = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
-  const fechaLarga = dd + ' de ' + meses[+mm-1] + ' de ' + yy;
+  const isActivo  = emp.estado === 'ACTIVO';
 
-  const pronombre = emp.genero==='FEMENINO' ? ['La señora','identificada','vinculada','la trabajadora'] : ['El señor','identificado','vinculado','el trabajador'];
+  // Mostrar/ocultar campos del formulario según estado
+  const hrRow = document.getElementById('certHorasRow');
+  const dsRow = document.getElementById('certDesempenoRow');
+  if (hrRow) hrRow.style.display = isActivo ? '' : 'none';
+  if (dsRow) dsRow.style.display = isActivo ? 'none' : '';
 
-  const titulos = {
-    laboral:'CERTIFICADO LABORAL',
-    ingreso:'CERTIFICADO DE INGRESO Y SALARIO',
-    permanencia:'CERTIFICADO DE PERMANENCIA',
-    retiro:'CERTIFICADO DE RETIRO LABORAL'
-  };
+  const fechaCierre = fechaLargaISO(fecha);
+  const ingresoLargo = fechaLargaCert(emp.ingreso);
+  const retiroLargo  = fechaLargaCert(emp.retiro);
 
-  // ── Header corporativo DON ASEO Ltda. — logo real embebido en base64 ──
-  // LOGO_B64 es global — declarada al inicio del script
-
+  // ── HEADER: logo izquierda + servicios derecha ───────────────────────────
   const headerHTML =
-    // Franja superior azul con logo real
-    '<div style="display:flex;align-items:center;justify-content:space-between;background:#003c9d;padding:12px 20px;border-radius:6px 6px 0 0">'
-    + '<img src="' + LOGO_B64 + '" alt="DON ASEO Ltda." style="height:60px;width:auto;display:block">'
-    + '<div style="text-align:right">'
-    + '<div style="color:rgba(255,255,255,.8);font-size:10.5px;font-family:Arial,sans-serif">Recursos Humanos</div>'
-    + '<div style="color:#f5d400;font-size:11px;font-family:Arial,sans-serif;font-weight:700;margin-top:2px">NIT: 812 000 152-7</div>'
-    + '<div style="color:rgba(255,255,255,.6);font-size:10px;margin-top:1px">Montería, Córdoba</div>'
+    '<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:18px">'
+    + '<div style="flex-shrink:0;text-align:center">'
+    + (typeof LOGO_B64!=='undefined'&&LOGO_B64 ? '<img src="'+LOGO_B64+'" style="height:80px;width:auto">' : '')
+    + '<div style="font-size:10px;font-weight:700;color:#1e293b;margin-top:2px">NIT: 812 000 152-7</div>'
     + '</div>'
-    + '</div>'
-    // Banda amarilla decorativa
-    + '<div style="height:4px;background:#f5d400;margin-bottom:22px"></div>';
+    + '<div style="flex:1;text-align:center;font-size:8px;font-weight:700;color:#003c9d;line-height:1.55;padding-top:4px">'
+    + 'ASEO TOTAL, BANCOS, EDIFICIOS, CENTROS COMERCIALES, CONJUNTOS CERRADOS Y CONDOMINIOS,<br>'
+    + 'ADMINISTRACION DE PROPIEDAD HORIZONTAL: PORTEROS, CONSERJES, ASEADORAS Y<br>'
+    + 'JARDINEROS, RECOLECCION DE BASURA, LIMPIEZA DE ALCANTARILLADOS Y RESUMIDEROS,<br>'
+    + 'OPERACI\xd3N Y MANTENIMIENTO DE PLANTAS DE RECICLAJE,<br>'
+    + 'CONSTRUCCI\xd3N Y DISE\xd1O DE RELLENOS SANITARIOS,<br>'
+    + 'CONSERVACI\xd3N DE PARQUES Y ESPACIOS PUBLICOS,<br>'
+    + 'DESCONTAMINACI\xd3N DE RIOS, CANALES Y DIQUES'
+    + '</div></div>'
+    + '<hr style="border:none;border-top:1px solid #cbd5e1;margin:0 0 18px">';
 
+  // ── TÍTULO LEGAL ─────────────────────────────────────────────────────────
   const tituloHTML =
-    '<div style="background:#003c9d;color:#fff;text-align:center;padding:9px 16px;font-size:13px;font-weight:800;letter-spacing:2.5px;text-transform:uppercase;margin:20px 0 22px;border-radius:3px">'
-    + escapeHTML(titulos[tipo]||'CERTIFICADO LABORAL')
-    + '</div>';
+    '<div style="text-align:center;font-weight:700;font-size:12.5px;line-height:1.5;margin:0 0 6px">'
+    + 'EL SUSCRITO REPRESENTANTE LEGAL DE LA EMPRESA DON ASEO LTDA, NIT 812.000.152-7,'
+    + ' EN CUMPLIMIENTO DEL NUMERAL 7 DEL ARTICULO 57 DEL CODIGO SUSTANTIVO DEL TRABAJO'
+    + '</div>'
+    + '<div style="text-align:center;font-weight:700;font-size:13px;margin-bottom:20px">CERTIFICA QUE:</div>';
 
-  // ── Cuerpo del certificado ──────────────────────────────────────────────
-  let cuerpo = '';
-  cuerpo += '<p style="margin-bottom:14px"><strong>DON ASEO Ltda.</strong>, empresa dedicada a la prestación de servicios de aseo, mantenimiento y suministro de personal, identificada con NIT 812.000.152-7, con domicilio en la ciudad de Montería, certifica que:</p>';
-
-  let parr = pronombre[0] + ' <strong>' + escapeHTML(emp.nombre) + '</strong>, '
-    + pronombre[1] + ' con Cédula de Ciudadanía N.° <strong>' + escapeHTML(emp.cedula) + '</strong>';
-
-  if (emp.estado === 'ACTIVO') {
-    parr += ', <strong>se encuentra vinculado(a)</strong> a la empresa';
+  // ── PÁRRAFO INICIAL ───────────────────────────────────────────────────────
+  let parrafo = '';
+  if (isActivo) {
+    parrafo = '<p style="margin-bottom:10px;font-size:12.5px;line-height:1.7">'
+      + 'El (La) se\xf1or (a) <strong>' + escapeHTML(emp.nombre) + '</strong>, identificado con c\xe9dula de ciudadan\xeda'
+      + ' No. <strong>' + escapeHTML(emp.cedula) + '</strong>, se encuentra actualmente vinculado laboralmente a nuestra empresa.</p>'
+      + '<p style="margin-bottom:14px;font-size:12.5px">A continuaci\xf3n, se relaciona la informaci\xf3n correspondiente a su vinculaci\xf3n laboral:</p>';
   } else {
-    parr += ', <strong>estuvo vinculado(a)</strong> a la empresa';
+    parrafo = '<p style="margin-bottom:14px;font-size:12.5px;line-height:1.7;text-align:justify">'
+      + 'El (La) se\xf1or (a) <strong>' + escapeHTML(emp.nombre) + '</strong>, identificado con c\xe9dula de'
+      + ' ciudadan\xeda No. <strong>' + escapeHTML(emp.cedula) + '</strong>, labor\xf3 para nuestra empresa bajo'
+      + ' contrato de trabajo, desempe\xf1ando sus funciones con responsabilidad y buen cumplimiento,'
+      + ' de acuerdo con las labores asignadas.</p>';
   }
 
-  if (incCar && emp.cargo) parr += ' en el cargo de <strong>' + escapeHTML(emp.cargo) + '</strong>';
-  if (emp.cliente) parr += ', prestando sus servicios en <strong>' + escapeHTML(emp.cliente) + '</strong>';
-  parr += '.';
-  cuerpo += '<p>' + parr + '</p>';
+  // ── TABLA DE DATOS ────────────────────────────────────────────────────────
+  const tdL = 'style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top"';
+  const tdR = 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top"';
+  const tdRb= 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top;font-weight:700"';
 
-  if (incFec && emp.ingreso) {
-    let p2 = 'La relación laboral inició el día <strong>' + escapeHTML(emp.ingreso) + '</strong>';
-    if (emp.estado === 'INACTIVO' && emp.retiro) {
-      p2 += ' y finalizó el <strong>' + escapeHTML(emp.retiro) + '</strong>';
-      if (emp.motivo) p2 += ' por motivo de <strong>' + escapeHTML(emp.motivo) + '</strong>';
-    } else {
-      p2 += ', y a la fecha de expedición de esta certificación <strong>continúa activo(a)</strong>';
-    }
-    p2 += '.';
-    cuerpo += '<p>' + p2 + '</p>';
+  let filas = '';
+  if (isActivo) {
+    filas +=
+      '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
+      +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
+      +'<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>'
+      +'<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>'
+      +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>';
+  } else {
+    filas +=
+      '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
+      +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(emp.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
+      +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
+      +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
+      +'<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>'
+      +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
+      +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
   }
+  const tablaHTML = '<table style="width:100%;border-collapse:collapse;margin:0 0 22px">'
+    + '<tbody>' + filas + '</tbody></table>';
 
-  if (incSal && emp.salario) {
-    cuerpo += '<p>Durante su vinculación ha devengado un salario mensual de <strong>' + escapeHTML(emp.salario) + '</strong>.</p>';
-  }
+  // ── CIERRE ───────────────────────────────────────────────────────────────
+  const cierreHTML = '<p style="font-size:12.5px;margin-bottom:6px;line-height:1.7">'
+    + 'La presente certificaci\xf3n se expide en la ciudad de Monter\xeda, a solicitud del interesado el d\xeda '
+    + fechaCierre + '.</p>';
 
-  if (incHor && emp.horas) {
-    cuerpo += '<p>Su jornada laboral es de <strong>' + escapeHTML(emp.horas) + '</strong>.</p>';
-  }
+  // ── FIRMA ────────────────────────────────────────────────────────────────
+  const firmaImg = (typeof FIRMA_GERENTE_B64!=='undefined'&&FIRMA_GERENTE_B64)
+    ? '<img src="'+FIRMA_GERENTE_B64+'" alt="Firma" style="height:70px;width:auto;display:block;margin-bottom:0">'
+    : '<div style="height:50px"></div>';
 
-  // ── Historial laboral completo (tabla) ─────────────────────────────────
+  const firmaHTML =
+    '<div style="margin-top:24px">'
+    + '<p style="font-size:12.5px;margin-bottom:4px">Cordialmente,</p>'
+    + firmaImg
+    + '<p style="font-size:12.5px;font-weight:700;margin:2px 0 0;line-height:1.4">'
+    + 'DON ASEO LTDA<br>NIT: 812.000.152-7<br>'
+    + escapeHTML(firma) + '<br>'
+    + 'REPRESENTANTE LEGAL<br>'
+    + 'CELULAR 315-6841125'
+    + '</p></div>';
+
+  // ── HISTORIAL (opcional) ──────────────────────────────────────────────────
+  let historialHTML = '';
   if (incHist && emp.cedula) {
-    const historial = EMPLEADOS
-      .filter(e => e.cedula === emp.cedula)
-      .sort((a, b) => (a.ingreso || '').localeCompare(b.ingreso || ''));
-
-    if (historial.length >= 1) {
-      // Calcular tiempo trabajado por registro
-      function calcTiempo(ing, ret) {
-        if (!ing) return '—';
-        const dmy = s => { const p=s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/); return p?new Date(+p[3],+p[2]-1,+p[1]):null; };
-        const d1 = dmy(ing); if (!d1) return '—';
-        const d2 = ret ? dmy(ret) : new Date();
-        if (!d2) return '—';
-        const meses = (d2.getFullYear()-d1.getFullYear())*12 + (d2.getMonth()-d1.getMonth());
-        if (meses < 1) return 'Menos de 1 mes';
-        const a = Math.floor(meses/12), m = meses%12;
-        return (a>0 ? a+' año'+(a!==1?'s':'') : '') + (a>0&&m>0?' ':''+(m>0?m+' mes'+(m!==1?'es':''):''));
+    const hist = EMPLEADOS.filter(e=>e.cedula===emp.cedula).sort((a,b)=>(a.ingreso||'').localeCompare(b.ingreso||''));
+    if (hist.length > 1) {
+      function _calcT(ing, ret) {
+        const dmy=s=>{const p=s&&s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);return p?new Date(+p[3],+p[2]-1,+p[1]):null;};
+        const d1=dmy(ing); if(!d1) return '—';
+        const d2=ret?dmy(ret):new Date();
+        const ms=(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth());
+        if(ms<1) return '<1 mes';
+        const a=Math.floor(ms/12),m=ms%12;
+        return (a>0?a+'a ':'')+(m>0?m+'m':'');
       }
-
-      cuerpo += '<div style="margin:20px 0 16px">'
-        + '<div style="font-size:11px;font-weight:800;letter-spacing:1px;text-transform:uppercase;color:#003c9d;margin-bottom:8px;border-bottom:2px solid #003c9d;padding-bottom:4px">Historial Laboral</div>'
-        + '<table style="width:100%;border-collapse:collapse;font-size:11px">'
-        + '<thead>'
-        + '<tr style="background:#003c9d;color:#fff">'
-        + '<th style="padding:6px 10px;text-align:left;font-weight:700">Cliente / Entidad</th>'
-        + '<th style="padding:6px 10px;text-align:left;font-weight:700">Cargo</th>'
-        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Ingreso</th>'
-        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Retiro</th>'
-        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Tiempo</th>'
-        + '<th style="padding:6px 10px;text-align:center;font-weight:700">Estado</th>'
-        + '</tr></thead><tbody>'
-        + historial.map((r, i) => {
-            const bg = i % 2 === 0 ? '#f8fafc' : '#fff';
-            const estadoColor = r.estado === 'ACTIVO' ? '#16a34a' : '#64748b';
-            const retiroText = r.retiro || (r.estado === 'ACTIVO' ? '<em>Activo</em>' : '—');
-            return '<tr style="background:' + bg + ';border-bottom:1px solid #e2e8f0">'
-              + '<td style="padding:6px 10px;font-weight:600">' + escapeHTML(r.cliente || '—') + '</td>'
-              + '<td style="padding:6px 10px;color:#475569">' + escapeHTML(r.cargo || '—') + '</td>'
-              + '<td style="padding:6px 10px;text-align:center;color:#475569">' + escapeHTML(r.ingreso || '—') + '</td>'
-              + '<td style="padding:6px 10px;text-align:center;color:#475569">' + (r.retiro ? escapeHTML(r.retiro) : (r.estado==='ACTIVO'?'<span style="color:#16a34a;font-style:italic">Activo</span>':'—')) + '</td>'
-              + '<td style="padding:6px 10px;text-align:center;color:#475569">' + calcTiempo(r.ingreso, r.retiro || null) + '</td>'
-              + '<td style="padding:6px 10px;text-align:center;font-weight:700;font-size:10px;color:' + estadoColor + '">' + escapeHTML(r.estado || '—') + '</td>'
-              + '</tr>';
-          }).join('')
-        + '</tbody></table></div>';
+      historialHTML = '<div style="margin-top:20px;border-top:1px solid #cbd5e1;padding-top:12px">'
+        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#003c9d;margin-bottom:8px">Historial Laboral</div>'
+        +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
+        +'<thead><tr style="background:#003c9d;color:#fff">'
+        +'<th style="padding:5px 8px;text-align:left">Cliente / Entidad</th>'
+        +'<th style="padding:5px 8px;text-align:left">Cargo</th>'
+        +'<th style="padding:5px 8px;text-align:center">Ingreso</th>'
+        +'<th style="padding:5px 8px;text-align:center">Retiro</th>'
+        +'<th style="padding:5px 8px;text-align:center">Tiempo</th>'
+        +'<th style="padding:5px 8px;text-align:center">Estado</th>'
+        +'</tr></thead><tbody>'
+        + hist.map((r,i)=>'<tr style="background:'+(i%2===0?'#f8fafc':'#fff')+';border-bottom:1px solid #e2e8f0">'
+            +'<td style="padding:5px 8px">'+escapeHTML(r.cliente||'—')+'</td>'
+            +'<td style="padding:5px 8px">'+escapeHTML(r.cargo||'—')+'</td>'
+            +'<td style="padding:5px 8px;text-align:center">'+escapeHTML(r.ingreso||'—')+'</td>'
+            +'<td style="padding:5px 8px;text-align:center">'+(r.retiro?escapeHTML(r.retiro):(r.estado==='ACTIVO'?'<em style="color:#16a34a">Activo</em>':'—'))+'</td>'
+            +'<td style="padding:5px 8px;text-align:center">'+_calcT(r.ingreso,r.retiro||null)+'</td>'
+            +'<td style="padding:5px 8px;text-align:center;font-weight:700;font-size:10px;color:'+(r.estado==='ACTIVO'?'#16a34a':'#64748b')+'">'+escapeHTML(r.estado||'—')+'</td>'
+            +'</tr>').join('')
+        +'</tbody></table></div>';
     }
   }
 
-  cuerpo += '<p>La presente certificación se expide a solicitud del(a) interesado(a) para <strong>' + escapeHTML(prop) + '</strong>.</p>';
-
-  // ── Firma ──────────────────────────────────────────────────────────────
-  const firmaImgHtml = (typeof FIRMA_GERENTE_B64 !== 'undefined' && FIRMA_GERENTE_B64)
-    ? '<img src="' + FIRMA_GERENTE_B64 + '" alt="Firma" style="height:64px;width:auto;display:block;margin:0 auto 2px">'
-    : '<div style="height:64px"></div>';
-
-  const footerHTML =
-    '<div style="margin-top:44px;text-align:center">'
-    + firmaImgHtml
-    + '<div style="display:inline-block;border-top:1px solid #003c9d;width:260px;margin-bottom:6px"></div><br>'
-    + '<div style="font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:#003c9d">' + escapeHTML(firma||'FERNANDO CESAR LOPEZ CASTILLO') + '</div>'
-    + '<div style="font-size:11px;color:#64748b;margin-top:1px">C.C. 6.883.516</div>'
-    + '<div style="font-size:11px;color:#64748b;margin-top:1px">' + escapeHTML(cFirma) + '</div>'
-    + '<div style="font-size:11px;color:#64748b">DON ASEO Ltda. · NIT 812.000.152-7</div>'
-    + '</div>';
-
-  // ── Pie de página ──────────────────────────────────────────────────────
+  // ── PIE DE PÁGINA: 3 sedes ────────────────────────────────────────────────
   const piePagHTML =
-    '<div style="margin-top:28px;border-top:2px solid #003c9d;padding-top:8px;display:flex;justify-content:space-between;align-items:center">'
-    + '<div style="font-size:10px;color:#64748b"><strong style="color:#003c9d">DON ASEO Ltda.</strong> · NIT 812.000.152-7 · Montería, Córdoba</div>'
-    + '<div style="font-size:10px;color:#64748b">Expedido el ' + fechaLarga + '</div>'
+    '<div style="margin-top:28px;border-top:1px solid #003c9d;padding-top:8px;text-align:center;font-size:9px;font-weight:700;color:#003c9d;line-height:1.8">'
+    + 'MONTER\xcdA: Calle 34 No.4-63 Telefax: 782 4086<br>'
+    + 'SINCELEJO: Calle 22 No. 14-56 Local 2 Calle Santander Tel: 281 2901<br>'
+    + 'CARTAGENA: Edificio Rosal Cra. 19 No. 19-10 Apto B. Manga Calej\xf3n Santa Clara Tal: 643 7457<br>'
+    + 'E-mail: donaseo2005@yahoo.es'
     + '</div>';
 
-  const html = headerHTML + tituloHTML
-    + '<div style="font-size:12px;color:#64748b;text-align:right;margin-bottom:16px">Montería, ' + fechaLarga + '</div>'
-    + '<div style="font-size:12px;margin-bottom:18px;color:#374151;border-left:3px solid #f5d400;padding-left:10px"><strong>Señores:</strong> ' + escapeHTML(dest) + '</div>'
-    + '<div class="cert-body" style="font-size:13px;line-height:1.75;color:#1a1a1a">' + cuerpo + '</div>'
-    + footerHTML
-    + piePagHTML;
+  const html = headerHTML + tituloHTML + parrafo + tablaHTML + cierreHTML
+    + firmaHTML + historialHTML + piePagHTML;
 
   const body = document.getElementById('certDocBody');
   if (body) body.innerHTML = html;
