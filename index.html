@@ -1473,13 +1473,23 @@ tr.bg-selected td{background:#eff6ff!important}
               <input type="text" class="form-input" id="certFirmante" value="FERNANDO CESAR LOPEZ CASTILLO" oninput="certUpdatePreview()">
             </div>
             <div class="form-group" style="grid-column:span 2">
-              <label class="form-label">Salario devengado (texto)</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <label class="form-label" style="margin:0">Salario devengado (texto)</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text2)">
+                  <input type="checkbox" id="certIncSalario" checked onchange="certUpdatePreview()"> Incluir en certificado
+                </label>
+              </div>
               <input type="text" class="form-input" id="certSalarioText"
                 value="UN SALARIO MINIMO LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY"
                 oninput="certUpdatePreview()">
             </div>
             <div class="form-group" id="certHorasRow">
-              <label class="form-label">Horas laboradas</label>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <label class="form-label" style="margin:0">Horas laboradas</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text2)">
+                  <input type="checkbox" id="certIncHoras" checked onchange="certUpdatePreview()"> Incluir
+                </label>
+              </div>
               <input type="text" class="form-input" id="certHorasText" value="44 HORAS SEMANALES" oninput="certUpdatePreview()">
             </div>
             <div class="form-group" id="certDesempenoRow" style="display:none">
@@ -1490,11 +1500,11 @@ tr.bg-selected td{background:#eff6ff!important}
                 <option value="REGULAR">REGULAR</option>
               </select>
             </div>
-            <div class="form-group" style="grid-column:span 2">
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:8px 12px;width:fit-content">
+            <div class="form-group" style="grid-column:span 2;display:flex;gap:10px;flex-wrap:wrap">
+              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:8px 12px">
                 <input type="checkbox" id="certIncHistorial" checked onchange="certUpdatePreview()">
-                <span style="color:#1d4ed8;font-weight:600">Incluir historial laboral completo</span>
-                <span style="font-size:11px;color:#64748b">(tabla con todos los contratos al final)</span>
+                <span style="color:#1d4ed8;font-weight:600">Incluir historial laboral</span>
+                <span style="font-size:11px;color:#64748b">(tabla de todos los contratos al final)</span>
               </label>
             </div>
           </div>
@@ -6930,6 +6940,8 @@ function certUpdatePreview() {
   const salTxt    = (document.getElementById('certSalarioText')?.value || 'UN SALARIO MINIMO LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY').trim();
   const horasTxt  = (document.getElementById('certHorasText')?.value || '44 HORAS SEMANALES').trim();
   const desempeno = document.getElementById('certDesempeno')?.value || 'BUENO';
+  const incSal    = document.getElementById('certIncSalario')?.checked !== false;
+  const incHoras  = document.getElementById('certIncHoras')?.checked !== false;
   const incHist   = document.getElementById('certIncHistorial')?.checked;
 
   const isActivo  = emp.estado === 'ACTIVO';
@@ -6995,8 +7007,8 @@ function certUpdatePreview() {
     filas +=
       '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
       +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
-      +'<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>'
-      +'<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>'
+      +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+      +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '')
       +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>';
   } else {
     filas +=
@@ -7004,7 +7016,7 @@ function certUpdatePreview() {
       +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(emp.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
       +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
       +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
-      +'<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>'
+      +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
       +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
       +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
   }
