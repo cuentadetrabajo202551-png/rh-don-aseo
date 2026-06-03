@@ -6955,11 +6955,19 @@ function certUpdatePreview() {
 
   const isActivo  = emp.estado === 'ACTIVO';
 
-  // Mostrar/ocultar campos del formulario según estado
+  // Todos los contratos del empleado (se necesita para saber estado real)
+  // Se calcula ANTES del bloque de contratos para usarlo en el párrafo
+  const todosContratosEarly = emp.cedula
+    ? EMPLEADOS.filter(e => e.cedula === emp.cedula)
+    : [emp];
+  // Estado real: activo si ALGUNO de sus contratos está activo
+  const isActivoReal = todosContratosEarly.some(r => r.estado === 'ACTIVO');
+
+  // Mostrar/ocultar campos del formulario según estado real
   const hrRow = document.getElementById('certHorasRow');
   const dsRow = document.getElementById('certDesempenoRow');
-  if (hrRow) hrRow.style.display = isActivo ? '' : 'none';
-  if (dsRow) dsRow.style.display = isActivo ? 'none' : '';
+  if (hrRow) hrRow.style.display = isActivoReal ? '' : 'none';
+  if (dsRow) dsRow.style.display = isActivoReal ? 'none' : '';
 
   const fechaCierre = fechaLargaISO(fecha);
   const ingresoLargo = fechaLargaCert(emp.ingreso);
@@ -6991,9 +6999,9 @@ function certUpdatePreview() {
     + '</div>'
     + '<div style="text-align:center;font-weight:700;font-size:13px;margin-bottom:20px">CERTIFICA QUE:</div>';
 
-  // ── PÁRRAFO INICIAL ───────────────────────────────────────────────────────
+  // ── PÁRRAFO INICIAL — usa estado REAL (activo si algún contrato está activo) ──
   let parrafo = '';
-  if (isActivo) {
+  if (isActivoReal) {
     parrafo = '<p style="margin-bottom:10px;font-size:12.5px;line-height:1.7">'
       + 'El (La) se\xf1or (a) <strong>' + escapeHTML(emp.nombre) + '</strong>, identificado con c\xe9dula de ciudadan\xeda'
       + ' No. <strong>' + escapeHTML(emp.cedula) + '</strong>, se encuentra actualmente vinculado laboralmente a nuestra empresa.</p>'
