@@ -7050,12 +7050,15 @@ function certUpdatePreview() {
       // ── Inactivo con historial: bloque de todos los períodos ──
       const filasHist = todosContratos.map((r, i) => {
         const ing = fechaLargaCert(r.ingreso);
-        const ret = r.retiro ? fechaLargaCert(r.retiro) : '—';
+        const ret = r.retiro ? fechaLargaCert(r.retiro) : null;
+        const retDisplay = r.estado === 'ACTIVO'
+          ? '<strong style="color:#16a34a">ACTIVO</strong>'
+          : 'Retiro: ' + (ret || '—');
         return '<div style="padding:'+(i>0?'8px 0 0':'0 0 0')+(i<todosContratos.length-1?';border-bottom:1px solid #e5e7eb;padding-bottom:8px':'')+'">'
           + '<div style="font-weight:700;font-size:11px">'+(i+1)+'. '+escapeHTML(r.cliente||'—')+'</div>'
           + '<div style="font-size:11px;margin-top:2px">Cargo: '+escapeHTML(r.cargo||'—')+'</div>'
-          + '<div style="font-size:11px">Ingreso: '+ing+' &nbsp;&bull;&nbsp; Retiro: '+ret+'</div>'
-          + (r.motivo ? '<div style="font-size:11px;color:#475569">Motivo: '+escapeHTML(r.motivo)+'</div>' : '')
+          + '<div style="font-size:11px">Ingreso: '+ing+' &nbsp;&bull;&nbsp; '+retDisplay+'</div>'
+          + (r.motivo && r.estado!=='ACTIVO' ? '<div style="font-size:11px;color:#475569">Motivo: '+escapeHTML(r.motivo)+'</div>' : '')
           + '</div>';
       }).join('');
       filas +=
@@ -7109,43 +7112,6 @@ function certUpdatePreview() {
     + 'CELULAR 315-6841125'
     + '</p></div>';
 
-  // ── HISTORIAL (automático cuando hay múltiples contratos) ────────────────
-  let historialHTML = '';
-  if (tieneHistorial && emp.cedula) {
-    const hist = EMPLEADOS.filter(e=>e.cedula===emp.cedula).sort((a,b)=>(a.ingreso||'').localeCompare(b.ingreso||''));
-    if (hist.length > 1) {
-      function _calcT(ing, ret) {
-        const dmy=s=>{const p=s&&s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})$/);return p?new Date(+p[3],+p[2]-1,+p[1]):null;};
-        const d1=dmy(ing); if(!d1) return '—';
-        const d2=ret?dmy(ret):new Date();
-        const ms=(d2.getFullYear()-d1.getFullYear())*12+(d2.getMonth()-d1.getMonth());
-        if(ms<1) return '<1 mes';
-        const a=Math.floor(ms/12),m=ms%12;
-        return (a>0?a+'a ':'')+(m>0?m+'m':'');
-      }
-      historialHTML = '<div style="margin-top:20px;border-top:1px solid #cbd5e1;padding-top:12px">'
-        +'<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.8px;color:#003c9d;margin-bottom:8px">Historial Laboral</div>'
-        +'<table style="width:100%;border-collapse:collapse;font-size:10.5px">'
-        +'<thead><tr style="background:#003c9d;color:#fff">'
-        +'<th style="padding:5px 8px;text-align:left">Cliente / Entidad</th>'
-        +'<th style="padding:5px 8px;text-align:left">Cargo</th>'
-        +'<th style="padding:5px 8px;text-align:center">Ingreso</th>'
-        +'<th style="padding:5px 8px;text-align:center">Retiro</th>'
-        +'<th style="padding:5px 8px;text-align:center">Tiempo</th>'
-        +'<th style="padding:5px 8px;text-align:center">Estado</th>'
-        +'</tr></thead><tbody>'
-        + hist.map((r,i)=>'<tr style="background:'+(i%2===0?'#f8fafc':'#fff')+';border-bottom:1px solid #e2e8f0">'
-            +'<td style="padding:5px 8px">'+escapeHTML(r.cliente||'—')+'</td>'
-            +'<td style="padding:5px 8px">'+escapeHTML(r.cargo||'—')+'</td>'
-            +'<td style="padding:5px 8px;text-align:center">'+escapeHTML(r.ingreso||'—')+'</td>'
-            +'<td style="padding:5px 8px;text-align:center">'+(r.retiro?escapeHTML(r.retiro):(r.estado==='ACTIVO'?'<em style="color:#16a34a">Activo</em>':'—'))+'</td>'
-            +'<td style="padding:5px 8px;text-align:center">'+_calcT(r.ingreso,r.retiro||null)+'</td>'
-            +'<td style="padding:5px 8px;text-align:center;font-weight:700;font-size:10px;color:'+(r.estado==='ACTIVO'?'#16a34a':'#64748b')+'">'+escapeHTML(r.estado||'—')+'</td>'
-            +'</tr>').join('')
-        +'</tbody></table></div>';
-    }
-  }
-
   // ── PIE DE PÁGINA: 3 sedes ────────────────────────────────────────────────
   const piePagHTML =
     '<div style="margin-top:28px;border-top:1px solid #003c9d;padding-top:8px;text-align:center;font-size:9px;font-weight:700;color:#003c9d;line-height:1.8">'
@@ -7156,7 +7122,7 @@ function certUpdatePreview() {
     + '</div>';
 
   const html = headerHTML + tituloHTML + parrafo + tablaHTML + notasHTML + cierreHTML
-    + firmaHTML + historialHTML + piePagHTML;
+    + firmaHTML + piePagHTML;
 
   const body = document.getElementById('certDocBody');
   if (body) body.innerHTML = html;
