@@ -1500,12 +1500,22 @@ tr.bg-selected td{background:#eff6ff!important}
                 <option value="REGULAR">REGULAR</option>
               </select>
             </div>
-            <div class="form-group" style="grid-column:span 2;display:flex;gap:10px;flex-wrap:wrap">
-              <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;background:#eff6ff;border:1px solid #bfdbfe;border-radius:7px;padding:8px 12px">
-                <input type="checkbox" id="certIncHistorial" checked onchange="certUpdatePreview()">
-                <span style="color:#1d4ed8;font-weight:600">Incluir historial laboral</span>
-                <span style="font-size:11px;color:#64748b">(tabla de todos los contratos al final)</span>
-              </label>
+            <div class="form-group" style="grid-column:span 2">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <label class="form-label" style="margin:0">Notas / Observaciones</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text2)">
+                  <input type="checkbox" id="certIncNotas" onchange="
+                    document.getElementById('certNotasWrap').style.display=this.checked?'block':'none';
+                    certUpdatePreview()">
+                  Incluir en certificado
+                </label>
+              </div>
+              <div id="certNotasWrap" style="display:none">
+                <textarea id="certNotas" rows="3" class="form-input"
+                  placeholder="Ej: El trabajador se desempeñó con excelente actitud y responsabilidad..."
+                  oninput="certUpdatePreview()"
+                  style="resize:vertical;min-height:70px;font-size:13px;line-height:1.5"></textarea>
+              </div>
             </div>
           </div>
         </div>
@@ -6942,7 +6952,6 @@ function certUpdatePreview() {
   const desempeno = document.getElementById('certDesempeno')?.value || 'BUENO';
   const incSal    = document.getElementById('certIncSalario')?.checked !== false;
   const incHoras  = document.getElementById('certIncHoras')?.checked !== false;
-  const incHist   = document.getElementById('certIncHistorial')?.checked;
 
   const isActivo  = emp.estado === 'ACTIVO';
 
@@ -7003,25 +7012,81 @@ function certUpdatePreview() {
   const tdRb= 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top;font-weight:700"';
 
   let filas = '';
+  // Todos los registros de este empleado (por cédula), ordenados cronológicamente
+  const todosContratos = emp.cedula
+    ? EMPLEADOS.filter(e => e.cedula === emp.cedula).sort((a,b) => (a.ingreso||'').localeCompare(b.ingreso||''))
+    : [emp];
+  const tieneHistorial = todosContratos.length > 1;
+
   if (isActivo) {
-    filas +=
-      '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
-      +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
-      +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
-      +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '')
-      +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>';
+    if (tieneHistorial) {
+      // ── Activo con historial: bloque de vinculaciones en la misma área ──
+      const filasHist = todosContratos.map((r, i) => {
+        const esActual = r.id === emp.id || r.estado === 'ACTIVO';
+        const ing = fechaLargaCert(r.ingreso);
+        const ret = r.retiro ? fechaLargaCert(r.retiro) : (r.estado==='ACTIVO'?'<em>Activo actualmente</em>':'—');
+        return '<div style="padding:'+(i>0?'8px 0 0':'0 0 0')+(i<todosContratos.length-1?';border-bottom:1px solid #e5e7eb;padding-bottom:8px':'')+'">'
+          + '<div style="font-weight:700;font-size:11px">'+(i+1)+'. '+escapeHTML(r.cliente||'—')+'</div>'
+          + '<div style="font-size:11px;margin-top:2px">Cargo: '+escapeHTML(r.cargo||'—')+'</div>'
+          + '<div style="font-size:11px">Ingreso: '+ing+' &nbsp;&bull;&nbsp; '+(r.estado==='ACTIVO'?'<strong style="color:#16a34a">ACTIVO</strong>':'Retiro: '+ret)+'</div>'
+          + '</div>';
+      }).join('');
+      filas +=
+        '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
+        +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
+        +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '');
+    } else {
+      // ── Activo sin historial: filas normales ──
+      filas +=
+        '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
+        +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
+        +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '')
+        +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>';
+    }
   } else {
-    filas +=
-      '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
-      +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(emp.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
-      +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
-      +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
-      +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
-      +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
-      +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
+    if (tieneHistorial) {
+      // ── Inactivo con historial: bloque de todos los períodos ──
+      const filasHist = todosContratos.map((r, i) => {
+        const ing = fechaLargaCert(r.ingreso);
+        const ret = r.retiro ? fechaLargaCert(r.retiro) : '—';
+        return '<div style="padding:'+(i>0?'8px 0 0':'0 0 0')+(i<todosContratos.length-1?';border-bottom:1px solid #e5e7eb;padding-bottom:8px':'')+'">'
+          + '<div style="font-weight:700;font-size:11px">'+(i+1)+'. '+escapeHTML(r.cliente||'—')+'</div>'
+          + '<div style="font-size:11px;margin-top:2px">Cargo: '+escapeHTML(r.cargo||'—')+'</div>'
+          + '<div style="font-size:11px">Ingreso: '+ing+' &nbsp;&bull;&nbsp; Retiro: '+ret+'</div>'
+          + (r.motivo ? '<div style="font-size:11px;color:#475569">Motivo: '+escapeHTML(r.motivo)+'</div>' : '')
+          + '</div>';
+      }).join('');
+      filas +=
+        '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
+        +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
+        +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
+    } else {
+      // ── Inactivo sin historial: filas normales ──
+      filas +=
+        '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
+        +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(emp.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
+        +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
+    }
   }
   const tablaHTML = '<table style="width:100%;border-collapse:collapse;margin:0 0 22px">'
     + '<tbody>' + filas + '</tbody></table>';
+
+  // ── NOTAS / OBSERVACIONES (opcional) ─────────────────────────────────────
+  const incNotas  = document.getElementById('certIncNotas')?.checked;
+  const notasTxt  = (document.getElementById('certNotas')?.value || '').trim();
+  const notasHTML = (incNotas && notasTxt)
+    ? '<div style="margin:0 0 18px;padding:10px 14px;border-left:3px solid #003c9d;background:#f8fafc;font-size:12.5px;line-height:1.7;color:#1e293b">'
+      + '<div style="font-size:10px;font-weight:700;color:#003c9d;text-transform:uppercase;letter-spacing:.6px;margin-bottom:5px">Observaciones</div>'
+      + escapeHTML(notasTxt)
+      + '</div>'
+    : '';
 
   // ── CIERRE ───────────────────────────────────────────────────────────────
   const cierreHTML = '<p style="font-size:12.5px;margin-bottom:6px;line-height:1.7">'
@@ -7044,9 +7109,9 @@ function certUpdatePreview() {
     + 'CELULAR 315-6841125'
     + '</p></div>';
 
-  // ── HISTORIAL (opcional) ──────────────────────────────────────────────────
+  // ── HISTORIAL (automático cuando hay múltiples contratos) ────────────────
   let historialHTML = '';
-  if (incHist && emp.cedula) {
+  if (tieneHistorial && emp.cedula) {
     const hist = EMPLEADOS.filter(e=>e.cedula===emp.cedula).sort((a,b)=>(a.ingreso||'').localeCompare(b.ingreso||''));
     if (hist.length > 1) {
       function _calcT(ing, ret) {
@@ -7090,7 +7155,7 @@ function certUpdatePreview() {
     + 'E-mail: donaseo2005@yahoo.es'
     + '</div>';
 
-  const html = headerHTML + tituloHTML + parrafo + tablaHTML + cierreHTML
+  const html = headerHTML + tituloHTML + parrafo + tablaHTML + notasHTML + cierreHTML
     + firmaHTML + historialHTML + piePagHTML;
 
   const body = document.getElementById('certDocBody');
