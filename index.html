@@ -4609,7 +4609,9 @@ function addCatalogItem(catKey, targetSelectId){
   const norm = val.trim().toUpperCase();
   if(!CATALOGS[catKey].includes(norm)){
     CATALOGS[catKey].push(norm);
+    CATALOGS[catKey].sort();
     initCatalogs();
+    persistCatalog(catKey);  // ← guarda en Supabase para que todos los usuarios lo vean
     showToast(`"${norm}" agregado al catálogo`);
   }
   const sel = document.getElementById(targetSelectId);
