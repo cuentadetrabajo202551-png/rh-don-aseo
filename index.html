@@ -2026,7 +2026,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <label class="form-label">Horas laborales</label>
           <select class="form-select" id="f_horas">
             <option value="">— Sin especificar —</option>
-            <option>08 HORAS</option><option>12 HORAS</option><option>TURNOS</option>
+            <option>04 HORAS</option><option>08 HORAS</option><option>12 HORAS</option><option>TURNOS</option>
           </select>
         </div>
         <div class="form-group">
@@ -5695,7 +5695,8 @@ function validateRow(row) {
 
   // Normalizar horas laborales (cat\xe1logo usa "8 horas"/"12 horas", sistema usa "08 HORAS"/"12 HORAS")
   if(row.horas){
-    const hMap = {'8 HORAS':'08 HORAS','08 HORAS':'08 HORAS','8H':'08 HORAS','08H':'08 HORAS',
+    const hMap = {'4 HORAS':'04 HORAS','04 HORAS':'04 HORAS','4H':'04 HORAS','04H':'04 HORAS',
+                  '8 HORAS':'08 HORAS','08 HORAS':'08 HORAS','8H':'08 HORAS','08H':'08 HORAS',
                   '12 HORAS':'12 HORAS','12H':'12 HORAS','TURNOS':'TURNOS','TURNO':'TURNOS'};
     const h = row.horas.toString().trim().toUpperCase();
     row.horas = hMap[h] || h;
