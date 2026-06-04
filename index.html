@@ -4554,6 +4554,8 @@ async function loadCatalogsFromDB() {
       row.items.forEach(item => CATALOGS[row.key].push(item));
     }
   });
+  // Actualizar contadores del sidebar con los tamaños reales cargados desde Supabase
+  updateCatalogSidebar();
 }
 
 async function persistCatalog(key) {
