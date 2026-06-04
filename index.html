@@ -2033,6 +2033,10 @@ tr.bg-selected td{background:#eff6ff!important}
           <label class="form-label">Salario</label>
           <input type="text" class="form-input" id="f_salario" placeholder="Ej: $1.423.500">
         </div>
+        <div class="form-group">
+          <label class="form-label">Horas extras <span style="font-size:10px;color:var(--text3);font-weight:400">(valor en pesos)</span></label>
+          <input type="text" class="form-input" id="f_horas_extras" placeholder="Ej: $150.000">
+        </div>
 
         <div class="form-section">Seguridad social</div>
         <div class="form-group">
@@ -2810,7 +2814,7 @@ function openEditModal(id){
     nombre:'', cedula:'', estado:'ACTIVO', genero:'FEMENINO',
     nacimiento:'', escolaridad:'', direccion:'', celular:'', correo:'',
     cliente:'', cargo:'', ingreso:'', retiro:'', motivo:'',
-    municipio:'', horas:'', salario:'', eps:'', afp:'', arl:'',
+    municipio:'', horas:'', salario:'', horas_extras:'', eps:'', afp:'', arl:'',
     riesgo:'', notas:''
   };
   if (emp) Object.keys(fields).forEach(k => { if (emp[k] !== undefined) fields[k] = emp[k]; });
@@ -2879,6 +2883,7 @@ async function saveEdit(){
     municipio:   fv('f_municipio'),
     horas:       fv('f_horas'),
     salario:     fv('f_salario'),
+    horas_extras: fv('f_horas_extras'),
     eps:         fv('f_eps'),
     afp:         fv('f_afp'),
     arl:         fv('f_arl'),
