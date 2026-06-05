@@ -1986,17 +1986,11 @@ tr.bg-selected td{background:#eff6ff!important}
         <div class="form-section">Información laboral</div>
         <div class="form-group">
           <label class="form-label">Cliente / Entidad *</label>
-          <div style="display:flex;gap:6px">
-            <select class="form-select" id="f_cliente" style="flex:1"></select>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="addCatalogItem('clientes','f_cliente')" title="Agregar nuevo">+</button>
-          </div>
+          <select class="form-select" id="f_cliente" style="width:100%"></select>
         </div>
         <div class="form-group">
           <label class="form-label">Cargo *</label>
-          <div style="display:flex;gap:6px">
-            <select class="form-select" id="f_cargo" style="flex:1"></select>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="addCatalogItem('cargos','f_cargo')" title="Agregar nuevo">+</button>
-          </div>
+          <select class="form-select" id="f_cargo" style="width:100%"></select>
         </div>
         <div class="form-group">
           <label class="form-label">Fecha de ingreso</label>
@@ -2017,10 +2011,7 @@ tr.bg-selected td{background:#eff6ff!important}
         </div>
         <div class="form-group">
           <label class="form-label">Municipio de trabajo</label>
-          <div style="display:flex;gap:6px">
-            <select class="form-select" id="f_municipio" style="flex:1"></select>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="addCatalogItem('municipios','f_municipio')" title="Agregar nuevo">+</button>
-          </div>
+          <select class="form-select" id="f_municipio" style="width:100%"></select>
         </div>
         <div class="form-group">
           <label class="form-label">Horas laborales</label>
@@ -2041,24 +2032,15 @@ tr.bg-selected td{background:#eff6ff!important}
         <div class="form-section">Seguridad social</div>
         <div class="form-group">
           <label class="form-label">EPS</label>
-          <div style="display:flex;gap:6px">
-            <select class="form-select" id="f_eps" style="flex:1"></select>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="addCatalogItem('eps','f_eps')" title="Agregar nuevo">+</button>
-          </div>
+          <select class="form-select" id="f_eps" style="width:100%"></select>
         </div>
         <div class="form-group">
           <label class="form-label">AFP / Pensión</label>
-          <div style="display:flex;gap:6px">
-            <select class="form-select" id="f_afp" style="flex:1"></select>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="addCatalogItem('afp','f_afp')" title="Agregar nuevo">+</button>
-          </div>
+          <select class="form-select" id="f_afp" style="width:100%"></select>
         </div>
         <div class="form-group">
           <label class="form-label">ARL</label>
-          <div style="display:flex;gap:6px">
-            <select class="form-select" id="f_arl" style="flex:1"></select>
-            <button type="button" class="btn btn-ghost btn-sm" onclick="addCatalogItem('arl','f_arl')" title="Agregar nuevo">+</button>
-          </div>
+          <select class="form-select" id="f_arl" style="width:100%"></select>
         </div>
         <div class="form-group">
           <label class="form-label">Nivel de riesgo</label>
@@ -2845,6 +2827,17 @@ function closeEditModal(){
   document.getElementById('modal-overlay').classList.remove('open');
 }
 
+// Devuelve la forma EXACTA del catálogo si el valor coincide (sin importar mayúsculas/tildes);
+// si no hay coincidencia, devuelve el valor tal cual (no pierde valores fuera de catálogo).
+function _snapToCatalog(value, catKey){
+  if (!value || typeof value !== 'string') return value;
+  const cat = CATALOGS[catKey];
+  if (!Array.isArray(cat)) return value;
+  const target = removeAccents(value.trim().toUpperCase());
+  const match = cat.find(c => removeAccents(String(c).trim().toUpperCase()) === target);
+  return match || value;
+}
+
 async function saveEdit(){
   // Helper: leer valor de un campo del formulario
   // Para comboboxes: si el <select> está vacío, leer del input visible como fallback
@@ -2893,6 +2886,16 @@ async function saveEdit(){
   // Calcular edad si se ingresó fecha de nacimiento
   if (datosNuevos.nacimiento) datosNuevos.edad = calcAge(datosNuevos.nacimiento);
 
+  // ── PREVENCIÓN DE DUPLICADOS: ajustar campos de catálogo a su forma canónica ──
+  // Si el valor coincide con uno del catálogo sin importar mayúsculas/tildes,
+  // se reemplaza por la forma EXACTA del catálogo. Evita "ESE HOSPITAL" vs "Ese Hospital".
+  datosNuevos.cliente   = _snapToCatalog(datosNuevos.cliente,   'clientes');
+  datosNuevos.cargo     = _snapToCatalog(datosNuevos.cargo,     'cargos');
+  datosNuevos.eps       = _snapToCatalog(datosNuevos.eps,       'eps');
+  datosNuevos.afp       = _snapToCatalog(datosNuevos.afp,       'afp');
+  datosNuevos.arl       = _snapToCatalog(datosNuevos.arl,       'arl');
+  datosNuevos.municipio = _snapToCatalog(datosNuevos.municipio, 'municipios');
+
   if (_editingEmpId) {
     // Editar en Supabase
     const supUpdate = await sb.from('empleados').update(datosNuevos).eq('id', _editingEmpId);
@@ -2903,7 +2906,7 @@ async function saveEdit(){
     showToast('Empleado actualizado en Supabase');
   } else {
     // Crear en Supabase
-    const nuevoRow = Object.assign({}, datosNuevos, {departamento:'',horas_extras:'',incapacitado:'',tiene_errores:false});
+    const nuevoRow = Object.assign({departamento:'',incapacitado:'',tiene_errores:false}, datosNuevos);
     const supInsert = await sb.from('empleados').insert([nuevoRow]).select();
     if (supInsert.error) { showToast('Error al crear: ' + supInsert.error.message); console.error(supInsert.error); return; }
     if (supInsert.data) EMPLEADOS.push(...supInsert.data);
@@ -3899,7 +3902,7 @@ function buildDashAlerts() {
   const sinCed  = EMPLEADOS.filter(e=>!e.cedula).length;
   const sinNom  = EMPLEADOS.filter(e=>!e.nombre||!e.nombre.trim()).length;
   const cedCount = {};
-  EMPLEADOS.forEach(e=>{ if(e.cedula) cedCount[e.cedula]=(cedCount[e.cedCount]||0)+1; });
+  EMPLEADOS.forEach(e=>{ if(e.cedula) cedCount[e.cedula]=(cedCount[e.cedula]||0)+1; });
   const histCount = Object.values(cedCount).filter(v=>v>1).length;
 
   const go = "showSection('alertas',document.getElementById('sb-nav-alertas'))";
