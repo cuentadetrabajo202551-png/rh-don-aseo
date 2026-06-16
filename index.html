@@ -7078,6 +7078,21 @@ function certClearEmployee() {
   document.getElementById('certDocBody').innerHTML = '<div class="cert-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 10px;display:block;opacity:.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="font-size:13px;color:var(--text2)">Selecciona un empleado para ver la vista previa</p></div>';
 }
 
+// ── Helper: formatea valor monetario en pesos colombianos ────────────────────
+function formatCOP(val) {
+  if (!val) return '';
+  const s = String(val).trim();
+  let clean = s.replace(/\$|\s/g, '');
+  let num;
+  if (/,\d{1,2}$/.test(clean)) {
+    num = parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+  } else {
+    num = parseFloat(clean.replace(/\./g, '').replace(',', ''));
+  }
+  if (isNaN(num)) return s;
+  return '$' + Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
 // ── Helper: convierte "01/06/2015" → "01 DE JUNIO DEL 2015" ────────────────
 function fechaLargaCert(ddmmaaaa) {
   const MESES = ['ENERO','FEBRERO','MARZO','ABRIL','MAYO','JUNIO','JULIO','AGOSTO','SEPTIEMBRE','OCTUBRE','NOVIEMBRE','DICIEMBRE'];
@@ -7173,7 +7188,7 @@ function certUpdatePreview() {
   const tdR = 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top"';
   const tdRb= 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top;font-weight:700"';
   const hexRow = (emp.horas_extras && String(emp.horas_extras).trim())
-    ? '<tr><td '+tdL+'>Valor Horas Extras:</td><td '+tdR+'>'+escapeHTML(String(emp.horas_extras))+'</td></tr>'
+    ? '<tr><td '+tdL+'>Valor Horas Extras:</td><td '+tdR+'>'+escapeHTML(formatCOP(emp.horas_extras))+'</td></tr>'
     : '';
 
   let filas = '';
@@ -7290,8 +7305,10 @@ function certUpdatePreview() {
     + 'E-mail: donaseo2005@yahoo.es'
     + '</div>';
 
-  const html = headerHTML + tituloHTML + parrafo + tablaHTML + notasHTML + cierreHTML
-    + firmaHTML + piePagHTML;
+  const html = headerHTML + tituloHTML + parrafo + tablaHTML + notasHTML
+    + '<div style="page-break-inside:avoid;break-inside:avoid">'
+    + cierreHTML + firmaHTML + piePagHTML
+    + '</div>';
 
   const body = document.getElementById('certDocBody');
   if (body) body.innerHTML = html;
@@ -7308,6 +7325,7 @@ function certPrint() {
     img{max-width:100%;display:block}
     .cert-body p{margin-bottom:11px;text-align:justify;font-family:Georgia,'Times New Roman',serif;font-size:11pt}
     @page{size:A4;margin:0}
+    @media print{div[style*="page-break-inside"]{page-break-inside:avoid!important;break-inside:avoid!important}}
   </style></head><body>
 ${content}</body></html>`);
   win.document.close();
