@@ -2258,6 +2258,11 @@ function showSection(id, el) {
   if (id === 'auditoria') loadAuditLog();
   if (id === 'estadisticas') buildEstadisticas();
   if (id === 'fechas') buildFechas('cumple');
+  if (id === 'catalogos') {
+    // Recalcular usos con los datos actuales de empleados al entrar
+    updateCatalogSidebar();
+    renderCatalogItems(activeCatalog||'clientes', document.getElementById('catalogSearch')?.value||'', _catPage);
+  }
   if (id === 'usuarios') {
     if (!isAdmin()) {
       // No-admin intentando entrar a Gestión de Usuarios — redirigir al dashboard
@@ -4552,6 +4557,14 @@ function filterCatalog(){
   renderCatalogItems(activeCatalog, q, 1);
 }
 
+// Refresca los usos del catálogo solo si la sección está visible (para cambios en vivo)
+function refreshCatalogIfVisible(){
+  const sec = document.getElementById('section-catalogos');
+  if (sec && sec.classList.contains('active') && activeCatalog) {
+    renderCatalogItems(activeCatalog, document.getElementById('catalogSearch')?.value||'', _catPage);
+  }
+}
+
 // Mapeo de clave de catálogo → campo del empleado para calcular usos reales
 const CATALOG_FIELD_MAP = {
   clientes:'cliente', cargos:'cargo', eps:'eps', afp:'afp', arl:'arl',
@@ -5445,6 +5458,7 @@ function _rtFlushUI() {
   if (dupSection?.classList.contains('active')) {
     try { buildDuplicados(); } catch(e) {}
   }
+  try { refreshCatalogIfVisible(); } catch(e) {}
   const dot = document.getElementById('sb-sync-dot');
   if (dot) dot.style.opacity = '0.4';
 }
@@ -7044,6 +7058,12 @@ function certSelectEmployee(id) {
   const fd = document.getElementById('certFecha');
   if (fd && !fd.value) { const now=new Date(); fd.value=now.toISOString().slice(0,10); }
 
+  // Pre-fill horas text based on employee schedule
+  const htxt = document.getElementById('certHorasText');
+  if (htxt) {
+    htxt.value = emp.horas === '12 HORAS' ? '12 HORAS DIARIAS' : '44 HORAS SEMANALES';
+  }
+
   document.getElementById('certOptions').style.display = 'block';
   document.getElementById('certPreviewWrap').style.display = 'block';
   certUpdatePreview();
@@ -7152,6 +7172,9 @@ function certUpdatePreview() {
   const tdL = 'style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top"';
   const tdR = 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top"';
   const tdRb= 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top;font-weight:700"';
+  const hexRow = (emp.horas_extras && String(emp.horas_extras).trim())
+    ? '<tr><td '+tdL+'>Valor Horas Extras:</td><td '+tdR+'>'+escapeHTML(String(emp.horas_extras))+'</td></tr>'
+    : '';
 
   let filas = '';
   // Todos los registros de este empleado (por cédula), ordenados cronológicamente
@@ -7177,6 +7200,7 @@ function certUpdatePreview() {
         '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
         +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
         +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '');
     } else {
       // ── Activo sin historial: filas normales ──
@@ -7184,6 +7208,7 @@ function certUpdatePreview() {
         '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
         +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
         +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '')
         +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>';
     }
@@ -7207,6 +7232,7 @@ function certUpdatePreview() {
         '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
         +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
         +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +hexRow
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
     } else {
       // ── Inactivo sin historial: filas normales ──
@@ -7216,6 +7242,7 @@ function certUpdatePreview() {
         +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
         +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +hexRow
         +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
     }
