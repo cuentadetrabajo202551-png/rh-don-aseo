@@ -5312,9 +5312,8 @@ async function _novGuardarDesdeForm() {
     if (ok) showToast('✓ Novedad y soporte registrados');
     _novArchivoPendiente = null;
   }
-  _renderSoportesList(data.id, 'nov-adjuntos-list');
 
-  // Limpiar el formulario para registrar la siguiente novedad
+  // Limpiar el formulario por completo (incluido el adjunto) para registrar la siguiente novedad
   ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-eps','nov-diagnostico-codigo'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
@@ -5326,6 +5325,8 @@ async function _novGuardarDesdeForm() {
   if (diagInfo) diagInfo.innerHTML = '';
   const archivoInput = document.getElementById('nov-archivo-input');
   if (archivoInput) archivoInput.value = '';
+  const listEl = document.getElementById('nov-adjuntos-list');
+  if (listEl) listEl.innerHTML = '<div style="font-size:12px;color:var(--text3)">Selecciona un archivo y se adjuntará automáticamente al registrar la novedad</div>';
   const nombreEl = document.getElementById('nov-archivo-pendiente-nombre');
   if (nombreEl) nombreEl.textContent = '';
   novClearEmployee();
@@ -5379,7 +5380,7 @@ function buildNovedadesHistorial() {
     <div class="table-wrap">
       <table class="table">
         <thead><tr>
-          <th>Empleado</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Descripción</th><th>Creado por</th><th>Soportes</th><th></th>
+          <th>Empleado</th><th>Tipo</th><th>Diagnóstico</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Descripción</th><th>Creado por</th><th>Soportes</th><th></th>
         </tr></thead>
         <tbody id="novHistBody"></tbody>
       </table>
@@ -5434,13 +5435,17 @@ function _novRenderHistorialTabla() {
   const pageItems = lista.slice(start, start+NOV_PAGE_SIZE);
 
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><p>No se encontraron novedades</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><p>No se encontraron novedades</p></div></td></tr>';
   } else {
     tbody.innerHTML = pageItems.map(n =>
       '<tr>'
       + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(n.empleado_nombre) + '</div>'
       + '<div class="td-sub">CC ' + escapeHTML(n.empleado_cedula) + ' &middot; ' + escapeHTML(n.empleado_cliente||'—') + '</div></td>'
       + '<td><span class="badge" style="background:#eff6ff;color:#1d4ed8">' + escapeHTML(n.tipo) + '</span></td>'
+      + '<td style="font-size:12px;max-width:200px">' + (n.diagnostico_codigo
+          ? ('<div class="td-name" style="font-size:12px">' + escapeHTML(n.diagnostico_codigo) + ' &middot; ' + escapeHTML(n.diagnostico_nombre||'') + '</div>'
+             + '<div class="td-sub">' + escapeHTML(n.diagnostico_descripcion||'') + '</div>')
+          : '—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(n.fecha_inicio) + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(n.fecha_fin) + '</td>'
       + '<td style="font-size:12px;font-weight:700">' + n.dias + '</td>'
@@ -5572,16 +5577,13 @@ function _novCalRender() {
   const diasMes = new Date(_novCalAnio, _novCalMes+1, 0).getDate();
   const offset = primerDia.getDay(); // 0=domingo
   const hoyStr = new Date().toISOString().slice(0,10);
-  const desdeMes = _fechaISO(_novCalAnio, _novCalMes, 1);
-  const hastaMes = _fechaISO(_novCalAnio, _novCalMes, diasMes);
 
-  // Mapear novedades activas por día del mes (rango fecha_inicio..fecha_fin)
+  // Marcar solo el día de inicio de cada novedad (no el rango completo, para evitar ruido visual)
   const porDia = {};
   NOVEDADES.forEach(n => {
-    if (n.fecha_fin < desdeMes || n.fecha_inicio > hastaMes) return;
-    for (let d=1; d<=diasMes; d++) {
-      const f = _fechaISO(_novCalAnio, _novCalMes, d);
-      if (f >= n.fecha_inicio && f <= n.fecha_fin) (porDia[d] = porDia[d]||[]).push(n);
+    const ini = new Date(n.fecha_inicio + 'T00:00:00');
+    if (ini.getFullYear() === _novCalAnio && ini.getMonth() === _novCalMes) {
+      (porDia[ini.getDate()] = porDia[ini.getDate()]||[]).push(n);
     }
   });
 
@@ -5604,7 +5606,7 @@ function _novCalRender() {
 function _novCalVerDia(dia) {
   const MESES_MIN = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
   const fStr = _fechaISO(_novCalAnio, _novCalMes, dia);
-  const items = NOVEDADES.filter(n => fStr >= n.fecha_inicio && fStr <= n.fecha_fin);
+  const items = NOVEDADES.filter(n => n.fecha_inicio === fStr);
   const det = document.getElementById('nov-cal-detalle');
   if (!det) return;
   if (!items.length) { det.innerHTML = '<div class="empty-state" style="padding:18px"><p>Sin novedades este día</p></div>'; return; }
@@ -5712,15 +5714,16 @@ function exportarNovedadesExcel(source, esFiltrado) {
   if (!source.length) { showToast('No hay novedades para exportar'); return; }
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
 
-  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','FECHA INICIO','FECHA FIN','DIAS','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
+  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
   const dataRows = source.map(n => [
     n.empleado_nombre||'', n.empleado_cedula||'', n.empleado_cliente||'', n.empleado_cargo||'',
-    n.tipo||'', n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, n.descripcion||'',
+    n.tipo||'', n.diagnostico_codigo||'', n.diagnostico_nombre||'', n.diagnostico_descripcion||'',
+    n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, n.descripcion||'',
     n.creado_por_nombre||'', (n.created_at||'').slice(0,10)
   ]);
   const aoa = [HEADERS, ...dataRows];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:14},{wch:14},{wch:8},{wch:40},{wch:20},{wch:16}];
+  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:16},{wch:34},{wch:34},{wch:14},{wch:14},{wch:8},{wch:40},{wch:20},{wch:16}];
   ws['!freeze'] = {xSplit:0, ySplit:1};
 
   const wb = XLSX.utils.book_new();
