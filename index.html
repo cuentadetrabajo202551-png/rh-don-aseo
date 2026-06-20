@@ -4662,6 +4662,16 @@ const CATALOG_FIELD_MAP = {
 };
 
 function getCatalogUsage(key) {
+  // Caso especial: tipos de novedad se usan en la tabla novedades, no en empleados
+  if (key === 'novedades_tipos') {
+    if (!NOVEDADES.length) return {};
+    const map = {};
+    NOVEDADES.forEach(n => {
+      const v = (n.tipo||'').toString().trim();
+      if (v) map[v] = (map[v]||0) + 1;
+    });
+    return map;
+  }
   // Construye un mapa valor→conteo desde EMPLEADOS reales
   const field = CATALOG_FIELD_MAP[key];
   if (!field || !EMPLEADOS.length) return {};
@@ -4705,9 +4715,10 @@ function renderCatalogItems(key, q, page) {
   const start   = (_catPage - 1) * CAT_PAGE_SIZE;
   const pageItems = filtered.slice(start, start + CAT_PAGE_SIZE);
 
-  // Calcular usos reales desde EMPLEADOS (case-insensitive)
+  // Calcular usos reales (case-insensitive). Tipos de novedad se cuentan desde NOVEDADES, el resto desde EMPLEADOS.
+  const esNovedades = key === 'novedades_tipos';
   const usageMap = getCatalogUsage(key);
-  const hasData  = EMPLEADOS.length > 0;
+  const hasData  = esNovedades ? NOVEDADES.length > 0 : EMPLEADOS.length > 0;
 
   // Filas de items
   const rows = pageItems.map((item, i) => {
@@ -4715,8 +4726,8 @@ function renderCatalogItems(key, q, page) {
     const usageKey = Object.keys(usageMap).find(k => k.toUpperCase() === itemStr.toUpperCase());
     const usage    = usageKey ? usageMap[usageKey] : 0;
     const usageTxt = hasData
-      ? (usage > 0 ? `${usage} uso${usage!==1?'s':''} en empleados` : 'Sin usos registrados')
-      : '&#8212; sin datos importados a\xfan';
+      ? (usage > 0 ? `${usage} uso${usage!==1?'s':''} en ${esNovedades?'novedades':'empleados'}` : 'Sin usos registrados')
+      : (esNovedades ? '&#8212; sin novedades registradas a\xfan' : '&#8212; sin datos importados a\xfan');
     const realIdx  = items.indexOf(item);
 
     return `<div class="catalog-item-row" id="cat-row-${i}">
