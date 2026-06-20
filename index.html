@@ -2017,16 +2017,43 @@ tr.bg-selected td{background:#eff6ff!important}
       <div class="form-grid">
         <div class="form-group">
           <label class="form-label">Tipo de novedad *</label>
-          <select class="form-select" id="eno-tipo"></select>
+          <select class="form-select" id="eno-tipo" onchange="_enoOnTipoChange()"></select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="eno-fecha-inicio-wrap">
           <label class="form-label">Fecha inicio *</label>
           <input type="date" class="form-input" id="eno-fecha-inicio">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="eno-fecha-fin-wrap">
           <label class="form-label">Fecha fin *</label>
           <input type="date" class="form-input" id="eno-fecha-fin">
         </div>
+
+        <div class="form-group" id="eno-fecha-pago-wrap" style="display:none">
+          <label class="form-label">Fecha de causación *</label>
+          <input type="date" class="form-input" id="eno-fecha-pago">
+        </div>
+        <div class="form-group" id="eno-dias-pagados-wrap" style="display:none">
+          <label class="form-label">Días pagados *</label>
+          <input type="number" min="1" class="form-input" id="eno-dias-pagados">
+        </div>
+
+        <div class="form-group full" id="eno-vacaciones-pagas-wrap" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
+            <input type="checkbox" id="eno-vacaciones-pagas" onchange="_enoOnTipoChange()">
+            Vacaciones pagadas (no requiere rango de fechas)
+          </label>
+        </div>
+
+        <div class="form-group" id="eno-eps-wrap" style="display:none">
+          <label class="form-label">Entidad prestadora (EPS) *</label>
+          <select class="form-select" id="eno-eps"></select>
+        </div>
+        <div class="form-group" id="eno-diagnostico-wrap" style="display:none">
+          <label class="form-label">Código de diagnóstico (CIE-10)</label>
+          <input type="text" class="form-input" id="eno-diagnostico-codigo" oninput="_novBuscarDiagnostico('eno')" style="text-transform:uppercase">
+          <div id="eno-diagnostico-info" style="font-size:11px;color:var(--text2);margin-top:5px"></div>
+        </div>
+
         <div class="form-group full">
           <label class="form-label">Descripción / Observaciones</label>
           <textarea class="form-input" id="eno-descripcion" rows="3"></textarea>
@@ -4838,14 +4865,34 @@ async function crearNovedad() {
   const emp   = EMPLEADOS.find(e => String(e.id) === String(empId));
   if (!emp) { showToast('Selecciona un empleado válido'); return; }
 
-  const tipo        = document.getElementById('nov-tipo')?.value || '';
-  const fechaIni     = document.getElementById('nov-fecha-inicio')?.value || '';
-  const fechaFin     = document.getElementById('nov-fecha-fin')?.value || '';
+  const tipo = document.getElementById('nov-tipo')?.value || '';
+  if (!tipo) { showToast('Selecciona el tipo de novedad'); return; }
   const descripcion = (document.getElementById('nov-descripcion')?.value || '').trim();
 
-  if (!tipo || !fechaIni || !fechaFin) { showToast('Completa tipo y fechas'); return; }
-  const dias = _calcularDiasNovedad(fechaIni, fechaFin);
-  if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
+  let fechaIni, fechaFin, dias;
+  const vacacionesPagadas = tipo === 'VACACIONES' && !!document.getElementById('nov-vacaciones-pagas')?.checked;
+
+  if (vacacionesPagadas) {
+    fechaIni = fechaFin = document.getElementById('nov-fecha-pago')?.value || '';
+    dias = parseInt(document.getElementById('nov-dias-pagados')?.value || '0', 10);
+    if (!fechaIni || !dias || dias < 1) { showToast('Completa la fecha de causación y los días pagados'); return; }
+  } else {
+    fechaIni = document.getElementById('nov-fecha-inicio')?.value || '';
+    fechaFin = document.getElementById('nov-fecha-fin')?.value || '';
+    if (!fechaIni || !fechaFin) { showToast('Completa las fechas'); return; }
+    dias = _calcularDiasNovedad(fechaIni, fechaFin);
+    if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
+  }
+
+  let eps = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
+  if (tipo === 'INCAPACIDAD') {
+    eps = document.getElementById('nov-eps')?.value || '';
+    diagCodigo = (document.getElementById('nov-diagnostico-codigo')?.value || '').trim().toUpperCase();
+    if (diagCodigo) {
+      const { data: diag } = await sb.from('codigos_cie10').select('nombre,descripcion').eq('codigo', diagCodigo).maybeSingle();
+      if (diag) { diagNombre = diag.nombre; diagDescripcion = diag.descripcion; }
+    }
+  }
 
   const payload = {
     empleado_id: String(emp.id),
@@ -4854,6 +4901,8 @@ async function crearNovedad() {
     empleado_cliente: emp.cliente || '',
     empleado_cargo: emp.cargo || '',
     tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
+    vacaciones_pagadas: vacacionesPagadas,
+    eps, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
     creado_por: _currentUser.id,
     creado_por_nombre: _currentUser.display_name || _currentUser.email
   };
@@ -4879,23 +4928,48 @@ async function guardarEdicionNovedad(id) {
   const nov = NOVEDADES.find(n => n.id === id);
   if (!nov || !canEditNovedad(nov)) { showToast('No tienes permiso'); return; }
 
-  const tipo         = document.getElementById('eno-tipo')?.value || '';
-  const fechaIni      = document.getElementById('eno-fecha-inicio')?.value || '';
-  const fechaFin      = document.getElementById('eno-fecha-fin')?.value || '';
-  const descripcion  = (document.getElementById('eno-descripcion')?.value || '').trim();
-  if (!tipo || !fechaIni || !fechaFin) { showToast('Completa tipo y fechas'); return; }
-  const dias = _calcularDiasNovedad(fechaIni, fechaFin);
-  if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
+  const tipo = document.getElementById('eno-tipo')?.value || '';
+  if (!tipo) { showToast('Selecciona el tipo de novedad'); return; }
+  const descripcion = (document.getElementById('eno-descripcion')?.value || '').trim();
 
-  const { error } = await sb.from('novedades').update({
+  let fechaIni, fechaFin, dias;
+  const vacacionesPagadas = tipo === 'VACACIONES' && !!document.getElementById('eno-vacaciones-pagas')?.checked;
+
+  if (vacacionesPagadas) {
+    fechaIni = fechaFin = document.getElementById('eno-fecha-pago')?.value || '';
+    dias = parseInt(document.getElementById('eno-dias-pagados')?.value || '0', 10);
+    if (!fechaIni || !dias || dias < 1) { showToast('Completa la fecha de causación y los días pagados'); return; }
+  } else {
+    fechaIni = document.getElementById('eno-fecha-inicio')?.value || '';
+    fechaFin = document.getElementById('eno-fecha-fin')?.value || '';
+    if (!fechaIni || !fechaFin) { showToast('Completa las fechas'); return; }
+    dias = _calcularDiasNovedad(fechaIni, fechaFin);
+    if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
+  }
+
+  let eps = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
+  if (tipo === 'INCAPACIDAD') {
+    eps = document.getElementById('eno-eps')?.value || '';
+    diagCodigo = (document.getElementById('eno-diagnostico-codigo')?.value || '').trim().toUpperCase();
+    if (diagCodigo) {
+      const { data: diag } = await sb.from('codigos_cie10').select('nombre,descripcion').eq('codigo', diagCodigo).maybeSingle();
+      if (diag) { diagNombre = diag.nombre; diagDescripcion = diag.descripcion; }
+    }
+  }
+
+  const cambios = {
     tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
+    vacaciones_pagadas: vacacionesPagadas,
+    eps, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
     updated_at: new Date().toISOString(),
     updated_por: _currentUser.id,
     updated_por_nombre: _currentUser.display_name || _currentUser.email
-  }).eq('id', id);
+  };
+
+  const { error } = await sb.from('novedades').update(cambios).eq('id', id);
   if (error) { showToast('Error: ' + error.message); return; }
 
-  Object.assign(nov, { tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion });
+  Object.assign(nov, cambios);
   _updateNovedadesBadge();
   await logAudit('update', 'novedades', id, 'Editó novedad ' + tipo + ' de ' + nov.empleado_nombre);
   showToast('✓ Novedad actualizada');
@@ -4923,26 +4997,33 @@ async function eliminarNovedad(id) {
 }
 
 // ── Soportes adjuntos (mismo patrón que subirDocumentoConTitulo/descargarDocumento/eliminarDocumento) ──
-async function subirSoporteNovedad(input, novedadId) {
-  const file = input.files[0];
-  if (!file || !novedadId) return;
-  const nov = NOVEDADES.find(n => n.id === novedadId);
-  if (!canEditNovedad(nov)) { showToast('No tienes permiso'); input.value=''; return; }
-  if (file.size > 10*1024*1024) { showToast('Máximo 10MB por archivo'); input.value=''; return; }
-
-  showToast('Subiendo ' + file.name + '...');
+// Helper compartido: sube el archivo a Storage + registra en novedades_soportes. No valida permisos
+// (lo hace el caller) ni muestra toasts de éxito (los decide el caller). Devuelve true/false.
+async function _subirArchivoDirecto(file, novedadId) {
+  if (file.size > 10*1024*1024) { showToast('Máximo 10MB por archivo'); return false; }
   const path = 'novedades/' + novedadId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
   const { error: upErr } = await sb.storage.from('documentos').upload(path, file, { contentType: file.type, upsert:false });
-  if (upErr) { showToast('Error: ' + upErr.message); return; }
+  if (upErr) { showToast('Error subiendo soporte: ' + upErr.message); return false; }
 
   const { error: dbErr } = await sb.from('novedades_soportes').insert([{
     novedad_id: novedadId, nombre: file.name, storage_path: path, tamanio: file.size,
     subido_por: _currentUser?.display_name || _currentUser?.email || 'Usuario'
   }]);
-  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
+  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando soporte: ' + dbErr.message); return false; }
 
   await logAudit('create', 'novedades_soportes', novedadId, 'Adjuntó soporte: ' + file.name);
-  showToast('✓ Soporte adjuntado');
+  return true;
+}
+
+async function subirSoporteNovedad(input, novedadId) {
+  const file = input.files[0];
+  if (!file || !novedadId) return;
+  const nov = NOVEDADES.find(n => n.id === novedadId);
+  if (!canEditNovedad(nov)) { showToast('No tienes permiso'); input.value=''; return; }
+
+  showToast('Subiendo ' + file.name + '...');
+  const ok = await _subirArchivoDirecto(file, novedadId);
+  if (ok) showToast('✓ Soporte adjuntado');
   input.value = '';
   if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
 }
@@ -4985,6 +5066,7 @@ function buildNovedades(tab) {
 // ── Sub-tab: Registrar novedad ─────────────────────────────────────────────
 let _novRegUltimaId = null;
 let _novEditNovedadId = null; // id de la novedad abierta en el modal de edición (si aplica)
+let _novArchivoPendiente = null; // File seleccionado antes de guardar, se sube justo después de crear la novedad
 
 function buildNovedadesRegistrar() {
   const cont = document.getElementById('nov-content-registrar');
@@ -5029,24 +5111,54 @@ function buildNovedadesRegistrar() {
       <div class="cert-options-grid">
         <div class="form-group">
           <label class="form-label">Tipo de novedad *</label>
-          <select class="form-select" id="nov-tipo">
+          <select class="form-select" id="nov-tipo" onchange="_novOnTipoChange()">
             <option value="">— Seleccionar —</option>
             ${tipos.map(t => '<option value="'+escapeHTML(t)+'">'+escapeHTML(t)+'</option>').join('')}
           </select>
         </div>
-        <div class="form-group">
+        <div class="form-group" id="nov-dias-wrap">
           <label class="form-label">Días</label>
           <input type="text" class="form-input" id="nov-dias" readonly style="background:#f8fafc;font-weight:700">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="nov-fecha-inicio-wrap">
           <label class="form-label">Fecha inicio *</label>
           <input type="date" class="form-input" id="nov-fecha-inicio" onchange="_novCalcDias()">
         </div>
-        <div class="form-group">
+        <div class="form-group" id="nov-fecha-fin-wrap">
           <label class="form-label">Fecha fin *</label>
           <input type="date" class="form-input" id="nov-fecha-fin" onchange="_novCalcDias()">
         </div>
-        <div class="form-group" style="grid-column:span 2">
+
+        <div class="form-group" id="nov-fecha-pago-wrap" style="display:none">
+          <label class="form-label">Fecha de causación *</label>
+          <input type="date" class="form-input" id="nov-fecha-pago">
+        </div>
+        <div class="form-group" id="nov-dias-pagados-wrap" style="display:none">
+          <label class="form-label">Días pagados *</label>
+          <input type="number" min="1" class="form-input" id="nov-dias-pagados" placeholder="Ej: 15">
+        </div>
+
+        <div class="form-group full" id="nov-vacaciones-pagas-wrap" style="display:none">
+          <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
+            <input type="checkbox" id="nov-vacaciones-pagas" onchange="_novOnTipoChange()">
+            Vacaciones pagadas (se le pagaron los días pero continuó trabajando — no requiere rango de fechas)
+          </label>
+        </div>
+
+        <div class="form-group" id="nov-eps-wrap" style="display:none">
+          <label class="form-label">Entidad prestadora (EPS) *</label>
+          <select class="form-select" id="nov-eps">
+            <option value="">— Seleccionar —</option>
+            ${(CATALOGS.eps||[]).map(e => '<option value="'+escapeHTML(e)+'">'+escapeHTML(e)+'</option>').join('')}
+          </select>
+        </div>
+        <div class="form-group" id="nov-diagnostico-wrap" style="display:none">
+          <label class="form-label">Código de diagnóstico (CIE-10)</label>
+          <input type="text" class="form-input" id="nov-diagnostico-codigo" placeholder="Ej: J11" oninput="_novBuscarDiagnostico('nov')" style="text-transform:uppercase">
+          <div id="nov-diagnostico-info" style="font-size:11px;color:var(--text2);margin-top:5px"></div>
+        </div>
+
+        <div class="form-group full">
           <label class="form-label">Descripción / Observaciones</label>
           <textarea class="form-input" id="nov-descripcion" rows="3" placeholder="Detalle adicional (opcional)..."></textarea>
         </div>
@@ -5056,16 +5168,18 @@ function buildNovedadesRegistrar() {
       </div>
     </div>
 
-    <div class="cert-form-card" id="nov-adjuntos-card" style="display:none">
-      <div class="cert-section-label">3. Adjuntar soporte</div>
-      <div id="nov-adjuntos-list" style="margin-bottom:10px"></div>
+    <div class="cert-form-card" id="nov-adjuntos-card">
+      <div class="cert-section-label">3. Adjuntar soporte (opcional)</div>
+      <div id="nov-adjuntos-list" style="margin-bottom:10px;font-size:12px;color:var(--text3)">Selecciona un archivo y se adjuntará automáticamente al registrar la novedad</div>
       <label class="btn btn-primary btn-sm" style="cursor:pointer;margin:0">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
         Seleccionar archivo
-        <input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirSoporteNovedad(this, _novRegUltimaId)">
+        <input type="file" id="nov-archivo-input" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="_novSeleccionarArchivoPendiente(this)">
       </label>
+      <div id="nov-archivo-pendiente-nombre" style="font-size:12px;color:var(--text2);margin-top:6px"></div>
     </div>
   `;
+  _novArchivoPendiente = null;
 }
 
 function novSearchEmployee() {
@@ -5139,18 +5253,81 @@ function _novCalcDias() {
   }
 }
 
+// ── Visibilidad de campos según el tipo de novedad (compartida entre Registrar y Editar) ──
+// prefix = 'nov' (formulario de registro) o 'eno' (modal de edición)
+function _novAplicarVisibilidadPorTipo(prefix, tipo, vacacionesPagadas) {
+  const $ = id => document.getElementById(prefix + '-' + id);
+  const esVac = tipo === 'VACACIONES';
+  const esInc = tipo === 'INCAPACIDAD';
+  if ($('vacaciones-pagas-wrap')) $('vacaciones-pagas-wrap').style.display = esVac ? '' : 'none';
+  if ($('eps-wrap'))              $('eps-wrap').style.display = esInc ? '' : 'none';
+  if ($('diagnostico-wrap'))      $('diagnostico-wrap').style.display = esInc ? '' : 'none';
+  const pagas = esVac && vacacionesPagadas;
+  if ($('fecha-inicio-wrap'))  $('fecha-inicio-wrap').style.display = pagas ? 'none' : '';
+  if ($('fecha-fin-wrap'))     $('fecha-fin-wrap').style.display = pagas ? 'none' : '';
+  if ($('dias-wrap'))          $('dias-wrap').style.display = pagas ? 'none' : '';
+  if ($('fecha-pago-wrap'))    $('fecha-pago-wrap').style.display = pagas ? '' : 'none';
+  if ($('dias-pagados-wrap'))  $('dias-pagados-wrap').style.display = pagas ? '' : 'none';
+}
+
+function _novOnTipoChange() {
+  const tipo = document.getElementById('nov-tipo')?.value;
+  const chk = document.getElementById('nov-vacaciones-pagas');
+  if (tipo !== 'VACACIONES' && chk) chk.checked = false;
+  _novAplicarVisibilidadPorTipo('nov', tipo, chk?.checked);
+}
+
+// Autocompleta nombre/descripción del diagnóstico CIE-10 a partir del código escrito
+let _novDiagDebounce = null;
+function _novBuscarDiagnostico(prefix) {
+  const codigo = (document.getElementById(prefix + '-diagnostico-codigo')?.value || '').trim().toUpperCase();
+  const info = document.getElementById(prefix + '-diagnostico-info');
+  if (_novDiagDebounce) clearTimeout(_novDiagDebounce);
+  if (!codigo) { if (info) info.innerHTML = ''; return; }
+  _novDiagDebounce = setTimeout(async () => {
+    const { data, error } = await sb.from('codigos_cie10').select('nombre,descripcion').eq('codigo', codigo).maybeSingle();
+    if (!info) return;
+    if (error || !data) { info.innerHTML = '<span style="color:#dc2626">Código no encontrado</span>'; return; }
+    info.innerHTML = '<strong>' + escapeHTML(data.nombre) + '</strong> &middot; ' + escapeHTML(data.descripcion);
+  }, 350);
+}
+
+// Guarda el archivo elegido en memoria; se sube automáticamente al registrar la novedad
+function _novSeleccionarArchivoPendiente(input) {
+  const file = input.files[0];
+  if (!file) return;
+  if (file.size > 10*1024*1024) { showToast('Máximo 10MB por archivo'); input.value=''; return; }
+  _novArchivoPendiente = file;
+  const nameEl = document.getElementById('nov-archivo-pendiente-nombre');
+  if (nameEl) nameEl.textContent = '📎 ' + file.name + ' (se adjuntará al registrar la novedad)';
+}
+
 async function _novGuardarDesdeForm() {
   const data = await crearNovedad();
   if (!data) return;
   _novRegUltimaId = data.id;
-  const card = document.getElementById('nov-adjuntos-card');
-  if (card) card.style.display = 'block';
+
+  if (_novArchivoPendiente) {
+    const ok = await _subirArchivoDirecto(_novArchivoPendiente, data.id);
+    if (ok) showToast('✓ Novedad y soporte registrados');
+    _novArchivoPendiente = null;
+  }
   _renderSoportesList(data.id, 'nov-adjuntos-list');
-  // Limpiar el formulario para registrar la siguiente novedad, manteniendo el bloque de adjuntos visible
-  ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion'].forEach(id => {
+
+  // Limpiar el formulario para registrar la siguiente novedad
+  ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-eps','nov-diagnostico-codigo'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
+  const chk = document.getElementById('nov-vacaciones-pagas');
+  if (chk) chk.checked = false;
+  _novAplicarVisibilidadPorTipo('nov', '', false);
+  const diagInfo = document.getElementById('nov-diagnostico-info');
+  if (diagInfo) diagInfo.innerHTML = '';
+  const archivoInput = document.getElementById('nov-archivo-input');
+  if (archivoInput) archivoInput.value = '';
+  const nombreEl = document.getElementById('nov-archivo-pendiente-nombre');
+  if (nombreEl) nombreEl.textContent = '';
   novClearEmployee();
 }
 
@@ -5197,6 +5374,7 @@ function buildNovedadesHistorial() {
       <input type="date" class="form-input" id="novf-desde" style="width:140px" onchange="novFiltrarHistorial()" title="Desde">
       <input type="date" class="form-input" id="novf-hasta" style="width:140px" onchange="novFiltrarHistorial()" title="Hasta">
       <button class="btn btn-ghost btn-sm" onclick="novLimpiarFiltrosHistorial()">Limpiar</button>
+      <button class="btn btn-primary btn-sm" style="margin-left:auto" onclick="exportarNovedadesHistorialFiltrado()">&#11015; Exportar Excel</button>
     </div>
     <div class="table-wrap">
       <table class="table">
@@ -5305,15 +5483,37 @@ function _novHistGoPage(p) {
 }
 
 // ── Modal de edición de novedad ────────────────────────────────────────────
+function _enoOnTipoChange() {
+  const tipo = document.getElementById('eno-tipo')?.value;
+  const chk = document.getElementById('eno-vacaciones-pagas');
+  if (tipo !== 'VACACIONES' && chk) chk.checked = false;
+  _novAplicarVisibilidadPorTipo('eno', tipo, chk?.checked);
+}
+
 function _abrirModalEditarNovedad(nov) {
   _novEditNovedadId = nov.id;
   const tipos = CATALOGS.novedades_tipos || [];
   document.getElementById('eno-emp-info').textContent = nov.empleado_nombre + ' · CC ' + nov.empleado_cedula + ' · ' + (nov.empleado_cliente||'Sin cliente');
   const sel = document.getElementById('eno-tipo');
   sel.innerHTML = tipos.map(t => '<option value="'+escapeHTML(t)+'"' + (t===nov.tipo?' selected':'') + '>' + escapeHTML(t) + '</option>').join('');
-  document.getElementById('eno-fecha-inicio').value = nov.fecha_inicio;
-  document.getElementById('eno-fecha-fin').value = nov.fecha_fin;
   document.getElementById('eno-descripcion').value = nov.descripcion || '';
+
+  // Vacaciones pagadas: si aplica, la fecha de causación y los días pagados vienen de fecha_inicio/dias
+  const chk = document.getElementById('eno-vacaciones-pagas');
+  if (chk) chk.checked = !!nov.vacaciones_pagadas;
+  document.getElementById('eno-fecha-inicio').value = nov.fecha_inicio || '';
+  document.getElementById('eno-fecha-fin').value = nov.fecha_fin || '';
+  document.getElementById('eno-fecha-pago').value = nov.vacaciones_pagadas ? (nov.fecha_inicio||'') : '';
+  document.getElementById('eno-dias-pagados').value = nov.vacaciones_pagadas ? (nov.dias||'') : '';
+
+  // Incapacidad: EPS (catálogo) + diagnóstico CIE-10
+  const epsSel = document.getElementById('eno-eps');
+  epsSel.innerHTML = '<option value="">— Seleccionar —</option>' + (CATALOGS.eps||[]).map(e => '<option value="'+escapeHTML(e)+'"' + (e===nov.eps?' selected':'') + '>' + escapeHTML(e) + '</option>').join('');
+  document.getElementById('eno-diagnostico-codigo').value = nov.diagnostico_codigo || '';
+  const diagInfo = document.getElementById('eno-diagnostico-info');
+  if (diagInfo) diagInfo.innerHTML = nov.diagnostico_nombre ? ('<strong>' + escapeHTML(nov.diagnostico_nombre) + '</strong> &middot; ' + escapeHTML(nov.diagnostico_descripcion||'')) : '';
+
+  _novAplicarVisibilidadPorTipo('eno', nov.tipo, !!nov.vacaciones_pagadas);
   _renderSoportesList(nov.id, 'eno-adjuntos-list');
   document.getElementById('modal-overlay-novedad').style.display = 'flex';
 }
@@ -5506,12 +5706,14 @@ function buildNovedadesReportes() {
   });
 }
 
-function exportarNovedadesExcel() {
-  if (!NOVEDADES.length) { showToast('No hay novedades para exportar'); return; }
+// source: lista a exportar (por defecto todas). esFiltrado: si viene de un filtro activo en Historial.
+function exportarNovedadesExcel(source, esFiltrado) {
+  source = source || NOVEDADES;
+  if (!source.length) { showToast('No hay novedades para exportar'); return; }
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
 
   const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','FECHA INICIO','FECHA FIN','DIAS','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
-  const dataRows = NOVEDADES.map(n => [
+  const dataRows = source.map(n => [
     n.empleado_nombre||'', n.empleado_cedula||'', n.empleado_cliente||'', n.empleado_cargo||'',
     n.tipo||'', n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, n.descripcion||'',
     n.creado_por_nombre||'', (n.created_at||'').slice(0,10)
@@ -5526,9 +5728,16 @@ function exportarNovedadesExcel() {
 
   const now = new Date();
   const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-  const fname = `novedades_${fecha}.xlsx`;
+  const sufijo = esFiltrado ? '_filtro_' + source.length : '';
+  const fname = `novedades${sufijo}_${fecha}.xlsx`;
   XLSX.writeFile(wb, fname);
-  showToast('✓ ' + NOVEDADES.length + ' novedades exportadas → ' + fname);
+  showToast('✓ ' + source.length + ' novedades exportadas' + (esFiltrado?' (filtro activo)':'') + ' → ' + fname);
+}
+
+function exportarNovedadesHistorialFiltrado() {
+  const lista = _novFiltrarLista();
+  const esFiltrado = lista.length < NOVEDADES.length;
+  exportarNovedadesExcel(lista, esFiltrado);
 }
 
 // ───────────────────────────────────────────────────────────────────────────
