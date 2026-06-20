@@ -2017,7 +2017,7 @@ tr.bg-selected td{background:#eff6ff!important}
         </div>
         <div class="form-group" id="eno-valor-pagado-wrap" style="display:none">
           <label class="form-label">Valor pagado *</label>
-          <input type="number" min="1" class="form-input" id="eno-valor-pagado">
+          <input type="text" inputmode="numeric" class="form-input" id="eno-valor-pagado" oninput="_novFormatMiles(this)">
         </div>
 
         <div class="form-group full" id="eno-vacaciones-pagas-wrap" style="display:none">
@@ -4868,7 +4868,7 @@ async function crearNovedad() {
   if (vacacionesPagadas) {
     fechaIni = fechaFin = document.getElementById('nov-fecha-pago')?.value || '';
     dias = parseInt(document.getElementById('nov-dias-pagados')?.value || '0', 10);
-    valorPagado = parseFloat(document.getElementById('nov-valor-pagado')?.value || '0');
+    valorPagado = _novParseMiles(document.getElementById('nov-valor-pagado')?.value);
     if (!fechaIni || !dias || dias < 1) { showToast('Completa la fecha de causación y los días pagados'); return; }
     if (!valorPagado || valorPagado < 1) { showToast('Completa el valor pagado'); return; }
   } else {
@@ -4933,7 +4933,7 @@ async function guardarEdicionNovedad(id) {
   if (vacacionesPagadas) {
     fechaIni = fechaFin = document.getElementById('eno-fecha-pago')?.value || '';
     dias = parseInt(document.getElementById('eno-dias-pagados')?.value || '0', 10);
-    valorPagado = parseFloat(document.getElementById('eno-valor-pagado')?.value || '0');
+    valorPagado = _novParseMiles(document.getElementById('eno-valor-pagado')?.value);
     if (!fechaIni || !dias || dias < 1) { showToast('Completa la fecha de causación y los días pagados'); return; }
     if (!valorPagado || valorPagado < 1) { showToast('Completa el valor pagado'); return; }
   } else {
@@ -5136,7 +5136,7 @@ function buildNovedadesRegistrar() {
         </div>
         <div class="form-group" id="nov-valor-pagado-wrap" style="display:none">
           <label class="form-label">Valor pagado *</label>
-          <input type="number" min="1" class="form-input" id="nov-valor-pagado" placeholder="Ej: 500000">
+          <input type="text" inputmode="numeric" class="form-input" id="nov-valor-pagado" placeholder="Ej: 500.000" oninput="_novFormatMiles(this)">
         </div>
 
         <div class="form-group full" id="nov-vacaciones-pagas-wrap" style="display:none">
@@ -5252,6 +5252,15 @@ function _novCalcDias() {
   } else {
     diasEl.value = '';
   }
+}
+
+// ── Formato de moneda en vivo para el campo "Valor pagado" (puntos de miles, estilo COP) ──
+function _novFormatMiles(input) {
+  const soloDigitos = input.value.replace(/\D/g, '');
+  input.value = soloDigitos ? Number(soloDigitos).toLocaleString('es-CO') : '';
+}
+function _novParseMiles(str) {
+  return parseFloat((str || '').replace(/\./g, '')) || 0;
 }
 
 // ── Visibilidad de campos según el tipo de novedad (compartida entre Registrar y Editar) ──
@@ -5512,7 +5521,7 @@ function _abrirModalEditarNovedad(nov) {
   document.getElementById('eno-fecha-fin').value = nov.fecha_fin || '';
   document.getElementById('eno-fecha-pago').value = nov.vacaciones_pagadas ? (nov.fecha_inicio||'') : '';
   document.getElementById('eno-dias-pagados').value = nov.vacaciones_pagadas ? (nov.dias||'') : '';
-  document.getElementById('eno-valor-pagado').value = nov.vacaciones_pagadas ? (nov.valor_pagado||'') : '';
+  document.getElementById('eno-valor-pagado').value = nov.vacaciones_pagadas && nov.valor_pagado ? Number(nov.valor_pagado).toLocaleString('es-CO') : '';
 
   // Incapacidad: EPS (catálogo) + diagnóstico CIE-10
   const epsSel = document.getElementById('eno-eps');
