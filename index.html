@@ -2015,6 +2015,10 @@ tr.bg-selected td{background:#eff6ff!important}
           <label class="form-label">Días pagados *</label>
           <input type="number" min="1" class="form-input" id="eno-dias-pagados">
         </div>
+        <div class="form-group" id="eno-valor-pagado-wrap" style="display:none">
+          <label class="form-label">Valor pagado *</label>
+          <input type="number" min="1" class="form-input" id="eno-valor-pagado">
+        </div>
 
         <div class="form-group full" id="eno-vacaciones-pagas-wrap" style="display:none">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
@@ -4858,13 +4862,15 @@ async function crearNovedad() {
   if (!tipo) { showToast('Selecciona el tipo de novedad'); return; }
   const descripcion = (document.getElementById('nov-descripcion')?.value || '').trim();
 
-  let fechaIni, fechaFin, dias;
+  let fechaIni, fechaFin, dias, valorPagado = 0;
   const vacacionesPagadas = tipo === 'VACACIONES' && !!document.getElementById('nov-vacaciones-pagas')?.checked;
 
   if (vacacionesPagadas) {
     fechaIni = fechaFin = document.getElementById('nov-fecha-pago')?.value || '';
     dias = parseInt(document.getElementById('nov-dias-pagados')?.value || '0', 10);
+    valorPagado = parseFloat(document.getElementById('nov-valor-pagado')?.value || '0');
     if (!fechaIni || !dias || dias < 1) { showToast('Completa la fecha de causación y los días pagados'); return; }
+    if (!valorPagado || valorPagado < 1) { showToast('Completa el valor pagado'); return; }
   } else {
     fechaIni = document.getElementById('nov-fecha-inicio')?.value || '';
     fechaFin = document.getElementById('nov-fecha-fin')?.value || '';
@@ -4890,7 +4896,7 @@ async function crearNovedad() {
     empleado_cliente: emp.cliente || '',
     empleado_cargo: emp.cargo || '',
     tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
-    vacaciones_pagadas: vacacionesPagadas,
+    vacaciones_pagadas: vacacionesPagadas, valor_pagado: valorPagado,
     eps, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
     creado_por: _currentUser.id,
     creado_por_nombre: _currentUser.display_name || _currentUser.email
@@ -4921,13 +4927,15 @@ async function guardarEdicionNovedad(id) {
   if (!tipo) { showToast('Selecciona el tipo de novedad'); return; }
   const descripcion = (document.getElementById('eno-descripcion')?.value || '').trim();
 
-  let fechaIni, fechaFin, dias;
+  let fechaIni, fechaFin, dias, valorPagado = 0;
   const vacacionesPagadas = tipo === 'VACACIONES' && !!document.getElementById('eno-vacaciones-pagas')?.checked;
 
   if (vacacionesPagadas) {
     fechaIni = fechaFin = document.getElementById('eno-fecha-pago')?.value || '';
     dias = parseInt(document.getElementById('eno-dias-pagados')?.value || '0', 10);
+    valorPagado = parseFloat(document.getElementById('eno-valor-pagado')?.value || '0');
     if (!fechaIni || !dias || dias < 1) { showToast('Completa la fecha de causación y los días pagados'); return; }
+    if (!valorPagado || valorPagado < 1) { showToast('Completa el valor pagado'); return; }
   } else {
     fechaIni = document.getElementById('eno-fecha-inicio')?.value || '';
     fechaFin = document.getElementById('eno-fecha-fin')?.value || '';
@@ -4948,7 +4956,7 @@ async function guardarEdicionNovedad(id) {
 
   const cambios = {
     tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
-    vacaciones_pagadas: vacacionesPagadas,
+    vacaciones_pagadas: vacacionesPagadas, valor_pagado: valorPagado,
     eps, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
     updated_at: new Date().toISOString(),
     updated_por: _currentUser.id,
@@ -5126,6 +5134,10 @@ function buildNovedadesRegistrar() {
           <label class="form-label">Días pagados *</label>
           <input type="number" min="1" class="form-input" id="nov-dias-pagados" placeholder="Ej: 15">
         </div>
+        <div class="form-group" id="nov-valor-pagado-wrap" style="display:none">
+          <label class="form-label">Valor pagado *</label>
+          <input type="number" min="1" class="form-input" id="nov-valor-pagado" placeholder="Ej: 500000">
+        </div>
 
         <div class="form-group full" id="nov-vacaciones-pagas-wrap" style="display:none">
           <label style="display:flex;align-items:center;gap:8px;cursor:pointer;font-size:13px;color:var(--text2)">
@@ -5257,6 +5269,7 @@ function _novAplicarVisibilidadPorTipo(prefix, tipo, vacacionesPagadas) {
   if ($('dias-wrap'))          $('dias-wrap').style.display = pagas ? 'none' : '';
   if ($('fecha-pago-wrap'))    $('fecha-pago-wrap').style.display = pagas ? '' : 'none';
   if ($('dias-pagados-wrap'))  $('dias-pagados-wrap').style.display = pagas ? '' : 'none';
+  if ($('valor-pagado-wrap'))  $('valor-pagado-wrap').style.display = pagas ? '' : 'none';
 }
 
 function _novOnTipoChange() {
@@ -5303,7 +5316,7 @@ async function _novGuardarDesdeForm() {
   }
 
   // Limpiar el formulario por completo (incluido el adjunto) para registrar la siguiente novedad
-  ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-eps','nov-diagnostico-codigo'].forEach(id => {
+  ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-valor-pagado','nov-eps','nov-diagnostico-codigo'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.value = '';
   });
@@ -5369,7 +5382,7 @@ function buildNovedadesHistorial() {
     <div class="table-wrap">
       <table class="table">
         <thead><tr>
-          <th>Empleado</th><th>Tipo</th><th>Diagnóstico</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Descripción</th><th>Creado por</th><th>Soportes</th><th></th>
+          <th>Empleado</th><th>Tipo</th><th>Diagnóstico</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Valor Pagado</th><th>Descripción</th><th>Creado por</th><th>Soportes</th><th></th>
         </tr></thead>
         <tbody id="novHistBody"></tbody>
       </table>
@@ -5424,7 +5437,7 @@ function _novRenderHistorialTabla() {
   const pageItems = lista.slice(start, start+NOV_PAGE_SIZE);
 
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="10"><div class="empty-state"><p>No se encontraron novedades</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11"><div class="empty-state"><p>No se encontraron novedades</p></div></td></tr>';
   } else {
     tbody.innerHTML = pageItems.map(n =>
       '<tr>'
@@ -5437,6 +5450,7 @@ function _novRenderHistorialTabla() {
       + '<td style="font-size:12px">' + escapeHTML(n.fecha_inicio) + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(n.fecha_fin) + '</td>'
       + '<td style="font-size:12px;font-weight:700">' + n.dias + '</td>'
+      + '<td style="font-size:12px;font-weight:700;color:#047857">' + (n.vacaciones_pagadas && n.valor_pagado ? formatCOP(n.valor_pagado) : '—') + '</td>'
       + '<td style="font-size:12px;color:var(--text2);max-width:220px">' + escapeHTML(n.descripcion||'—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(n.creado_por_nombre||'—') + '</td>'
       + '<td style="text-align:center"><span id="nov-soportes-count-' + n.id + '" style="font-size:11px;color:var(--text3)">&hellip;</span></td>'
@@ -5498,6 +5512,7 @@ function _abrirModalEditarNovedad(nov) {
   document.getElementById('eno-fecha-fin').value = nov.fecha_fin || '';
   document.getElementById('eno-fecha-pago').value = nov.vacaciones_pagadas ? (nov.fecha_inicio||'') : '';
   document.getElementById('eno-dias-pagados').value = nov.vacaciones_pagadas ? (nov.dias||'') : '';
+  document.getElementById('eno-valor-pagado').value = nov.vacaciones_pagadas ? (nov.valor_pagado||'') : '';
 
   // Incapacidad: EPS (catálogo) + diagnóstico CIE-10
   const epsSel = document.getElementById('eno-eps');
@@ -5702,16 +5717,16 @@ function exportarNovedadesExcel(source, esFiltrado) {
   if (!source.length) { showToast('No hay novedades para exportar'); return; }
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
 
-  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
+  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','VALOR PAGADO','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
   const dataRows = source.map(n => [
     n.empleado_nombre||'', n.empleado_cedula||'', n.empleado_cliente||'', n.empleado_cargo||'',
     n.tipo||'', n.diagnostico_codigo||'', n.diagnostico_nombre||'', n.diagnostico_descripcion||'',
-    n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, n.descripcion||'',
+    n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, (n.vacaciones_pagadas ? (n.valor_pagado||0) : ''), n.descripcion||'',
     n.creado_por_nombre||'', (n.created_at||'').slice(0,10)
   ]);
   const aoa = [HEADERS, ...dataRows];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:16},{wch:34},{wch:34},{wch:14},{wch:14},{wch:8},{wch:40},{wch:20},{wch:16}];
+  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:16},{wch:34},{wch:34},{wch:14},{wch:14},{wch:8},{wch:16},{wch:40},{wch:20},{wch:16}];
   ws['!freeze'] = {xSplit:0, ySplit:1};
 
   const wb = XLSX.utils.book_new();
