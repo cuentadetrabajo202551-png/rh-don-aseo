@@ -636,24 +636,6 @@ tr.bg-selected td{background:#eff6ff!important}
 .sim-badge-main{background:var(--green-light);color:var(--green);font-size:10px;padding:1px 6px;border-radius:4px;font-weight:700}
 .sim-actions{padding:10px 18px;border-top:1px solid var(--border);background:#fafbfc;display:flex;gap:8px}
 
-/* ── CHANGE LOG ── */
-.change-log{display:flex;flex-direction:column;gap:0}
-.change-log-item{display:flex;gap:14px;padding:12px 0;border-bottom:1px solid #f1f5f9}
-.change-log-item:last-child{border-bottom:none}
-.change-log-dot{width:8px;height:8px;border-radius:50%;background:var(--blue);flex-shrink:0;margin-top:4px}
-.change-log-dot.import{background:var(--purple)}
-.change-log-dot.create{background:var(--green)}
-.change-log-body{flex:1}
-.change-log-field{font-size:13px;font-weight:600;color:var(--text)}
-.change-log-vals{display:flex;align-items:center;gap:6px;margin-top:3px;flex-wrap:wrap}
-.change-log-old{background:#f1f5f9;color:var(--text2);padding:2px 8px;border-radius:4px;font-size:11px;text-decoration:line-through}
-.change-log-arrow{color:var(--text3);font-size:12px}
-.change-log-new{background:var(--green-light);color:var(--green);padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
-.change-log-new.first{background:var(--blue-light);color:var(--blue-dark)}
-.change-log-meta{font-size:10px;color:var(--text3);margin-top:4px}
-.change-log-meta span{margin-right:8px}
-.change-log-origin{background:#f1f5f9;padding:1px 7px;border-radius:4px;font-weight:600}
-.change-log-origin.import{background:var(--purple-light);color:var(--purple)}
 </style>
 </head>
 <body>
@@ -1818,7 +1800,7 @@ tr.bg-selected td{background:#eff6ff!important}
     <div class="panel-tab" onclick="switchTab(this,'tab-laboral')">Datos Laborales</div>
     <div class="panel-tab" onclick="switchTab(this,'tab-seguridad')">Seguridad Social</div>
     <div class="panel-tab" onclick="switchTab(this,'tab-historial')">Historial</div>
-    <div class="panel-tab" onclick="switchTab(this,'tab-cambios')">Cambios</div>
+    <div class="panel-tab" onclick="switchTab(this,'tab-novedades')">Novedades</div>
     <div class="panel-tab" onclick="switchTab(this,'tab-docs');loadDocumentos()">
       &#128206; Documentos <span id="docs-badge" style="display:none;background:var(--blue);color:#fff;font-size:9px;padding:1px 5px;border-radius:8px;margin-left:3px">0</span>
     </div>
@@ -1844,12 +1826,9 @@ tr.bg-selected td{background:#eff6ff!important}
     <div class="panel-tab-content" id="tab-historial">
       <div id="infoHistorial"></div>
     </div>
-    <div class="panel-tab-content" id="tab-cambios">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:16px">
-        <div style="font-size:12px;color:var(--text2)">Registro de todos los cambios en este empleado</div>
-        <span style="font-size:11px;color:var(--text3);background:#f1f5f9;padding:3px 9px;border-radius:20px">Simulación</span>
-      </div>
-      <div class="change-log" id="infoCambios"></div>
+    <div class="panel-tab-content" id="tab-novedades">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:16px">Incapacidades, permisos, vacaciones y demás novedades registradas para este empleado</div>
+      <div id="infoNovedadesEmpleado"></div>
     </div>
 
     <!-- ── TAB DOCUMENTOS ── -->
@@ -4016,7 +3995,6 @@ async function asignarCampoAlerta(empId, campo, valor, selectEl) {
 // ───────────────────── INIT ─────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   initCatalogs();
-  renderChangeLog(null);
 
   // Poner logo en login Y en sidebar
   if (typeof LOGO_B64 !== 'undefined') {
@@ -5442,9 +5420,8 @@ function _novRenderHistorialTabla() {
       + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(n.empleado_nombre) + '</div>'
       + '<div class="td-sub">CC ' + escapeHTML(n.empleado_cedula) + ' &middot; ' + escapeHTML(n.empleado_cliente||'—') + '</div></td>'
       + '<td><span class="badge" style="background:#eff6ff;color:#1d4ed8">' + escapeHTML(n.tipo) + '</span></td>'
-      + '<td style="font-size:12px;max-width:200px">' + (n.diagnostico_codigo
-          ? ('<div class="td-name" style="font-size:12px">' + escapeHTML(n.diagnostico_codigo) + ' &middot; ' + escapeHTML(n.diagnostico_nombre||'') + '</div>'
-             + '<div class="td-sub">' + escapeHTML(n.diagnostico_descripcion||'') + '</div>')
+      + '<td style="font-size:12px">' + (n.diagnostico_codigo
+          ? ('<div class="td-name" style="font-size:12px;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="' + escapeHTML(n.diagnostico_codigo + ' — ' + (n.diagnostico_nombre||'') + (n.diagnostico_descripcion ? (' (' + n.diagnostico_descripcion + ')') : '')) + '">' + escapeHTML(n.diagnostico_codigo) + ' &middot; ' + escapeHTML(n.diagnostico_nombre||'') + '</div>')
           : '—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(n.fecha_inicio) + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(n.fecha_fin) + '</td>'
@@ -5815,52 +5792,51 @@ const CHANGE_LOG_DATA = {
     {date:'01/06/1994',time:'—',user:'Sistema',origin:'import',field:'Alta en sistema',old:'—',new:'Registro creado'},
   ],
 };
-async function renderChangeLog(empId){
-  const el = document.getElementById('infoCambios');
-  if(!el || !empId) return;
-  el.innerHTML = '<div style="padding:14px 18px;font-size:12px;color:var(--text3)">Cargando historial...</div>';
+// Novedades (vacaciones, incapacidades, etc.) registradas para este empleado.
+// NOVEDADES ya está en memoria (cargada al iniciar sesión), no requiere consulta a Supabase.
+function renderNovedadesEmpleado(empId) {
+  const el = document.getElementById('infoNovedadesEmpleado');
+  if (!el || !empId) return;
 
-  const { data, error } = await sb.from('audit_log')
-    .select('*')
-    .eq('entity_id', String(empId))
-    .order('created_at', { ascending: false })
-    .limit(60);
+  const lista = NOVEDADES
+    .filter(n => String(n.empleado_id) === String(empId))
+    .sort((a,b) => (b.fecha_inicio||'').localeCompare(a.fecha_inicio||''));
 
-  if (error || !data || !data.length) {
-    el.innerHTML = '<div style="padding:14px 18px;font-size:12px;color:var(--text3)">Sin cambios registrados para este empleado aún.</div>';
+  if (!lista.length) {
+    el.innerHTML = '<div style="padding:14px 18px;font-size:12px;color:var(--text3)">Sin novedades registradas para este empleado aún.</div>';
     return;
   }
 
-  const actionLabel = { update:'Edición', traslado:'Traslado', create:'Alta', import:'Importación', delete:'Eliminación', baja:'Baja laboral' };
-  const dotClass    = { import:'import', create:'create', traslado:'', update:'', baja:'', delete:'' };
-
-  el.innerHTML = data.map(c => {
-    const dt    = new Date(c.created_at);
-    const fecha = dt.toLocaleDateString('es-CO', {day:'2-digit',month:'2-digit',year:'numeric'});
-    const hora  = dt.toLocaleTimeString('es-CO', {hour:'2-digit',minute:'2-digit'});
-    const label = actionLabel[c.action] || escapeHTML(c.action);
-    const dc    = dotClass[c.action] ?? '';
-    return `<div class="change-log-item">
-      <div class="change-log-dot ${dc}"></div>
-      <div class="change-log-body">
-        <div class="change-log-field">${label}</div>
-        <div class="change-log-vals">
-          <span class="change-log-new">${escapeHTML(c.description||'—')}</span>
-        </div>
-        <div class="change-log-meta">
-          <span>${fecha} &middot; ${hora}</span>
-          <span>${escapeHTML(c.user_name||c.user_email||'Sistema')}</span>
-        </div>
-      </div>
-    </div>`;
+  el.innerHTML = lista.map(n => {
+    const rango = n.vacaciones_pagadas
+      ? ('Pagadas el ' + escapeHTML(n.fecha_inicio) + ' &middot; ' + n.dias + ' días')
+      : (escapeHTML(n.fecha_inicio) + ' a ' + escapeHTML(n.fecha_fin) + ' &middot; ' + n.dias + ' días');
+    return '<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">'
+      + '<span class="badge" style="background:#eff6ff;color:#1d4ed8;flex-shrink:0">' + escapeHTML(n.tipo) + '</span>'
+      + '<div style="flex:1;min-width:0">'
+      + '<div style="font-size:13px;font-weight:600;color:var(--text)">' + escapeHTML(n.tipo) + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">' + rango + '</div>'
+      + '</div>'
+      + '<button class="btn-icon" onclick="verNovedad(' + n.id + ')" title="Ver novedad">'
+      + '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>'
+      + '</button>'
+      + '</div>';
   }).join('');
 }
 
-// Patch openPanel to also render change log (async)
+// Abre el modal de novedad en modo "ver" — cualquiera que vea el perfil del empleado puede
+// consultar la info, aunque solo quien la creó (o admin) podrá guardar cambios desde ahí.
+function verNovedad(id) {
+  const nov = NOVEDADES.find(n => n.id === id);
+  if (!nov) return;
+  _abrirModalEditarNovedad(nov);
+}
+
+// Patch openPanel to also render this employee's novedades
 const _origOpenPanel = openPanel;
 openPanel = function(id){
   _origOpenPanel(id);
-  renderChangeLog(id).catch(e => console.warn('renderChangeLog error:', e));
+  renderNovedadesEmpleado(id);
 };
 
 // ───────────────────── IMPORT WIZARD ─────────────────────
