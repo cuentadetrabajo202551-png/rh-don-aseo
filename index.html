@@ -355,6 +355,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .ppu-role-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:5px}
 .ppu-role-badge.admin{background:#f5d400;color:#001a4d}
 .ppu-role-badge.editor{background:#60a5fa;color:#fff}
+.ppu-role-badge.auxiliar{background:#34d399;color:#064e3b}
 .ppu-role-badge.viewer{background:rgba(255,255,255,.2);color:#fff}
 .ppu-body{flex:1;overflow-y:auto;padding:20px 24px}
 .ppu-section-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px}
@@ -378,6 +379,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .role-select{padding:5px 10px;border:1px solid var(--border);border-radius:6px;font-size:12px;font-weight:600;outline:none;cursor:pointer;background:var(--bg)}
 .role-select.admin{border-color:#f5d400;color:#001a4d;background:#fefce8}
 .role-select.editor{border-color:#60a5fa;color:#1d4ed8;background:#eff6ff}
+.role-select.auxiliar{border-color:#34d399;color:#047857;background:#ecfdf5}
 .role-select.viewer{border-color:var(--border);color:var(--text2)}
 
 /* ── LOGIN SCREEN — diseño institucional, fondo a pantalla completa ── */
@@ -733,6 +735,11 @@ tr.bg-selected td{background:#eff6ff!important}
     Empleados
     <span class="sb-badge" id="sb-activos-badge" style="display:none">0</span>
   </div>
+  <div id="sb-nav-novedades" class="sb-item" onclick="showSection('novedades',this)">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
+    Novedades
+    <span class="sb-badge" id="sb-novedades-badge" style="display:none">0</span>
+  </div>
   <div id="sb-nav-alertas" class="sb-item" onclick="showSection('alertas',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
     Alertas de Datos
@@ -1046,6 +1053,30 @@ tr.bg-selected td{background:#eff6ff!important}
         </div>
       </div>
     </div><!-- /empleados -->
+
+
+    <!-- ════════════════════════════════════ NOVEDADES ══ -->
+    <div id="section-novedades" class="section">
+      <div class="section-header">
+        <div>
+          <div class="section-title">Novedades</div>
+          <div class="section-sub">Incapacidades, permisos, licencias, vacaciones y demás novedades laborales</div>
+        </div>
+      </div>
+
+      <!-- Tabs internas -->
+      <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0">
+        <div class="panel-tab active" id="nov-tab-registrar" onclick="buildNovedades('registrar')" style="font-size:13px;padding:10px 16px">Registrar novedad</div>
+        <div class="panel-tab" id="nov-tab-calendario" onclick="buildNovedades('calendario')" style="font-size:13px;padding:10px 16px">Calendario</div>
+        <div class="panel-tab" id="nov-tab-historial" onclick="buildNovedades('historial')" style="font-size:13px;padding:10px 16px">Historial</div>
+        <div class="panel-tab" id="nov-tab-reportes" onclick="buildNovedades('reportes')" style="font-size:13px;padding:10px 16px">Reportes</div>
+      </div>
+
+      <div id="nov-content-registrar"></div>
+      <div id="nov-content-calendario" style="display:none"></div>
+      <div id="nov-content-historial" style="display:none"></div>
+      <div id="nov-content-reportes" style="display:none"></div>
+    </div><!-- /novedades -->
 
 
     <!-- ═══════════════════════════════════════ ALERTAS ═══ -->
@@ -1401,6 +1432,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <div class="catalog-list-item" onclick="loadCatalog('escolaridad',this)">Escolaridad <span class="catalog-count" id="cc-escolaridad">—</span></div>
           <div class="catalog-list-item" onclick="loadCatalog('tiposDocumento',this)">Tipos de documento <span class="catalog-count" id="cc-tiposDocumento">—</span></div>
           <div class="catalog-list-item" onclick="loadCatalog('nivelesRiesgo',this)">Niveles de riesgo <span class="catalog-count" id="cc-nivelesRiesgo">—</span></div>
+          <div class="catalog-list-item" onclick="loadCatalog('novedades_tipos',this)">Tipos de Novedad <span class="catalog-count" id="cc-novedades_tipos">—</span></div>
         </div>
         <div class="catalog-panel">
           <div class="catalog-panel-header">
@@ -1608,6 +1640,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <div class="form-group"><label class="form-label">Rol *</label>
             <select class="form-select" id="nu-role">
               <option value="viewer">Visualizador &#8212; solo lectura</option>
+              <option value="auxiliar">Auxiliar &#8212; empleados (lectura) + novedades</option>
               <option value="editor">Editor &#8212; puede editar empleados</option>
               <option value="admin">Admin &#8212; acceso total</option>
             </select></div>
@@ -1971,6 +2004,50 @@ tr.bg-selected td{background:#eff6ff!important}
   </div>
 </div>
 
+<!-- MODAL EDITAR NOVEDAD -->
+<div id="modal-overlay-novedad" onclick="if(event.target===this)_cerrarModalEditarNovedad()"
+  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:center;justify-content:center;padding:24px">
+  <div style="background:var(--card);border-radius:14px;width:100%;max-width:560px;max-height:90vh;overflow:hidden;display:flex;flex-direction:column;box-shadow:var(--shadow-lg)">
+    <div class="modal-header">
+      <div class="modal-title">Editar novedad</div>
+      <button class="panel-close" onclick="_cerrarModalEditarNovedad()">&#10005;</button>
+    </div>
+    <div class="modal-body">
+      <div id="eno-emp-info" style="font-size:13px;color:var(--text2);margin-bottom:14px;font-weight:600"></div>
+      <div class="form-grid">
+        <div class="form-group">
+          <label class="form-label">Tipo de novedad *</label>
+          <select class="form-select" id="eno-tipo"></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha inicio *</label>
+          <input type="date" class="form-input" id="eno-fecha-inicio">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha fin *</label>
+          <input type="date" class="form-input" id="eno-fecha-fin">
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Descripción / Observaciones</label>
+          <textarea class="form-input" id="eno-descripcion" rows="3"></textarea>
+        </div>
+        <div class="form-group full">
+          <label class="form-label">Soportes adjuntos</label>
+          <div id="eno-adjuntos-list" style="margin-bottom:8px"></div>
+          <label class="btn btn-primary btn-sm" style="cursor:pointer;margin:0">
+            Seleccionar archivo
+            <input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirSoporteNovedad(this, _novEditNovedadId)">
+          </label>
+        </div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="_cerrarModalEditarNovedad()">Cancelar</button>
+      <button class="btn btn-primary" onclick="guardarEdicionNovedad(_novEditNovedadId)">&#10003; Guardar cambios</button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR -->
 <div id="modal-overlay" onclick="if(event.target===this)closeEditModal()">
   <div id="modal-editar">
@@ -2253,11 +2330,12 @@ function showSection(id, el) {
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios',estadisticas:'Estadísticas de Rotación',fechas:'Cumpleaños & Fechas Críticas'};
+  const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios',estadisticas:'Estadísticas de Rotación',fechas:'Cumpleaños & Fechas Críticas',novedades:'Novedades'};
   document.getElementById('breadcrumb').textContent = titles[id]||id;
   if (id === 'auditoria') loadAuditLog();
   if (id === 'estadisticas') buildEstadisticas();
   if (id === 'fechas') buildFechas('cumple');
+  if (id === 'novedades') buildNovedades(_novedadesTabActiva || 'registrar');
   if (id === 'catalogos') {
     // Recalcular usos con los datos actuales de empleados al entrar
     updateCatalogSidebar();
@@ -3929,6 +4007,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     applyRoleVisibility();
     _resetInactivity();
     await loadCatalogsFromDB();
+    await loadNovedadesFromDB();
     await loadFromSupabase();
     _startAutoSync();
   }
@@ -4507,18 +4586,23 @@ const CATALOGS = {
     'Yondo','Yopal','Yotoco','Yumbo','Zambrano','Zapatoca','Zapayan','Zaragoza',
     'Zarzal','Zetaquira','Zipacon','Zipaquira','Zona Bananera'
   ],
+  novedades_tipos:[
+    'INCAPACIDAD','PERMISO REMUNERADO','PERMISO NO REMUNERADO','LICENCIA DE MATERNIDAD',
+    'LICENCIA DE PATERNIDAD','SUSPENSION','VACACIONES','AUSENTISMO','OTRO'
+  ],
 };
 const CATALOG_TITLES = {
   clientes:'Clientes / Entidades', cargos:'Cargos', eps:'EPS',
   afp:'AFP / Pensión', arl:'ARL', municipios:'Municipios',
   departamentos:'Departamentos', motivosRetiro:'Motivos de retiro',
   escolaridad:'Nivel de Escolaridad', tiposDocumento:'Tipos de documento',
-  nivelesRiesgo:'Niveles de riesgo'
+  nivelesRiesgo:'Niveles de riesgo', novedades_tipos:'Tipos de Novedad'
 };
 const CATALOG_USAGE = {
   clientes:{max:500},cargos:{max:2000},eps:{max:500},afp:{max:500},
   arl:{max:500},municipios:{max:7991},departamentos:{max:7991},
-  motivosRetiro:{max:7991},escolaridad:{max:7991},tiposDocumento:{max:7991},nivelesRiesgo:{max:7991}
+  motivosRetiro:{max:7991},escolaridad:{max:7991},tiposDocumento:{max:7991},nivelesRiesgo:{max:7991},
+  novedades_tipos:{max:50}
 };
 let activeCatalog = 'clientes';
 
@@ -4695,6 +4779,756 @@ async function loadCatalogsFromDB() {
 async function persistCatalog(key) {
   if (!CATALOGS[key]) return;
   await sb.from('catalogs').upsert({ key, items: CATALOGS[key], updated_at: new Date().toISOString() });
+}
+
+// ───────────────────────────────────────────────────────────────────────────
+
+// ════════════════════════════════════════════════════════════════════════
+// ── MÓDULO NOVEDADES ──────────────────────────────────────────────────────
+// ════════════════════════════════════════════════════════════════════════
+
+let NOVEDADES = [];
+let _novedadesTabActiva = 'registrar';
+let _novCalMes  = new Date().getMonth();
+let _novCalAnio = new Date().getFullYear();
+let _novFiltro  = { tipo:'', empleadoQ:'', cliente:'', desde:'', hasta:'' };
+let _novPage = 1;
+const NOV_PAGE_SIZE = 15;
+
+async function loadNovedadesFromDB() {
+  const { data, error } = await sb.from('novedades').select('*').order('fecha_inicio', { ascending: false });
+  if (error) { console.warn('Error cargando novedades:', error); return; }
+  NOVEDADES = data || [];
+  _updateNovedadesBadge();
+}
+
+function _updateNovedadesBadge() {
+  const hoy = new Date().toISOString().slice(0,10);
+  const activas = NOVEDADES.filter(n => n.fecha_inicio <= hoy && n.fecha_fin >= hoy).length;
+  const badge = document.getElementById('sb-novedades-badge');
+  if (badge) {
+    badge.textContent = activas;
+    badge.style.display = activas > 0 ? '' : 'none';
+  }
+}
+
+// ── Permisos: regla de "propiedad" — admin sin restricción, editor/auxiliar solo lo propio ──
+function canAccessNovedades() { return canAccess('novedades'); }
+function canCreateNovedad()   { return canAccessNovedades(); }
+function canEditNovedad(nov) {
+  if (isAdmin()) return true;
+  return nov?.creado_por === _currentUser?.id;
+}
+function canDeleteNovedad(nov) {
+  if (isAdmin()) return true;
+  return nov?.creado_por === _currentUser?.id;
+}
+
+// Días corridos, inclusivos (igual que incapacidades EPS/ARL)
+function _calcularDiasNovedad(fechaIni, fechaFin) {
+  const d1 = new Date(fechaIni + 'T00:00:00'), d2 = new Date(fechaFin + 'T00:00:00');
+  return Math.round((d2 - d1) / 86400000) + 1;
+}
+
+// ── CRUD ──────────────────────────────────────────────────────────────────
+async function crearNovedad() {
+  if (!canCreateNovedad()) { showToast('No tienes permiso para crear novedades'); return; }
+
+  const empId = document.getElementById('nov-empleado-id')?.value;
+  const emp   = EMPLEADOS.find(e => String(e.id) === String(empId));
+  if (!emp) { showToast('Selecciona un empleado válido'); return; }
+
+  const tipo        = document.getElementById('nov-tipo')?.value || '';
+  const fechaIni     = document.getElementById('nov-fecha-inicio')?.value || '';
+  const fechaFin     = document.getElementById('nov-fecha-fin')?.value || '';
+  const descripcion = (document.getElementById('nov-descripcion')?.value || '').trim();
+
+  if (!tipo || !fechaIni || !fechaFin) { showToast('Completa tipo y fechas'); return; }
+  const dias = _calcularDiasNovedad(fechaIni, fechaFin);
+  if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
+
+  const payload = {
+    empleado_id: String(emp.id),
+    empleado_nombre: emp.nombre || '',
+    empleado_cedula: emp.cedula || '',
+    empleado_cliente: emp.cliente || '',
+    empleado_cargo: emp.cargo || '',
+    tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
+    creado_por: _currentUser.id,
+    creado_por_nombre: _currentUser.display_name || _currentUser.email
+  };
+
+  const { data, error } = await sb.from('novedades').insert([payload]).select().single();
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  NOVEDADES.unshift(data);
+  _updateNovedadesBadge();
+  await logAudit('create', 'novedades', data.id, 'Registró novedad ' + tipo + ' para ' + emp.nombre + ' (' + fechaIni + ' a ' + fechaFin + ')');
+  showToast('✓ Novedad registrada');
+  return data;
+}
+
+function editarNovedad(id) {
+  const nov = NOVEDADES.find(n => n.id === id);
+  if (!nov) return;
+  if (!canEditNovedad(nov)) { showToast('No puedes editar esta novedad'); return; }
+  _abrirModalEditarNovedad(nov);
+}
+
+async function guardarEdicionNovedad(id) {
+  const nov = NOVEDADES.find(n => n.id === id);
+  if (!nov || !canEditNovedad(nov)) { showToast('No tienes permiso'); return; }
+
+  const tipo         = document.getElementById('eno-tipo')?.value || '';
+  const fechaIni      = document.getElementById('eno-fecha-inicio')?.value || '';
+  const fechaFin      = document.getElementById('eno-fecha-fin')?.value || '';
+  const descripcion  = (document.getElementById('eno-descripcion')?.value || '').trim();
+  if (!tipo || !fechaIni || !fechaFin) { showToast('Completa tipo y fechas'); return; }
+  const dias = _calcularDiasNovedad(fechaIni, fechaFin);
+  if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
+
+  const { error } = await sb.from('novedades').update({
+    tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
+    updated_at: new Date().toISOString(),
+    updated_por: _currentUser.id,
+    updated_por_nombre: _currentUser.display_name || _currentUser.email
+  }).eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  Object.assign(nov, { tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion });
+  _updateNovedadesBadge();
+  await logAudit('update', 'novedades', id, 'Editó novedad ' + tipo + ' de ' + nov.empleado_nombre);
+  showToast('✓ Novedad actualizada');
+  _cerrarModalEditarNovedad();
+  if (_novedadesTabActiva === 'historial') buildNovedadesHistorial();
+}
+
+async function eliminarNovedad(id) {
+  const nov = NOVEDADES.find(n => n.id === id);
+  if (!canDeleteNovedad(nov)) { showToast('No tienes permiso para eliminar esta novedad'); return; }
+  if (!confirm('¿Eliminar esta novedad y todos sus soportes adjuntos? Esta acción no se puede deshacer.')) return;
+
+  const { data: soportes } = await sb.from('novedades_soportes').select('storage_path').eq('novedad_id', id);
+  if (soportes && soportes.length) {
+    await sb.storage.from('documentos').remove(soportes.map(s => s.storage_path));
+  }
+  const { error } = await sb.from('novedades').delete().eq('id', id);
+  if (error) { showToast('Error: ' + error.message); return; }
+
+  NOVEDADES = NOVEDADES.filter(n => n.id !== id);
+  _updateNovedadesBadge();
+  await logAudit('delete', 'novedades', id, 'Eliminó novedad ' + (nov?.tipo||'') + ' de ' + (nov?.empleado_nombre||''));
+  showToast('Novedad eliminada');
+  if (_novedadesTabActiva === 'historial') buildNovedadesHistorial();
+}
+
+// ── Soportes adjuntos (mismo patrón que subirDocumentoConTitulo/descargarDocumento/eliminarDocumento) ──
+async function subirSoporteNovedad(input, novedadId) {
+  const file = input.files[0];
+  if (!file || !novedadId) return;
+  const nov = NOVEDADES.find(n => n.id === novedadId);
+  if (!canEditNovedad(nov)) { showToast('No tienes permiso'); input.value=''; return; }
+  if (file.size > 10*1024*1024) { showToast('Máximo 10MB por archivo'); input.value=''; return; }
+
+  showToast('Subiendo ' + file.name + '...');
+  const path = 'novedades/' + novedadId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, { contentType: file.type, upsert:false });
+  if (upErr) { showToast('Error: ' + upErr.message); return; }
+
+  const { error: dbErr } = await sb.from('novedades_soportes').insert([{
+    novedad_id: novedadId, nombre: file.name, storage_path: path, tamanio: file.size,
+    subido_por: _currentUser?.display_name || _currentUser?.email || 'Usuario'
+  }]);
+  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
+
+  await logAudit('create', 'novedades_soportes', novedadId, 'Adjuntó soporte: ' + file.name);
+  showToast('✓ Soporte adjuntado');
+  input.value = '';
+  if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
+}
+
+async function descargarSoporteNovedad(storagePath) {
+  const { data, error } = await sb.storage.from('documentos').createSignedUrl(storagePath, 3600);
+  if (error) { showToast('Error: ' + error.message); return; }
+  window.open(data.signedUrl, '_blank');
+}
+
+async function eliminarSoporteNovedad(id, storagePath, novedadId) {
+  const nov = NOVEDADES.find(n => n.id === novedadId);
+  if (!canEditNovedad(nov)) { showToast('No tienes permiso'); return; }
+  if (!confirm('¿Eliminar este soporte?')) return;
+
+  const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
+  if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
+  const { error: dbErr } = await sb.from('novedades_soportes').delete().eq('id', id);
+  if (dbErr) { showToast('Error en base de datos: ' + dbErr.message); return; }
+
+  await logAudit('delete', 'novedades_soportes', novedadId, 'Eliminó soporte adjunto');
+  showToast('Soporte eliminado');
+  if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
+}
+
+// ── Router de sub-tabs de la sección Novedades ────────────────────────────
+function buildNovedades(tab) {
+  _novedadesTabActiva = tab;
+  ['registrar','calendario','historial','reportes'].forEach(t => {
+    document.getElementById('nov-tab-'+t)?.classList.toggle('active', t === tab);
+    const cont = document.getElementById('nov-content-'+t);
+    if (cont) cont.style.display = (t === tab) ? 'block' : 'none';
+  });
+  if (tab === 'registrar')  buildNovedadesRegistrar();
+  if (tab === 'calendario') buildNovedadesCalendario();
+  if (tab === 'historial')  buildNovedadesHistorial();
+  if (tab === 'reportes')   buildNovedadesReportes();
+}
+
+// ── Sub-tab: Registrar novedad ─────────────────────────────────────────────
+let _novRegUltimaId = null;
+let _novEditNovedadId = null; // id de la novedad abierta en el modal de edición (si aplica)
+
+function buildNovedadesRegistrar() {
+  const cont = document.getElementById('nov-content-registrar');
+  if (!cont) return;
+  if (!canCreateNovedad()) {
+    cont.innerHTML = '<div class="empty-state" style="padding:30px"><p>No tienes permiso para registrar novedades</p></div>';
+    return;
+  }
+  _novRegUltimaId = null;
+  const tipos = CATALOGS.novedades_tipos || [];
+
+  cont.innerHTML = `
+    <div class="cert-form-card">
+      <div class="cert-section-label">1. Buscar empleado</div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="flex:1;position:relative">
+          <input type="text" id="nov-search" class="form-input" placeholder="Escribir nombre o cédula del empleado..."
+            oninput="novSearchEmployee()" autocomplete="off" style="width:100%;padding-left:36px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3)">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <div id="nov-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:3px"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="novClearEmployee()">Limpiar</button>
+      </div>
+      <input type="hidden" id="nov-empleado-id">
+      <div id="nov-emp-found" style="display:none;margin-top:12px">
+        <div style="background:var(--blue-light);border:1px solid #bfdbfe;border-radius:8px;padding:11px 14px;display:flex;align-items:center;gap:12px">
+          <div id="nov-emp-avatar" class="emp-avatar m" style="width:36px;height:36px;font-size:13px;flex-shrink:0">?</div>
+          <div style="flex:1">
+            <div id="nov-emp-name" style="font-size:14px;font-weight:700;color:var(--text)">—</div>
+            <div id="nov-emp-meta" style="font-size:12px;color:var(--text2)">—</div>
+          </div>
+          <span id="nov-emp-badge" class="badge badge-activo">ACTIVO</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="cert-form-card">
+      <div class="cert-section-label">2. Datos de la novedad</div>
+      <div class="cert-options-grid">
+        <div class="form-group">
+          <label class="form-label">Tipo de novedad *</label>
+          <select class="form-select" id="nov-tipo">
+            <option value="">— Seleccionar —</option>
+            ${tipos.map(t => '<option value="'+escapeHTML(t)+'">'+escapeHTML(t)+'</option>').join('')}
+          </select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Días</label>
+          <input type="text" class="form-input" id="nov-dias" readonly style="background:#f8fafc;font-weight:700">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha inicio *</label>
+          <input type="date" class="form-input" id="nov-fecha-inicio" onchange="_novCalcDias()">
+        </div>
+        <div class="form-group">
+          <label class="form-label">Fecha fin *</label>
+          <input type="date" class="form-input" id="nov-fecha-fin" onchange="_novCalcDias()">
+        </div>
+        <div class="form-group" style="grid-column:span 2">
+          <label class="form-label">Descripción / Observaciones</label>
+          <textarea class="form-input" id="nov-descripcion" rows="3" placeholder="Detalle adicional (opcional)..."></textarea>
+        </div>
+      </div>
+      <div style="display:flex;justify-content:flex-end;margin-top:14px">
+        <button class="btn btn-primary" onclick="_novGuardarDesdeForm()">✓ Registrar novedad</button>
+      </div>
+    </div>
+
+    <div class="cert-form-card" id="nov-adjuntos-card" style="display:none">
+      <div class="cert-section-label">3. Adjuntar soporte</div>
+      <div id="nov-adjuntos-list" style="margin-bottom:10px"></div>
+      <label class="btn btn-primary btn-sm" style="cursor:pointer;margin:0">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="margin-right:4px;vertical-align:-2px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Seleccionar archivo
+        <input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirSoporteNovedad(this, _novRegUltimaId)">
+      </label>
+    </div>
+  `;
+}
+
+function novSearchEmployee() {
+  const q = (document.getElementById('nov-search')?.value||'').trim().toLowerCase();
+  const res = document.getElementById('nov-search-results');
+  if (!res) return;
+  if (!q || q.length < 2) { res.style.display='none'; return; }
+
+  const matches = EMPLEADOS.filter(e =>
+    e.nombre.toLowerCase().includes(q) || e.cedula.includes(q)
+  ).slice(0, 12);
+
+  if (!matches.length) {
+    res.innerHTML = '<div class="combobox-empty">Sin resultados</div>';
+    res.style.display = 'block';
+    return;
+  }
+
+  res.innerHTML = matches.map(e => {
+    const g = e.genero==='FEMENINO'?'f':'m';
+    const ini = getInitials(e.nombre);
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9" '
+      + 'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" '
+      + 'onclick="novSelectEmployee(' + e.id + ')">'
+      + '<div class="emp-avatar ' + g + '" style="width:28px;height:28px;font-size:10px;flex-shrink:0">' + escapeHTML(ini) + '</div>'
+      + '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + escapeHTML(e.nombre) + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">CC ' + escapeHTML(e.cedula) + ' · ' + escapeHTML(e.cargo||'Sin cargo') + '</div></div>'
+      + '<span class="badge ' + (e.estado==='ACTIVO'?'badge-activo':'badge-inactivo') + '" style="font-size:10px">' + escapeHTML(e.estado) + '</span>'
+      + '</div>';
+  }).join('');
+  res.style.display = 'block';
+}
+
+function novSelectEmployee(id) {
+  const emp = EMPLEADOS.find(e => e.id === id);
+  if (!emp) return;
+  document.getElementById('nov-empleado-id').value = emp.id;
+  document.getElementById('nov-search').value = emp.nombre;
+  document.getElementById('nov-search-results').style.display = 'none';
+  const found = document.getElementById('nov-emp-found');
+  found.style.display = 'block';
+  const av = document.getElementById('nov-emp-avatar');
+  av.textContent = getInitials(emp.nombre);
+  av.className = 'emp-avatar ' + (emp.genero==='FEMENINO'?'f':'m');
+  document.getElementById('nov-emp-name').textContent = emp.nombre;
+  document.getElementById('nov-emp-meta').textContent = (emp.cargo||'Sin cargo') + ' · ' + (emp.cliente||'Sin cliente') + ' · CC ' + emp.cedula;
+  const badge = document.getElementById('nov-emp-badge');
+  badge.textContent = emp.estado;
+  badge.className = 'badge ' + (emp.estado==='ACTIVO'?'badge-activo':'badge-inactivo');
+}
+
+function novClearEmployee() {
+  const idEl = document.getElementById('nov-empleado-id');
+  if (idEl) idEl.value = '';
+  const searchEl = document.getElementById('nov-search');
+  if (searchEl) searchEl.value = '';
+  const found = document.getElementById('nov-emp-found');
+  if (found) found.style.display = 'none';
+}
+
+function _novCalcDias() {
+  const ini = document.getElementById('nov-fecha-inicio')?.value;
+  const fin = document.getElementById('nov-fecha-fin')?.value;
+  const diasEl = document.getElementById('nov-dias');
+  if (!diasEl) return;
+  if (ini && fin) {
+    const d = _calcularDiasNovedad(ini, fin);
+    diasEl.value = d >= 1 ? (d + (d===1?' día':' días')) : 'Fechas inválidas';
+  } else {
+    diasEl.value = '';
+  }
+}
+
+async function _novGuardarDesdeForm() {
+  const data = await crearNovedad();
+  if (!data) return;
+  _novRegUltimaId = data.id;
+  const card = document.getElementById('nov-adjuntos-card');
+  if (card) card.style.display = 'block';
+  _renderSoportesList(data.id, 'nov-adjuntos-list');
+  // Limpiar el formulario para registrar la siguiente novedad, manteniendo el bloque de adjuntos visible
+  ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.value = '';
+  });
+  novClearEmployee();
+}
+
+// ── Lista de soportes adjuntos (reusada por Registrar y por el modal de edición) ──
+async function _renderSoportesList(novedadId, targetElId) {
+  const el = document.getElementById(targetElId);
+  if (!el) return;
+  const { data, error } = await sb.from('novedades_soportes').select('*').eq('novedad_id', novedadId).order('created_at', { ascending:false });
+  if (error) { el.innerHTML = ''; return; }
+  if (!data || !data.length) { el.innerHTML = '<div style="font-size:12px;color:var(--text3)">Sin soportes adjuntos</div>'; return; }
+  const nov = NOVEDADES.find(n => n.id === novedadId);
+  el.innerHTML = data.map(s =>
+    '<div style="display:flex;align-items:center;gap:8px;padding:7px 10px;border:1px solid var(--border);border-radius:7px;margin-bottom:6px;font-size:12px">'
+    + '<span style="flex:1">📎 ' + escapeHTML(s.nombre) + '</span>'
+    + '<button class="btn-icon" onclick="descargarSoporteNovedad(\'' + s.storage_path + '\')" title="Ver/Descargar">⬇</button>'
+    + (canEditNovedad(nov) ? '<button class="btn-icon red" onclick="eliminarSoporteNovedad(' + s.id + ',\'' + s.storage_path + '\',' + novedadId + ')" title="Eliminar">🗑</button>' : '')
+    + '</div>'
+  ).join('');
+}
+
+function _recargarSoportesNovedad(novedadId) {
+  if (_novRegUltimaId === novedadId) _renderSoportesList(novedadId, 'nov-adjuntos-list');
+  if (_novEditNovedadId === novedadId) _renderSoportesList(novedadId, 'eno-adjuntos-list');
+}
+
+// ── Sub-tab: Historial de novedades ────────────────────────────────────────
+function buildNovedadesHistorial() {
+  const cont = document.getElementById('nov-content-historial');
+  if (!cont) return;
+  const tipos = CATALOGS.novedades_tipos || [];
+  const clientes = [...new Set(NOVEDADES.map(n => n.empleado_cliente).filter(Boolean))].sort();
+
+  cont.innerHTML = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
+      <input type="text" class="form-input" id="novf-empleado" placeholder="Buscar empleado o cédula..." style="width:220px" oninput="novFiltrarHistorial()">
+      <select class="form-select" id="novf-tipo" style="width:190px" onchange="novFiltrarHistorial()">
+        <option value="">Todos los tipos</option>
+        ${tipos.map(t => '<option value="'+escapeHTML(t)+'">'+escapeHTML(t)+'</option>').join('')}
+      </select>
+      <select class="form-select" id="novf-cliente" style="width:190px" onchange="novFiltrarHistorial()">
+        <option value="">Todos los clientes</option>
+        ${clientes.map(c => '<option value="'+escapeHTML(c)+'">'+escapeHTML(c)+'</option>').join('')}
+      </select>
+      <input type="date" class="form-input" id="novf-desde" style="width:140px" onchange="novFiltrarHistorial()" title="Desde">
+      <input type="date" class="form-input" id="novf-hasta" style="width:140px" onchange="novFiltrarHistorial()" title="Hasta">
+      <button class="btn btn-ghost btn-sm" onclick="novLimpiarFiltrosHistorial()">Limpiar</button>
+    </div>
+    <div class="table-wrap">
+      <table class="table">
+        <thead><tr>
+          <th>Empleado</th><th>Tipo</th><th>Inicio</th><th>Fin</th><th>Días</th><th>Descripción</th><th>Creado por</th><th>Soportes</th><th></th>
+        </tr></thead>
+        <tbody id="novHistBody"></tbody>
+      </table>
+      <div class="pagination">
+        <div class="pagination-info" id="novHistPaginationInfo"></div>
+        <div class="pagination-btns" id="novHistPaginationBtns"></div>
+      </div>
+    </div>
+  `;
+  _novPage = 1;
+  _novRenderHistorialTabla();
+}
+
+function novFiltrarHistorial() {
+  _novFiltro = {
+    tipo: document.getElementById('novf-tipo')?.value || '',
+    empleadoQ: (document.getElementById('novf-empleado')?.value || '').toLowerCase().trim(),
+    cliente: document.getElementById('novf-cliente')?.value || '',
+    desde: document.getElementById('novf-desde')?.value || '',
+    hasta: document.getElementById('novf-hasta')?.value || ''
+  };
+  _novPage = 1;
+  _novRenderHistorialTabla();
+}
+
+function novLimpiarFiltrosHistorial() {
+  ['novf-empleado','novf-tipo','novf-cliente','novf-desde','novf-hasta'].forEach(id => { const el=document.getElementById(id); if (el) el.value=''; });
+  _novFiltro = { tipo:'', empleadoQ:'', cliente:'', desde:'', hasta:'' };
+  _novPage = 1;
+  _novRenderHistorialTabla();
+}
+
+function _novFiltrarLista() {
+  return NOVEDADES.filter(n => {
+    if (_novFiltro.tipo && n.tipo !== _novFiltro.tipo) return false;
+    if (_novFiltro.cliente && n.empleado_cliente !== _novFiltro.cliente) return false;
+    if (_novFiltro.desde && n.fecha_fin < _novFiltro.desde) return false;
+    if (_novFiltro.hasta && n.fecha_inicio > _novFiltro.hasta) return false;
+    if (_novFiltro.empleadoQ) {
+      const hay = ((n.empleado_nombre||'')+(n.empleado_cedula||'')).toLowerCase();
+      if (!hay.includes(_novFiltro.empleadoQ)) return false;
+    }
+    return true;
+  });
+}
+
+function _novRenderHistorialTabla() {
+  const lista = _novFiltrarLista();
+  const tbody = document.getElementById('novHistBody');
+  if (!tbody) return;
+  const start = (_novPage-1)*NOV_PAGE_SIZE;
+  const pageItems = lista.slice(start, start+NOV_PAGE_SIZE);
+
+  if (!lista.length) {
+    tbody.innerHTML = '<tr><td colspan="9"><div class="empty-state"><p>No se encontraron novedades</p></div></td></tr>';
+  } else {
+    tbody.innerHTML = pageItems.map(n =>
+      '<tr>'
+      + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(n.empleado_nombre) + '</div>'
+      + '<div class="td-sub">CC ' + escapeHTML(n.empleado_cedula) + ' &middot; ' + escapeHTML(n.empleado_cliente||'—') + '</div></td>'
+      + '<td><span class="badge" style="background:#eff6ff;color:#1d4ed8">' + escapeHTML(n.tipo) + '</span></td>'
+      + '<td style="font-size:12px">' + escapeHTML(n.fecha_inicio) + '</td>'
+      + '<td style="font-size:12px">' + escapeHTML(n.fecha_fin) + '</td>'
+      + '<td style="font-size:12px;font-weight:700">' + n.dias + '</td>'
+      + '<td style="font-size:12px;color:var(--text2);max-width:220px">' + escapeHTML(n.descripcion||'—') + '</td>'
+      + '<td style="font-size:12px">' + escapeHTML(n.creado_por_nombre||'—') + '</td>'
+      + '<td style="text-align:center"><span id="nov-soportes-count-' + n.id + '" style="font-size:11px;color:var(--text3)">&hellip;</span></td>'
+      + '<td><div class="td-actions">'
+      + (canEditNovedad(n)   ? '<button class="btn-icon" onclick="editarNovedad(' + n.id + ')" title="Editar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+      + (canDeleteNovedad(n) ? '<button class="btn-icon red" onclick="eliminarNovedad(' + n.id + ')" title="Eliminar"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/><path d="M10 11v6"/><path d="M14 11v6"/></svg></button>' : '')
+      + '</div></td></tr>'
+    ).join('');
+    pageItems.forEach(n => _novCargarConteoSoportes(n.id));
+  }
+  _novRenderHistorialPaginacion(lista.length);
+}
+
+async function _novCargarConteoSoportes(novedadId) {
+  const { count } = await sb.from('novedades_soportes').select('id', { count:'exact', head:true }).eq('novedad_id', novedadId);
+  const el = document.getElementById('nov-soportes-count-'+novedadId);
+  if (el) el.textContent = count > 0 ? ('📎 ' + count) : '—';
+}
+
+function _novRenderHistorialPaginacion(total) {
+  const totalPages = Math.max(1, Math.ceil(total / NOV_PAGE_SIZE));
+  const info = document.getElementById('novHistPaginationInfo');
+  const btns = document.getElementById('novHistPaginationBtns');
+  if (info) info.textContent = 'Página ' + _novPage + ' de ' + totalPages;
+  let html = '<button class="page-btn" onclick="_novHistGoPage(' + (_novPage-1) + ')" ' + (_novPage<=1?'disabled':'') + '>&#8249;</button>';
+  for (let i=1;i<=totalPages;i++) {
+    if (totalPages>7 && i>2 && i<totalPages-1 && Math.abs(i-_novPage)>1) { if (i===3||i===totalPages-2) html+='<span style="padding:0 4px;color:var(--text3)">&hellip;</span>'; continue; }
+    html += '<button class="page-btn' + (i===_novPage?' active':'') + '" onclick="_novHistGoPage(' + i + ')">' + i + '</button>';
+  }
+  html += '<button class="page-btn" onclick="_novHistGoPage(' + (_novPage+1) + ')" ' + (_novPage>=totalPages?'disabled':'') + '>&#8250;</button>';
+  if (btns) btns.innerHTML = html;
+}
+
+function _novHistGoPage(p) {
+  _novPage = p;
+  _novRenderHistorialTabla();
+}
+
+// ── Modal de edición de novedad ────────────────────────────────────────────
+function _abrirModalEditarNovedad(nov) {
+  _novEditNovedadId = nov.id;
+  const tipos = CATALOGS.novedades_tipos || [];
+  document.getElementById('eno-emp-info').textContent = nov.empleado_nombre + ' · CC ' + nov.empleado_cedula + ' · ' + (nov.empleado_cliente||'Sin cliente');
+  const sel = document.getElementById('eno-tipo');
+  sel.innerHTML = tipos.map(t => '<option value="'+escapeHTML(t)+'"' + (t===nov.tipo?' selected':'') + '>' + escapeHTML(t) + '</option>').join('');
+  document.getElementById('eno-fecha-inicio').value = nov.fecha_inicio;
+  document.getElementById('eno-fecha-fin').value = nov.fecha_fin;
+  document.getElementById('eno-descripcion').value = nov.descripcion || '';
+  _renderSoportesList(nov.id, 'eno-adjuntos-list');
+  document.getElementById('modal-overlay-novedad').style.display = 'flex';
+}
+
+function _cerrarModalEditarNovedad() {
+  document.getElementById('modal-overlay-novedad').style.display = 'none';
+  _novEditNovedadId = null;
+}
+
+// ── Sub-tab: Calendario de novedades ───────────────────────────────────────
+function buildNovedadesCalendario() {
+  const cont = document.getElementById('nov-content-calendario');
+  if (!cont) return;
+  cont.innerHTML = `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:14px">
+      <div style="display:flex;align-items:center;gap:10px">
+        <button class="btn btn-ghost btn-sm" onclick="_novCalNavegar(-1)">&#8249;</button>
+        <div id="nov-cal-titulo" style="font-size:15px;font-weight:700;color:var(--text);min-width:160px;text-align:center"></div>
+        <button class="btn btn-ghost btn-sm" onclick="_novCalNavegar(1)">&#8250;</button>
+      </div>
+      <button class="btn btn-ghost btn-sm" onclick="_novCalHoy()">Hoy</button>
+    </div>
+    <div style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px;margin-bottom:6px">
+      ${['Dom','Lun','Mar','Mié','Jue','Vie','Sáb'].map(d => '<div style="text-align:center;font-size:11px;font-weight:700;color:var(--text3);padding:4px">'+d+'</div>').join('')}
+    </div>
+    <div id="nov-cal-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:4px"></div>
+    <div id="nov-cal-detalle" style="margin-top:18px"></div>
+  `;
+  _novCalRender();
+}
+
+function _novCalNavegar(delta) {
+  _novCalMes += delta;
+  if (_novCalMes < 0) { _novCalMes = 11; _novCalAnio--; }
+  if (_novCalMes > 11) { _novCalMes = 0; _novCalAnio++; }
+  _novCalRender();
+}
+
+function _novCalHoy() {
+  const hoy = new Date();
+  _novCalMes = hoy.getMonth();
+  _novCalAnio = hoy.getFullYear();
+  _novCalRender();
+}
+
+function _fechaISO(anio, mes, dia) {
+  return anio + '-' + String(mes+1).padStart(2,'0') + '-' + String(dia).padStart(2,'0');
+}
+
+function _novCalRender() {
+  const MESES = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+  const titulo = document.getElementById('nov-cal-titulo');
+  if (titulo) titulo.textContent = MESES[_novCalMes] + ' ' + _novCalAnio;
+
+  const primerDia = new Date(_novCalAnio, _novCalMes, 1);
+  const diasMes = new Date(_novCalAnio, _novCalMes+1, 0).getDate();
+  const offset = primerDia.getDay(); // 0=domingo
+  const hoyStr = new Date().toISOString().slice(0,10);
+  const desdeMes = _fechaISO(_novCalAnio, _novCalMes, 1);
+  const hastaMes = _fechaISO(_novCalAnio, _novCalMes, diasMes);
+
+  // Mapear novedades activas por día del mes (rango fecha_inicio..fecha_fin)
+  const porDia = {};
+  NOVEDADES.forEach(n => {
+    if (n.fecha_fin < desdeMes || n.fecha_inicio > hastaMes) return;
+    for (let d=1; d<=diasMes; d++) {
+      const f = _fechaISO(_novCalAnio, _novCalMes, d);
+      if (f >= n.fecha_inicio && f <= n.fecha_fin) (porDia[d] = porDia[d]||[]).push(n);
+    }
+  });
+
+  const grid = document.getElementById('nov-cal-grid');
+  let html = '';
+  for (let i=0;i<offset;i++) html += '<div></div>';
+  for (let d=1; d<=diasMes; d++) {
+    const items = porDia[d] || [];
+    const esHoy = _fechaISO(_novCalAnio, _novCalMes, d) === hoyStr;
+    html += '<div onclick="_novCalVerDia(' + d + ')" style="min-height:62px;border:1px solid var(--border);border-radius:8px;padding:6px;cursor:pointer;background:' + (esHoy?'#eff6ff':'#fff') + '">'
+      + '<div style="font-size:11px;font-weight:700;color:' + (esHoy?'var(--blue)':'var(--text2)') + '">' + d + '</div>'
+      + (items.length ? '<div style="margin-top:4px;background:#fef3c7;color:#92400e;border-radius:5px;padding:2px 5px;font-size:10px;font-weight:700;text-align:center">' + items.length + ' novedad' + (items.length!==1?'es':'') + '</div>' : '')
+      + '</div>';
+  }
+  if (grid) grid.innerHTML = html;
+  const det = document.getElementById('nov-cal-detalle');
+  if (det) det.innerHTML = '';
+}
+
+function _novCalVerDia(dia) {
+  const MESES_MIN = ['enero','febrero','marzo','abril','mayo','junio','julio','agosto','septiembre','octubre','noviembre','diciembre'];
+  const fStr = _fechaISO(_novCalAnio, _novCalMes, dia);
+  const items = NOVEDADES.filter(n => fStr >= n.fecha_inicio && fStr <= n.fecha_fin);
+  const det = document.getElementById('nov-cal-detalle');
+  if (!det) return;
+  if (!items.length) { det.innerHTML = '<div class="empty-state" style="padding:18px"><p>Sin novedades este día</p></div>'; return; }
+  det.innerHTML = '<div style="font-size:13px;font-weight:700;color:var(--text);margin-bottom:8px">Novedades del ' + dia + ' de ' + MESES_MIN[_novCalMes] + '</div>'
+    + items.map(n =>
+      '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;margin-bottom:6px">'
+      + '<span class="badge" style="background:#eff6ff;color:#1d4ed8">' + escapeHTML(n.tipo) + '</span>'
+      + '<div style="flex:1"><div style="font-size:13px;font-weight:600">' + escapeHTML(n.empleado_nombre) + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">' + escapeHTML(n.fecha_inicio) + ' a ' + escapeHTML(n.fecha_fin) + ' &middot; ' + n.dias + ' días</div></div>'
+      + '</div>'
+    ).join('');
+}
+
+// ── Sub-tab: Reportes ──────────────────────────────────────────────────────
+let _novReportCharts = {};
+
+function buildNovedadesReportes() {
+  const cont = document.getElementById('nov-content-reportes');
+  if (!cont) return;
+
+  if (!NOVEDADES.length) {
+    cont.innerHTML = '<div class="empty-state" style="padding:32px"><p>No hay novedades registradas todavía</p></div>';
+    return;
+  }
+
+  cont.innerHTML = `
+    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
+      <button class="btn btn-primary btn-sm" onclick="exportarNovedadesExcel()">&#11015; Exportar Excel</button>
+    </div>
+    <div class="stats-grid" id="nov-rep-kpis"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Novedades por tipo</div>
+        <div style="height:220px"><canvas id="novChartTipo"></canvas></div>
+      </div>
+      <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+        <div style="font-size:13px;font-weight:700;margin-bottom:10px">Novedades por mes (último año)</div>
+        <div style="height:220px"><canvas id="novChartMensual"></canvas></div>
+      </div>
+    </div>
+    <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
+      <div style="font-size:13px;font-weight:700;margin-bottom:10px">Top clientes con más novedades</div>
+      <div style="height:220px"><canvas id="novChartCliente"></canvas></div>
+    </div>
+  `;
+
+  Object.values(_novReportCharts).forEach(c => { try{c.destroy();}catch(e){} });
+  _novReportCharts = {};
+
+  const hoy = new Date();
+  const mesActual = hoy.getMonth(), anioActual = hoy.getFullYear();
+  const delMes  = NOVEDADES.filter(n => { const d=new Date(n.fecha_inicio+'T00:00:00'); return d.getMonth()===mesActual && d.getFullYear()===anioActual; });
+  const delAnio = NOVEDADES.filter(n => new Date(n.fecha_inicio+'T00:00:00').getFullYear()===anioActual);
+  const tipoCount = {};
+  NOVEDADES.forEach(n => { tipoCount[n.tipo] = (tipoCount[n.tipo]||0)+1; });
+  const topTipo = Object.entries(tipoCount).sort((a,b)=>b[1]-a[1])[0];
+  const cliCount = {};
+  NOVEDADES.forEach(n => { const c = n.empleado_cliente||'Sin cliente'; cliCount[c] = (cliCount[c]||0)+1; });
+  const promDias = (NOVEDADES.reduce((s,n)=>s+(n.dias||0),0) / NOVEDADES.length).toFixed(1);
+
+  const kpiEl = document.getElementById('nov-rep-kpis');
+  if (kpiEl) kpiEl.innerHTML =
+    '<div class="stat-card"><div class="stat-icon blue"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><div class="stat-info"><div class="stat-label">Este mes</div><div class="stat-value">' + delMes.length + '</div><div class="stat-sub">Novedades registradas</div></div></div>'
+    + '<div class="stat-card"><div class="stat-icon purple"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg></div><div class="stat-info"><div class="stat-label">Este año</div><div class="stat-value">' + delAnio.length + '</div><div class="stat-sub">Total ' + anioActual + '</div></div></div>'
+    + '<div class="stat-card"><div class="stat-icon orange"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg></div><div class="stat-info"><div class="stat-label">Tipo más frecuente</div><div class="stat-value" style="font-size:16px">' + (topTipo?escapeHTML(topTipo[0]):'—') + '</div><div class="stat-sub">' + (topTipo?topTipo[1]+' casos':'') + '</div></div></div>'
+    + '<div class="stat-card"><div class="stat-icon green"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div><div class="stat-info"><div class="stat-label">Días promedio</div><div class="stat-value">' + promDias + '</div><div class="stat-sub">Por novedad</div></div></div>';
+
+  // Gráfico 1: por tipo
+  const topTipos = Object.entries(tipoCount).sort((a,b)=>b[1]-a[1]);
+  const elT = document.getElementById('novChartTipo');
+  if (elT && topTipos.length) _novReportCharts.tipo = new Chart(elT, {
+    type:'doughnut',
+    data:{ labels:topTipos.map(([k])=>k), datasets:[{ data:topTipos.map(([,v])=>v), backgroundColor:['#003c9d','#3b82f6','#60a5fa','#93c5fd','#f5d400','#dc2626','#34d399','#a78bfa','#94a3b8'], borderWidth:0, hoverOffset:4 }] },
+    options:{ plugins:{legend:{position:'right',labels:{font:{size:10},padding:8,boxWidth:12}}}, cutout:'55%', maintainAspectRatio:false }
+  });
+
+  // Gráfico 2: por mes (últimos 12 meses)
+  const meses=[],counts=[];
+  for (let i=11;i>=0;i--) {
+    const d=new Date(); d.setMonth(d.getMonth()-i); d.setDate(1);
+    const y=d.getFullYear(), m=d.getMonth();
+    meses.push(d.toLocaleDateString('es-CO',{month:'short',year:'2-digit'}));
+    counts.push(NOVEDADES.filter(n=>{ const f=new Date(n.fecha_inicio+'T00:00:00'); return f.getFullYear()===y && f.getMonth()===m; }).length);
+  }
+  const elMs = document.getElementById('novChartMensual');
+  if (elMs) _novReportCharts.mensual = new Chart(elMs, {
+    type:'bar',
+    data:{ labels:meses, datasets:[{ label:'Novedades', data:counts, backgroundColor:'#003c9d', borderRadius:4, borderSkipped:false }] },
+    options:{ plugins:{legend:{display:false}}, scales:{ y:{beginAtZero:true,ticks:{stepSize:1,font:{size:10}},grid:{color:'#f1f5f9'}}, x:{ticks:{font:{size:9}}} }, maintainAspectRatio:false }
+  });
+
+  // Gráfico 3: top clientes
+  const topClientes = Object.entries(cliCount).sort((a,b)=>b[1]-a[1]).slice(0,10);
+  const elC = document.getElementById('novChartCliente');
+  if (elC && topClientes.length) _novReportCharts.cliente = new Chart(elC, {
+    type:'bar',
+    data:{ labels:topClientes.map(([k])=>k.length>28?k.slice(0,28)+'...':k), datasets:[{ data:topClientes.map(([,v])=>v), backgroundColor:'#dc2626', borderRadius:4, borderSkipped:false }] },
+    options:{ indexAxis:'y', plugins:{legend:{display:false}}, scales:{ x:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}}, y:{ticks:{font:{size:10}}} }, maintainAspectRatio:false }
+  });
+}
+
+function exportarNovedadesExcel() {
+  if (!NOVEDADES.length) { showToast('No hay novedades para exportar'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
+
+  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','FECHA INICIO','FECHA FIN','DIAS','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
+  const dataRows = NOVEDADES.map(n => [
+    n.empleado_nombre||'', n.empleado_cedula||'', n.empleado_cliente||'', n.empleado_cargo||'',
+    n.tipo||'', n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, n.descripcion||'',
+    n.creado_por_nombre||'', (n.created_at||'').slice(0,10)
+  ]);
+  const aoa = [HEADERS, ...dataRows];
+  const ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:14},{wch:14},{wch:8},{wch:40},{wch:20},{wch:16}];
+  ws['!freeze'] = {xSplit:0, ySplit:1};
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'Novedades');
+
+  const now = new Date();
+  const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+  const fname = `novedades_${fecha}.xlsx`;
+  XLSX.writeFile(wb, fname);
+  showToast('✓ ' + NOVEDADES.length + ' novedades exportadas → ' + fname);
 }
 
 // ───────────────────────────────────────────────────────────────────────────
@@ -4900,8 +5734,9 @@ function _resetInactivity() {
 );
 
 // Helpers de rol
-function isAdmin()  { return _currentUser?.role === 'admin'; }
-function isEditor() { return ['admin','editor'].includes(_currentUser?.role); }
+function isAdmin()    { return _currentUser?.role === 'admin'; }
+function isEditor()   { return ['admin','editor'].includes(_currentUser?.role); }
+function isAuxiliar() { return _currentUser?.role === 'auxiliar'; }
 
 // Cargar perfil de Supabase y crearlo si no existe
 async function loadUserProfile(user) {
@@ -4919,9 +5754,10 @@ async function loadUserProfile(user) {
 
 // Secciones permitidas por rol
 const ROLE_SECTIONS = {
-  admin:  ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','usuarios'],
-  editor: ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria'],
-  viewer: ['dashboard','empleados','fechas','estadisticas']
+  admin:    ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','usuarios','novedades'],
+  editor:   ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','novedades'],
+  auxiliar: ['dashboard','empleados','novedades'],
+  viewer:   ['dashboard','empleados','fechas','estadisticas']
 };
 
 function canAccess(section) {
@@ -4934,26 +5770,27 @@ function applyRoleVisibility() {
   if (!_currentUser) return;
   const role = _currentUser.role || 'viewer';
 
-  // ── Sidebar: mostrar/ocultar items según rol ───────────────────────────
+  // ── Sidebar: mostrar/ocultar items según ROLE_SECTIONS (fuente única de verdad) ──
   const navItems = {
-    'sb-nav-alertas':      'editor',
-    'sb-nav-importacion':  'editor',
-    'sb-nav-duplicados':   'editor',
-    'sb-nav-catalogos':    'editor',
-    'sb-nav-certificados': 'editor',
-    'sb-nav-auditoria':    'editor',
-    'sb-nav-usuarios':     'admin',
+    'sb-nav-alertas':      'alertas',
+    'sb-nav-importacion':  'importacion',
+    'sb-nav-duplicados':   'duplicados',
+    'sb-nav-catalogos':    'catalogos',
+    'sb-nav-certificados': 'certificados',
+    'sb-nav-auditoria':    'auditoria',
+    'sb-nav-novedades':    'novedades',
+    'sb-nav-usuarios':     'usuarios',
   };
-  Object.entries(navItems).forEach(([id, minRole]) => {
+  Object.entries(navItems).forEach(([id, section]) => {
     const el = document.getElementById(id);
     if (!el) return;
-    const allowed = minRole === 'admin' ? isAdmin() : isEditor();
-    el.style.display = allowed ? '' : 'none';
+    el.style.display = canAccess(section) ? '' : 'none';
   });
 
-  // Ocultar la etiqueta "Sistema" si el viewer no ve nada en esa sección
+  // Ocultar la etiqueta "Sistema" si el rol no ve nada de esa categoría
   const sysLabel = document.getElementById('sb-label-sistema');
-  if (sysLabel) sysLabel.style.display = isEditor() ? '' : 'none';
+  const veSistema = ['alertas','importacion','duplicados','catalogos','certificados','auditoria','usuarios'].some(canAccess);
+  if (sysLabel) sysLabel.style.display = veSistema ? '' : 'none';
 
   // ── Botones en sección Empleados ──────────────────────────────────────
   // Nuevo empleado: solo editores/admins
@@ -4972,8 +5809,8 @@ function applyRoleVisibility() {
   const roleEl   = document.getElementById('sb-user-role-badge');
   const avatarEl = document.getElementById('sb-avatar-display');
   if (nameEl) nameEl.textContent = _currentUser.display_name || _currentUser.email;
-  const roleLabels = { admin: '♦ Admin', editor: '✎ Editor', viewer: '○ Visualizador' };
-  const roleColors = { admin: '#f5d400', editor: '#60a5fa', viewer: '#64748b' };
+  const roleLabels = { admin: '♦ Admin', editor: '✎ Editor', auxiliar: '✚ Auxiliar', viewer: '○ Visualizador' };
+  const roleColors = { admin: '#f5d400', editor: '#60a5fa', auxiliar: '#34d399', viewer: '#64748b' };
   if (roleEl) {
     roleEl.textContent = roleLabels[role] || role;
     roleEl.style.color = roleColors[role] || '#64748b';
@@ -5088,7 +5925,7 @@ function abrirPerfilUsuario() {
   document.getElementById('ppu-input-cargo').value  = _currentUser.cargo || '';
   // Role badge
   const rb = document.getElementById('ppu-role-display');
-  const rl = { admin:'Admin', editor:'Editor', viewer:'Visualizador' };
+  const rl = { admin:'Admin', editor:'Editor', auxiliar:'Auxiliar', viewer:'Visualizador' };
   rb.textContent  = rl[_currentUser.role] || _currentUser.role;
   rb.className    = 'ppu-role-badge ' + (_currentUser.role||'viewer');
   // Avatar
@@ -5101,9 +5938,10 @@ function abrirPerfilUsuario() {
   if (avPrev) avPrev.innerHTML = avContent;
   // Permisos info
   const permisos = {
-    admin:  '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a y gesti&oacute;n de usuarios.',
-    editor: '&#9998; <strong>Editor</strong> &#8212; Puede ver y editar empleados, importar, usar cat&aacute;logos y certificados. No puede crear ni eliminar usuarios.',
-    viewer: '&#9711; <strong>Visualizador</strong> &#8212; Solo lectura: puede ver empleados y reportes pero no puede editar ni importar datos.'
+    admin:    '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a, novedades y gesti&oacute;n de usuarios.',
+    editor:   '&#9998; <strong>Editor</strong> &#8212; Puede ver y editar empleados, importar, usar cat&aacute;logos, certificados y novedades. No puede crear ni eliminar usuarios.',
+    auxiliar: '&#10010; <strong>Auxiliar</strong> &#8212; Puede consultar empleados (solo lectura) y usar el m&oacute;dulo de Novedades (crear y gestionar las que ella misma registre).',
+    viewer:   '&#9711; <strong>Visualizador</strong> &#8212; Solo lectura: puede ver empleados y reportes pero no puede editar ni importar datos.'
   };
   const pi = document.getElementById('ppu-permisos-info');
   if (pi) pi.innerHTML = permisos[_currentUser.role] || '—';
@@ -5190,7 +6028,7 @@ async function cargarListaUsuarios() {
   const { data, error } = await sb.from('profiles').select('*').order('created_at');
   if (error || !data) { container.innerHTML = '<div style="color:var(--red);padding:16px">' + (error?.message||'Error') + '</div>'; return; }
 
-  const roleLabels = { admin: 'Administrador', editor: 'Editor', viewer: 'Visualizador' };
+  const roleLabels = { admin: 'Administrador', editor: 'Editor', auxiliar: 'Auxiliar', viewer: 'Visualizador' };
   container.innerHTML = data.map(p => {
     const initials = (p.display_name || p.id).slice(0,2).toUpperCase();
     const avatarHtml = p.avatar_url
@@ -5212,7 +6050,7 @@ async function cargarListaUsuarios() {
       + (isAdmin()
           ? '<select class="role-select ' + p.role + '" onchange="cambiarRol(\'' + p.id + '\',this)"'
             + (isCurrentUser ? ' disabled title="No puedes cambiar tu propio rol"' : '') + '>'
-            + ['admin','editor','viewer'].map(r => '<option value="' + r + '"' + (r===p.role?' selected':'') + '>' + roleLabels[r] + '</option>').join('')
+            + ['admin','editor','auxiliar','viewer'].map(r => '<option value="' + r + '"' + (r===p.role?' selected':'') + '>' + roleLabels[r] + '</option>').join('')
             + '</select>'
           : '<span class="role-select ' + p.role + '" style="cursor:default;user-select:none">' + (roleLabels[p.role]||p.role) + '</span>'
         )
@@ -5373,6 +6211,7 @@ async function doLogin() {
   await logAudit('login', 'sesion', data.user.id, 'Inicio de sesion');
   btn.textContent = 'Cargando datos...';
   await loadCatalogsFromDB();
+  await loadNovedadesFromDB();
   await loadFromSupabase();
   _startRealtimeSync();  // tiempo real vía Supabase Realtime
   btn.disabled = false;
