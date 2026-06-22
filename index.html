@@ -2225,6 +2225,14 @@ tr.bg-selected td{background:#eff6ff!important}
   <span id="toastMsg">Cambios guardados (simulación)</span>
 </div>
 
+<!-- OVERLAY DE BLOQUEO — cubre toda la pantalla mientras una operación crítica está en curso -->
+<div id="blocking-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
+  <div style="background:#fff;border-radius:14px;padding:32px 40px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:240px">
+    <div style="width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px"></div>
+    <div id="blocking-overlay-text" style="font-size:14px;font-weight:700;color:var(--text)">Procesando...</div>
+  </div>
+</div>
+
 
 <script>
 // ───────────────────── DATA ─────────────────────
@@ -3805,6 +3813,18 @@ function showToast(msg){
   setTimeout(()=>t.classList.remove('show'),3200);
 }
 
+// ── Overlay de bloqueo: cubre toda la pantalla e impide clics mientras una operación crítica está en curso ──
+function showBlockingOverlay(texto) {
+  const ov = document.getElementById('blocking-overlay');
+  const txt = document.getElementById('blocking-overlay-text');
+  if (txt) txt.textContent = texto || 'Procesando...';
+  if (ov) ov.style.display = 'flex';
+}
+function hideBlockingOverlay() {
+  const ov = document.getElementById('blocking-overlay');
+  if (ov) ov.style.display = 'none';
+}
+
 // ───────────────────── ALERTS ─────────────────────
 function renderAlerts(){
   const empty = EMPLEADOS.length === 0;
@@ -5354,38 +5374,44 @@ function _novRenderArchivosPendientes() {
 }
 
 async function _novGuardarDesdeForm() {
-  const data = await crearNovedad();
-  if (!data) return;
-  _novRegUltimaId = data.id;
+  showBlockingOverlay('Registrando novedad...');
+  try {
+    const data = await crearNovedad();
+    if (!data) return;
+    _novRegUltimaId = data.id;
 
-  if (_novArchivosPendientes.length) {
-    let okCount = 0;
-    for (const file of _novArchivosPendientes) {
-      const ok = await _subirArchivoDirecto(file, data.id);
-      if (ok) okCount++;
+    if (_novArchivosPendientes.length) {
+      showBlockingOverlay('Subiendo adjuntos...');
+      let okCount = 0;
+      for (const file of _novArchivosPendientes) {
+        const ok = await _subirArchivoDirecto(file, data.id);
+        if (ok) okCount++;
+      }
+      showToast(okCount === _novArchivosPendientes.length
+        ? '✓ Novedad y ' + okCount + ' soporte' + (okCount!==1?'s':'') + ' registrados'
+        : '✓ Novedad registrada — ' + okCount + ' de ' + _novArchivosPendientes.length + ' soportes subidos');
+      _novArchivosPendientes = [];
     }
-    showToast(okCount === _novArchivosPendientes.length
-      ? '✓ Novedad y ' + okCount + ' soporte' + (okCount!==1?'s':'') + ' registrados'
-      : '✓ Novedad registrada — ' + okCount + ' de ' + _novArchivosPendientes.length + ' soportes subidos');
-    _novArchivosPendientes = [];
-  }
 
-  // Limpiar el formulario por completo (incluidos los adjuntos) para registrar la siguiente novedad
-  ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-valor-pagado','nov-eps','nov-diagnostico-codigo'].forEach(id => {
-    const el = document.getElementById(id);
-    if (el) el.value = '';
-  });
-  const chk = document.getElementById('nov-vacaciones-pagas');
-  if (chk) chk.checked = false;
-  _novAplicarVisibilidadPorTipo('nov', '', false);
-  const diagInfo = document.getElementById('nov-diagnostico-info');
-  if (diagInfo) diagInfo.innerHTML = '';
-  const archivoInput = document.getElementById('nov-archivo-input');
-  if (archivoInput) archivoInput.value = '';
-  const listEl = document.getElementById('nov-adjuntos-list');
-  if (listEl) listEl.innerHTML = '<div style="font-size:12px;color:var(--text3)">Selecciona uno o varios archivos y se adjuntarán al registrar la novedad</div>';
-  _novRenderArchivosPendientes();
-  novClearEmployee();
+    // Limpiar el formulario por completo (incluidos los adjuntos) para registrar la siguiente novedad
+    ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-valor-pagado','nov-eps','nov-diagnostico-codigo'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.value = '';
+    });
+    const chk = document.getElementById('nov-vacaciones-pagas');
+    if (chk) chk.checked = false;
+    _novAplicarVisibilidadPorTipo('nov', '', false);
+    const diagInfo = document.getElementById('nov-diagnostico-info');
+    if (diagInfo) diagInfo.innerHTML = '';
+    const archivoInput = document.getElementById('nov-archivo-input');
+    if (archivoInput) archivoInput.value = '';
+    const listEl = document.getElementById('nov-adjuntos-list');
+    if (listEl) listEl.innerHTML = '<div style="font-size:12px;color:var(--text3)">Selecciona uno o varios archivos y se adjuntarán al registrar la novedad</div>';
+    _novRenderArchivosPendientes();
+    novClearEmployee();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // ── Lista de soportes adjuntos (reusada por Registrar y por el modal de edición) ──
