@@ -9171,10 +9171,12 @@ function buildCertSolicitudes() {
         <option value="">Todos los tipos</option>
         ${CERT_TIPOS.map(t => '<option value="'+escapeHTML(t)+'">'+escapeHTML(t)+'</option>').join('')}
       </select>
-      <select class="form-select" id="certsolf-estado" style="width:160px" onchange="certsolFiltrar()">
+      <select class="form-select" id="certsolf-estado" style="width:180px" onchange="certsolFiltrar()">
         <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendientes</option>
+        <option value="CRITICO">⏱ Demoradas (5+ días)</option>
         <option value="GENERADO">Generadas</option>
+        <option value="RECHAZADO">Rechazadas</option>
       </select>
       <input type="date" class="form-input" id="certsolf-desde" style="width:140px" onchange="certsolFiltrar()" title="Desde">
       <input type="date" class="form-input" id="certsolf-hasta" style="width:140px" onchange="certsolFiltrar()" title="Hasta">
@@ -9266,9 +9268,19 @@ function certsolLimpiarFiltros() {
   _certRenderSolicitudesTabla();
 }
 
+// Días corridos desde que se creó la solicitud (para detectar demoras)
+function _certSolDiasEspera(s) {
+  if (!s.fecha_solicitud) return 0;
+  return Math.floor((Date.now() - new Date(s.fecha_solicitud).getTime()) / 86400000);
+}
+
 function _certSolFiltrarLista() {
   return CERT_SOLICITUDES.filter(s => {
-    if (_certSolFiltro.estado && s.estado !== _certSolFiltro.estado) return false;
+    if (_certSolFiltro.estado === 'CRITICO') {
+      if (s.estado !== 'PENDIENTE' || _certSolDiasEspera(s) < 5) return false;
+    } else if (_certSolFiltro.estado && s.estado !== _certSolFiltro.estado) {
+      return false;
+    }
     if (_certSolFiltro.tipo && s.tipo_certificado !== _certSolFiltro.tipo) return false;
     if (_certSolFiltro.desde && (s.fecha_solicitud||'') < _certSolFiltro.desde) return false;
     if (_certSolFiltro.hasta && (s.fecha_solicitud||'') > (_certSolFiltro.hasta + 'T23:59:59')) return false;
@@ -9290,21 +9302,63 @@ function _certRenderSolicitudesTabla() {
   }
   tbody.innerHTML = lista.map(s => {
     const fecha = s.fecha_solicitud ? new Date(s.fecha_solicitud).toLocaleDateString('es-CO') : '—';
-    const pendiente = s.estado === 'PENDIENTE';
-    return '<tr>'
+    const pendiente  = s.estado === 'PENDIENTE';
+    const generado   = s.estado === 'GENERADO';
+    const rechazado  = s.estado === 'RECHAZADO';
+    const diasEspera = _certSolDiasEspera(s);
+    const esCritico  = pendiente && diasEspera >= 5;
+
+    const estadoBadgeClass = generado ? 'badge-activo' : (rechazado ? '' : 'badge-inactivo');
+    const estadoBadgeStyle = rechazado ? 'background:#fee2e2;color:#dc2626' : '';
+    const estadoLabel = generado ? 'GENERADO' : (rechazado ? 'RECHAZADO' : 'PENDIENTE');
+
+    const obsHtml = rechazado && s.comentario_rechazo
+      ? escapeHTML(s.observaciones||'—') + '<div style="margin-top:4px;color:#dc2626;font-weight:600">Motivo de rechazo: ' + escapeHTML(s.comentario_rechazo) + '</div>'
+      : escapeHTML(s.observaciones||'—');
+
+    return '<tr' + (esCritico ? ' style="background:#fef2f2"' : '') + '>'
       + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(s.empleado_nombre) + '</div>'
       + '<div class="td-sub">CC ' + escapeHTML(s.empleado_cedula) + '</div></td>'
       + '<td style="font-size:12px">' + escapeHTML(s.empleado_correo||'—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(s.tipo_certificado||'—') + '</td>'
-      + '<td style="font-size:12px;color:var(--text2);max-width:240px">' + escapeHTML(s.observaciones||'—') + '</td>'
+      + '<td style="font-size:12px;color:var(--text2);max-width:240px">' + obsHtml + '</td>'
       + '<td style="font-size:12px">' + fecha + '</td>'
-      + '<td><span class="badge ' + (pendiente?'badge-inactivo':'badge-activo') + '">' + escapeHTML(s.estado) + '</span></td>'
+      + '<td><span class="badge ' + estadoBadgeClass + '" style="' + estadoBadgeStyle + '">' + estadoLabel + '</span>'
+      + (esCritico ? '<div style="margin-top:4px"><span style="font-size:10px;font-weight:700;color:#dc2626;background:#fee2e2;padding:2px 6px;border-radius:4px">⏱ ' + diasEspera + ' días sin generar</span></div>' : '')
+      + '</td>'
       + '<td><div class="td-actions">'
       + (pendiente ? '<button class="btn btn-primary btn-sm" onclick="generarDesdeSolicitud(' + s.id + ')">Generar</button>' : '')
-      + (pendiente ? '<button class="btn-icon" title="Marcar como generada" onclick="marcarSolicitudGenerada(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>' : '<button class="btn-icon" title="Devolver a pendiente" onclick="marcarSolicitudPendiente(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg></button>')
+      + (pendiente ? '<button class="btn-icon" title="Marcar como generada" onclick="marcarSolicitudGenerada(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>' : '')
+      + (pendiente ? '<button class="btn-icon red" title="Rechazar (con comentario)" onclick="rechazarSolicitudCertificado(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>' : '')
+      + (!pendiente ? '<button class="btn-icon" title="Devolver a pendiente" onclick="marcarSolicitudPendiente(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg></button>' : '')
       + '<button class="btn-icon red" title="Eliminar" onclick="eliminarSolicitudCertificado(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>'
       + '</div></td></tr>';
   }).join('');
+}
+
+async function rechazarSolicitudCertificado(id) {
+  const comentario = prompt('¿Por qué no se puede generar este certificado? Este comentario quedará visible en la solicitud:');
+  if (comentario === null) return; // canceló
+  if (!comentario.trim()) { showToast('Escribe un motivo para poder rechazar la solicitud'); return; }
+
+  showBlockingOverlay('Guardando...');
+  try {
+    const { error } = await sb.from('certificados_solicitudes').update({
+      estado: 'RECHAZADO',
+      comentario_rechazo: comentario.trim(),
+      generado_por: _currentUser?.id || null,
+      generado_por_nombre: _currentUser?.display_name || _currentUser?.email || 'Usuario',
+      generado_en: new Date().toISOString()
+    }).eq('id', id);
+    if (error) { showToast('Error: ' + error.message); return; }
+    await logAudit('update', 'certificados_solicitudes', String(id), 'Solicitud rechazada: ' + comentario.trim());
+    showToast('Solicitud marcada como rechazada');
+    await loadCertSolicitudes();
+    _certRenderSolicitudesTabla();
+    refreshCertSolBadge();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 async function agregarSolicitudCertificado() {
@@ -9351,6 +9405,7 @@ async function marcarSolicitudPendiente(id) {
   try {
     const { error } = await sb.from('certificados_solicitudes').update({
       estado: 'PENDIENTE',
+      comentario_rechazo: '',
       generado_por: null,
       generado_por_nombre: null,
       generado_en: null
