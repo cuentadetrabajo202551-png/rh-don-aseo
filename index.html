@@ -1212,7 +1212,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <div class="drop-zone-title">Arrastra tu archivo aquí</div>
           <div class="drop-zone-sub">o haz clic para seleccionarlo · Formatos: .xlsx, .xls, .csv</div>
           <input type="file" id="fileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="simulateUpload(this)">
-          <button class="btn btn-primary" onclick="event.stopPropagation()">
+          <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('fileInput').click()">
             <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
             Seleccionar archivo
           </button>
@@ -5795,9 +5795,7 @@ const NOV_HEADER_MAP = {
   'VACACIONES PAGADAS':'vacaciones_pagadas_raw',
   'VALOR PAGADO':'valor_pagado_raw',
   'EPS':'eps',
-  'CODIGO DIAGNOSTICO':'diagnostico_codigo', 'CODIGO DE DIAGNOSTICO':'diagnostico_codigo',
-  'DIAGNOSTICO':'diagnostico_nombre', 'NOMBRE DIAGNOSTICO':'diagnostico_nombre',
-  'DESCRIPCION DIAGNOSTICO':'diagnostico_descripcion',
+  'CODIGO DIAGNOSTICO':'diagnostico_codigo', 'CODIGO DE DIAGNOSTICO':'diagnostico_codigo', 'CODIGO CIE10':'diagnostico_codigo', 'CODIGO CIE-10':'diagnostico_codigo',
   'DESCRIPCION':'descripcion',
 };
 function normalizeNovHeader(raw) {
@@ -5818,15 +5816,23 @@ function _calcularDiasNovedadISO(isoIni, isoFin) {
 }
 
 // ── Datos de ejemplo para "Simular carga" (nunca se guardan en Supabase) ──
-const IMPORT_MOCK_NOVEDADES = [
-  { cedula:'1234567890', tipo:'PERMISO REMUNERADO', fecha_inicio:'10/03/2026', fecha_fin:'10/03/2026', descripcion:'Cita médica', vacaciones_pagadas_raw:'NO' },
-  { cedula:'9876543210', tipo:'VACACIONES', fecha_inicio:'15/02/2026', fecha_fin:'', dias:'15', descripcion:'Vacaciones pagadas — continuó laborando', vacaciones_pagadas_raw:'SI', valor_pagado_raw:'750000' },
-  { cedula:'1029384756', tipo:'INCAPACIDAD', fecha_inicio:'01/04/2026', fecha_fin:'05/04/2026', descripcion:'Incapacidad médica', eps:'SALUDTOTAL', diagnostico_codigo:'J00', diagnostico_nombre:'RINOFARINGITIS AGUDA, NO ESPECIFICADA' },
-  { cedula:'5566778899', tipo:'PERMISO NO REMUNERADO', fecha_inicio:'', fecha_fin:'20/04/2026', descripcion:'Fila de ejemplo con error — falta la fecha de inicio' },
-];
+// Usa cédulas REALES de empleados ya cargados (para que el demo respete la regla de cédula obligatoria)
+// y agrega filas deliberadamente "rotas" para mostrar cómo se ven los distintos tipos de error/advertencia.
+function _construirMockNovedades() {
+  const activos = EMPLEADOS.filter(e => e.estado === 'ACTIVO' && e.cedula);
+  const pool = (activos.length >= 4 ? activos : EMPLEADOS.filter(e=>e.cedula)).slice(0, 4);
+  const ced = i => pool[i] ? pool[i].cedula : ('000000000' + i);
+  return [
+    { cedula: ced(0), tipo:'PERMISO REMUNERADO', fecha_inicio:'10/03/2026', fecha_fin:'10/03/2026', descripcion:'Cita médica', vacaciones_pagadas_raw:'NO' },
+    { cedula: ced(1), tipo:'VACACIONES', fecha_inicio:'15/02/2026', fecha_fin:'', dias:'15', descripcion:'Vacaciones pagadas — continuó laborando', vacaciones_pagadas_raw:'SI', valor_pagado_raw:'750000' },
+    { cedula: ced(2), tipo:'INCAPACIDAD', fecha_inicio:'01/04/2026', fecha_fin:'05/04/2026', descripcion:'Incapacidad médica', eps:'SALUDTOTAL', diagnostico_codigo:'J00' },
+    { cedula: ced(3), tipo:'PERMISO NO REMUNERADO', fecha_inicio:'', fecha_fin:'20/04/2026', descripcion:'Fila de ejemplo con error — falta la fecha de inicio' },
+    { cedula:'00000000000', tipo:'OTRO', fecha_inicio:'12/05/2026', fecha_fin:'12/05/2026', descripcion:'Fila de ejemplo con error — cédula no existe en Empleados' },
+  ];
+}
 
 // ── Validación de una fila ─────────────────────────────────────────────────
-function validateNovRow(row) {
+function validateNovRow(row, cie10Map) {
   const issues = [];
 
   if (row.cedula) row.cedula = row.cedula.toString().trim().replace(/[\s.\-]/g, '');
@@ -5871,16 +5877,17 @@ function validateNovRow(row) {
   }
   if (!row.dias || isNaN(row.dias)) row.dias = 0;
 
-  // Cédula → vincular con un empleado existente
+  // Cédula → OBLIGATORIA y debe corresponder a un empleado ya guardado en el sistema.
+  // Sin esto la fila NO se importa (regla de negocio: ninguna novedad puede quedar huérfana).
   let emp = null;
   if (!(row.cedula||'').toString().trim()) {
-    issues.push({ type:'warn', field:'Cédula', msg:'Cédula vacía — la novedad se guardará sin vincular a un empleado' });
+    issues.push({ type:'err', field:'Cédula', msg:'Cédula del empleado — campo obligatorio vacío. No se puede registrar una novedad sin un empleado real asociado.' });
   } else if (!CEDULA_RE.test(row.cedula)) {
-    issues.push({ type:'warn', field:'Cédula', msg:`Cédula "${escapeHTML(row.cedula)}" — formato inusual (solo dígitos)` });
+    issues.push({ type:'err', field:'Cédula', msg:`Cédula "${escapeHTML(row.cedula)}" — formato inválido (solo dígitos, 4 a 12 caracteres)` });
   } else {
     const candidatos = EMPLEADOS.filter(e => e.cedula === row.cedula);
     emp = candidatos.find(e => e.estado === 'ACTIVO') || candidatos[0] || null;
-    if (!emp) issues.push({ type:'warn', field:'Cédula', msg:`No se encontró ningún empleado con la cédula ${escapeHTML(row.cedula)} — se guardará sin vincular` });
+    if (!emp) issues.push({ type:'err', field:'Cédula', msg:`No existe ningún empleado guardado con la cédula ${escapeHTML(row.cedula)} — regístralo primero en Empleados` });
   }
   row._emp = emp;
 
@@ -5912,6 +5919,21 @@ function validateNovRow(row) {
     }
   }
 
+  // Diagnóstico: solo se escribe el código CIE-10 — el nombre y la descripción se autocompletan
+  if (row.diagnostico_codigo) {
+    const codigo = row.diagnostico_codigo.toString().trim().toUpperCase();
+    row.diagnostico_codigo = codigo;
+    const match = (cie10Map||{})[codigo];
+    if (match) {
+      row.diagnostico_nombre = match.nombre || '';
+      row.diagnostico_descripcion = match.descripcion || '';
+    } else {
+      row.diagnostico_nombre = '';
+      row.diagnostico_descripcion = '';
+      issues.push({ type:'warn', field:'Código diagnóstico', msg:`Código "${escapeHTML(codigo)}" no se encontró en el catálogo CIE-10 — revisa que esté bien escrito` });
+    }
+  }
+
   if (emp && row.tipo && row._isoIni) {
     const yaExiste = NOVEDADES.some(n => n.empleado_cedula === row.cedula && n.tipo === row.tipo && n.fecha_inicio === row._isoIni);
     if (yaExiste) issues.push({ type:'dup', field:'Duplicado', msg:'Ya existe una novedad con esta cédula, tipo y fecha de inicio' });
@@ -5927,14 +5949,14 @@ function validateNovRow(row) {
 function descargarPlantillaNovedades() {
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
 
-  const HEADERS = ['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','DESCRIPCION'];
+  const HEADERS = ['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','CODIGO DIAGNOSTICO','DESCRIPCION'];
   const ejemplos = [
-    ['1234567890','PERMISO REMUNERADO','10/03/2026','10/03/2026','1','','','','','','','Cita médica'],
-    ['9876543210','VACACIONES','15/02/2026','','15','SI','750000','','','','','Vacaciones pagadas — continuó laborando'],
-    ['1029384756','INCAPACIDAD','01/04/2026','05/04/2026','5','','','SALUDTOTAL','J00','RINOFARINGITIS AGUDA, NO ESPECIFICADA','','Incapacidad médica EPS'],
+    ['1234567890','PERMISO REMUNERADO','10/03/2026','10/03/2026','1','','','','','Cita médica'],
+    ['9876543210','VACACIONES','15/02/2026','','15','SI','750000','','','Vacaciones pagadas — continuó laborando'],
+    ['1029384756','INCAPACIDAD','01/04/2026','05/04/2026','5','','','SALUDTOTAL','J00','Incapacidad médica EPS'],
   ];
   const wsDatos = XLSX.utils.aoa_to_sheet([HEADERS, ...ejemplos]);
-  wsDatos['!cols'] = [{wch:16},{wch:22},{wch:14},{wch:14},{wch:8},{wch:18},{wch:14},{wch:16},{wch:16},{wch:30},{wch:34},{wch:40}];
+  wsDatos['!cols'] = [{wch:16},{wch:22},{wch:14},{wch:14},{wch:8},{wch:18},{wch:14},{wch:16},{wch:16},{wch:40}];
   wsDatos['!freeze'] = { xSplit:0, ySplit:1 };
 
   const tipos = CATALOGS.novedades_tipos || [];
@@ -5943,7 +5965,7 @@ function descargarPlantillaNovedades() {
     ['INSTRUCCIONES PARA LA CARGA MASIVA DE NOVEDADES'],
     [''],
     ['1. Llena la hoja "Datos". Las filas de ejemplo se pueden borrar antes de cargar tus propios registros.'],
-    ['2. CEDULA EMPLEADO: la cédula del trabajador, igual a como está en el módulo Empleados. Si no se encuentra, la novedad se guarda igual pero sin vincular — corrígela después en Historial.'],
+    ['2. CEDULA EMPLEADO: OBLIGATORIA. Debe ser la cédula de un empleado que YA esté guardado en el módulo Empleados. Si la cédula no existe en el sistema, esa fila NO se importa — regístralo primero en Empleados.'],
     ['3. TIPO DE NOVEDAD: debe ser uno de los siguientes valores (no distingue mayúsculas ni tildes):'],
     ...tipos.map(t => ['   • ' + t]),
     [''],
@@ -5951,12 +5973,13 @@ function descargarPlantillaNovedades() {
     ['5. VACACIONES PAGADAS: escribe SI solo si el empleado siguió trabajando y se le pagaron los días sin tomar el descanso. En ese caso FECHA FIN se ignora (se usa FECHA INICIO como fecha de causación).'],
     ['6. Si VACACIONES PAGADAS no es SI, entonces FECHA FIN sí es obligatoria.'],
     ['7. VALOR PAGADO: solo aplica si VACACIONES PAGADAS = SI. Escribe el número sin puntos ni signo de pesos (ej: 750000).'],
-    ['8. EPS, CODIGO DIAGNOSTICO, DIAGNOSTICO y DESCRIPCION DIAGNOSTICO: solo aplican cuando el TIPO es INCAPACIDAD. Son opcionales pero recomendados.'],
-    ['9. EPS debe ser una de las siguientes (si no coincide, se guarda igual pero queda marcada para revisión):'],
+    ['8. EPS y CODIGO DIAGNOSTICO: solo aplican cuando el TIPO es INCAPACIDAD. Son opcionales pero recomendados.'],
+    ['9. CODIGO DIAGNOSTICO: escribe SOLO el código CIE-10 (ej: J00). El sistema busca automáticamente el nombre y la descripción de ese código — NO escribas el nombre del diagnóstico, se autocompleta solo.'],
+    ['10. EPS debe ser una de las siguientes (si no coincide, se guarda igual pero queda marcada para revisión):'],
     ...epsList.map(e => ['   • ' + e]),
     [''],
-    ['10. DIAS: si lo dejas vacío, el sistema lo calcula automáticamente a partir de las fechas (días corridos, incluyendo el día de inicio y el de fin).'],
-    ['11. Nada se guarda automáticamente al subir el archivo: primero verás una vista previa y una validación fila por fila, y solo se guarda lo que confirmes.'],
+    ['11. DIAS: si lo dejas vacío, el sistema lo calcula automáticamente a partir de las fechas (días corridos, incluyendo el día de inicio y el de fin).'],
+    ['12. Nada se guarda automáticamente al subir el archivo: primero verás una vista previa y una validación fila por fila, y solo se guarda lo que confirmes.'],
   ];
   const wsInstr = XLSX.utils.aoa_to_sheet(instrucciones);
   wsInstr['!cols'] = [{ wch: 95 }];
@@ -6020,7 +6043,7 @@ function buildNovedadesCargaMasiva() {
         </div>
         <div class="import-info-card">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <div><div class="iic-title">Campos obligatorios</div><div class="iic-sub">Fecha de inicio es obligatoria siempre. Fecha de fin es obligatoria salvo que marques "Vacaciones pagadas" en SI. Si falta la cédula o el tipo, la novedad igual se guarda, lista para corregir.</div></div>
+          <div><div class="iic-title">Campos obligatorios</div><div class="iic-sub">La cédula es obligatoria y debe corresponder a un empleado YA guardado en el módulo Empleados — si no existe, esa fila no se importa. Fecha de inicio también es obligatoria siempre; fecha de fin lo es salvo que marques "Vacaciones pagadas" en SI.</div></div>
         </div>
         <div class="import-info-card">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
@@ -6035,7 +6058,7 @@ function buildNovedadesCargaMasiva() {
         <div class="drop-zone-title">Arrastra tu archivo aquí</div>
         <div class="drop-zone-sub">o haz clic para seleccionarlo · Formatos: .xlsx, .xls, .csv</div>
         <input type="file" id="novimpFileInput" accept=".xlsx,.xls,.csv" style="display:none" onchange="simulateNovUpload(this)">
-        <button class="btn btn-primary" onclick="event.stopPropagation()">
+        <button class="btn btn-primary" onclick="event.stopPropagation();document.getElementById('novimpFileInput').click()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
           Seleccionar archivo
         </button>
@@ -6115,6 +6138,7 @@ function buildNovedadesCargaMasiva() {
               <th>Inicio</th>
               <th>Fin</th>
               <th>Días</th>
+              <th>Diagnóstico</th>
               <th>Problemas detectados</th>
             </tr>
           </thead>
@@ -6143,10 +6167,10 @@ function buildNovedadesCargaMasiva() {
             <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2" style="flex-shrink:0;margin-top:1px"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
             <div>
               <div style="font-size:13px;font-weight:700;color:#92400e;margin-bottom:4px">
-                <span id="novimp-step4-skipped-count">0</span> fila(s) NO se importaron por fecha inválida o vacía
+                <span id="novimp-step4-skipped-count">0</span> fila(s) NO se importaron
               </div>
               <div style="font-size:12px;color:#92400e;line-height:1.6">
-                Corrige esas filas en el Excel — la fecha de inicio siempre es obligatoria, y la fecha de fin también lo es salvo que la marques como "Vacaciones pagadas" — y vuelve a cargar el archivo.
+                Motivo: cédula vacía/no encontrada en Empleados, o fecha de inicio/fin inválida o vacía (la fecha de fin no es obligatoria si la fila es "Vacaciones pagadas"). Corrige esas filas en el Excel y vuelve a cargar el archivo.
               </div>
             </div>
           </div>
@@ -6180,13 +6204,29 @@ function buildNovedadesCargaMasiva() {
 }
 
 // ── Procesar archivo subido (o datos demo) ─────────────────────────────────
-function simulateNovUpload(input) {
+// Busca en una sola consulta (por lotes de 500) todos los códigos CIE-10 que aparezcan en el archivo,
+// para autocompletar nombre/descripción sin hacer una consulta por cada fila.
+async function _buscarCie10Map(codigos) {
+  const unicos = [...new Set((codigos||[]).map(c => (c||'').toString().trim().toUpperCase()).filter(Boolean))];
+  const map = {};
+  if (!unicos.length) return map;
+  for (let i = 0; i < unicos.length; i += 500) {
+    const lote = unicos.slice(i, i+500);
+    const { data, error } = await sb.from('codigos_cie10').select('codigo,nombre,descripcion').in('codigo', lote);
+    if (!error && data) data.forEach(c => { map[c.codigo.toUpperCase()] = c; });
+  }
+  return map;
+}
+
+async function simulateNovUpload(input) {
   if (!input || !input.files || !input.files[0]) {
     _isDemoNovImport = true;
-    _novImportData = IMPORT_MOCK_NOVEDADES.map(r => ({...r}));
-    _novImportData.forEach(row => {
-      const { issues, status } = validateNovRow(row);
+    const rawRows = _construirMockNovedades().map(r => ({...r}));
+    const cie10Map = await _buscarCie10Map(rawRows.map(r => r.diagnostico_codigo));
+    _novImportData = rawRows.map(row => {
+      const { issues, status } = validateNovRow(row, cie10Map);
       row.issues = issues; row.status = status; row.row = '—';
+      return row;
     });
     document.getElementById('novimpPreviewFileName').textContent = 'demo_novedades.xlsx';
     document.getElementById('novimpPreviewFileSub').textContent = _novImportData.length + ' filas de ejemplo (datos simulados — sin archivo real)';
@@ -6194,8 +6234,8 @@ function simulateNovUpload(input) {
     renderNovPreview();
     renderNovDiagnostic({
       sheetName:'DEMO', headerIdx:0,
-      rawHeaders:['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION'],
-      normHeaders:['cedula','tipo','fecha_inicio','fecha_fin','dias','vacaciones_pagadas_raw','valor_pagado_raw','eps','diagnostico_codigo','diagnostico_nombre','descripcion'],
+      rawHeaders:['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','CODIGO DIAGNOSTICO','DESCRIPCION'],
+      normHeaders:['cedula','tipo','fecha_inicio','fecha_fin','dias','vacaciones_pagadas_raw','valor_pagado_raw','eps','diagnostico_codigo','descripcion'],
       totalRows:_novImportData.length, fileName:'demo_novedades.xlsx', kb:0
     });
     return;
@@ -6206,7 +6246,7 @@ function simulateNovUpload(input) {
 
   const file = input.files[0];
   const reader = new FileReader();
-  reader.onload = function(e) {
+  reader.onload = async function(e) {
     try {
       const data = new Uint8Array(e.target.result);
       const wb = XLSX.read(data, { type:'array', cellDates:true, raw:false });
@@ -6226,15 +6266,23 @@ function simulateNovUpload(input) {
       const rawHeaders = aoa[headerIdx];
       const normHeaders = rawHeaders.map(normalizeNovHeader);
 
-      const dataRows = aoa.slice(headerIdx+1)
+      const rawRows = aoa.slice(headerIdx+1)
         .filter(row => row.some(c => c && c.toString().trim()))
         .map((row, i) => {
           const obj = { _rowNum: headerIdx+i+2 };
           normHeaders.forEach((h,j) => { if (h && !h.startsWith('_')) obj[h] = (row[j]||'').toString().trim(); });
-          const { issues, status } = validateNovRow(obj);
-          obj.issues = issues; obj.status = status; obj.row = obj._rowNum;
           return obj;
         });
+
+      const codigosUnicos = rawRows.map(r => r.diagnostico_codigo).filter(Boolean);
+      if (codigosUnicos.length) showToast('Buscando ' + new Set(codigosUnicos.map(c=>c.toUpperCase())).size + ' código(s) de diagnóstico en el catálogo CIE-10...');
+      const cie10Map = await _buscarCie10Map(codigosUnicos);
+
+      const dataRows = rawRows.map(obj => {
+        const { issues, status } = validateNovRow(obj, cie10Map);
+        obj.issues = issues; obj.status = status; obj.row = obj._rowNum;
+        return obj;
+      });
 
       _novImportData = dataRows;
       const kb = (file.size/1024).toFixed(0);
@@ -6324,7 +6372,7 @@ function renderNovValidation() {
   document.getElementById('novimpImportSummaryRow').innerHTML = `
     <div class="import-stat valid"><div class="import-stat-num">${counts.valid||0}</div><div class="import-stat-label">✓ Válidas — listas para importar</div></div>
     <div class="import-stat warn"><div class="import-stat-num">${counts.warning||0}</div><div class="import-stat-label">⚠ Con advertencias — se importan, revisar después</div></div>
-    <div class="import-stat error"><div class="import-stat-num">${counts.error||0}</div><div class="import-stat-label">✕ Sin fecha válida — NO se importan</div></div>
+    <div class="import-stat error"><div class="import-stat-num">${counts.error||0}</div><div class="import-stat-label">✕ Cédula no encontrada o fecha inválida — NO se importan</div></div>
     <div class="import-stat dup"><div class="import-stat-num">${counts.dup||0}</div><div class="import-stat-label">↳ Posibles duplicados</div></div>`;
 
   const totalImportable = rows.filter(r => r.status !== 'error').length;
@@ -6362,7 +6410,7 @@ function filterNovImportTable(filter, el) {
 
   if (!rows.length) {
     document.getElementById('novimpValidationBody').innerHTML =
-      `<tr><td colspan="9" style="text-align:center;padding:24px;color:var(--text3)">Sin registros en esta categoría</td></tr>`;
+      `<tr><td colspan="10" style="text-align:center;padding:24px;color:var(--text3)">Sin registros en esta categoría</td></tr>`;
     return;
   }
 
@@ -6376,6 +6424,9 @@ function filterNovImportTable(filter, el) {
       <td style="font-size:11px">${escapeHTML(r.fecha_inicio||'—')}</td>
       <td style="font-size:11px">${escapeHTML(r.vacaciones_pagadas ? '—' : (r.fecha_fin||'—'))}</td>
       <td style="font-size:11px;font-weight:700">${r.dias||0}</td>
+      <td style="font-size:11px;max-width:170px">${r.diagnostico_codigo
+          ? `<div style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis" title="${escapeHTML((r.diagnostico_codigo||'')+' — '+(r.diagnostico_nombre||'(no encontrado en CIE-10)'))}">${escapeHTML(r.diagnostico_codigo)} &middot; ${escapeHTML(r.diagnostico_nombre||'(no encontrado)')}</div>`
+          : '—'}</td>
       <td style="max-width:320px">${(r.issues||[]).map(i =>
         `<span class="issue-tag ${i.type==='err'?'err':i.type==='dup'?'dup':'wrn'}">${escapeHTML(i.msg)}</span>`
       ).join(' ') || '<span style="color:var(--green);font-size:11px">✓ Sin observaciones</span>'}</td>
@@ -6432,11 +6483,11 @@ async function commitNovImport() {
   const rowsParaSupabase = toImport.map(row => {
     const emp = row._emp;
     return {
-      empleado_id:        emp ? String(emp.id) : (row.cedula || ''),
-      empleado_nombre:     emp ? (emp.nombre||'') : '',
+      empleado_id:        String(emp.id),
+      empleado_nombre:     emp.nombre || '',
       empleado_cedula:     row.cedula || '',
-      empleado_cliente:    emp ? (emp.cliente||'') : '',
-      empleado_cargo:      emp ? (emp.cargo||'') : '',
+      empleado_cliente:    emp.cliente || '',
+      empleado_cargo:      emp.cargo || '',
       tipo:                row.tipo || '',
       fecha_inicio:        row._isoIni,
       fecha_fin:           row.vacaciones_pagadas ? row._isoIni : row._isoFin,
@@ -6485,7 +6536,7 @@ async function commitNovImport() {
 
   const parts = [];
   parts.push(`${total} novedad${total!==1?'es':''} importada${total!==1?'s':''}`);
-  if (omitidas > 0) parts.push(`${omitidas} fila${omitidas!==1?'s':''} omitida${omitidas!==1?'s':''} por fecha inválida`);
+  if (omitidas > 0) parts.push(`${omitidas} fila${omitidas!==1?'s':''} omitida${omitidas!==1?'s':''} (cédula no encontrada o fecha inválida)`);
   if (dups > 0) parts.push(`${dups} posible${dups!==1?'s':''} duplicado${dups!==1?'s':''}`);
   if (s4('novimp-step4-subtitle')) s4('novimp-step4-subtitle').textContent = parts.join(' · ');
 
@@ -6494,7 +6545,7 @@ async function commitNovImport() {
   if (banner) banner.style.display = omitidas > 0 ? 'block' : 'none';
   if (skippedCount) skippedCount.textContent = omitidas;
 
-  await logAudit('import', 'novedades', null, `Carga masiva de novedades: ${total} importadas${omitidas?', '+omitidas+' omitidas por fecha inválida':''}`);
+  await logAudit('import', 'novedades', null, `Carga masiva de novedades: ${total} importadas${omitidas?', '+omitidas+' omitidas (cédula no encontrada o fecha inválida)':''}`);
 
   if (importBtn) {
     importBtn.disabled = false;
