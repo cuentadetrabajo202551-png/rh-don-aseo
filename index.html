@@ -3270,30 +3270,34 @@ async function subirDocumentoConTitulo(input) {
   }
   if (file.size > 10*1024*1024) { showToast('M\xe1ximo 10MB por archivo'); input.value = ''; return; }
 
-  showToast('Subiendo ' + file.name + '...');
-  const path = _docsEmpId + '/adjuntos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
-  if (upErr) { showToast('Error: ' + upErr.message); return; }
+  showBlockingOverlay('Subiendo documento...');
+  try {
+    const path = _docsEmpId + '/adjuntos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
+    if (upErr) { showToast('Error: ' + upErr.message); return; }
 
-  const { error: dbErr } = await sb.from('documentos_empleados').insert([{
-    empleado_id: String(_docsEmpId),
-    tipo:        titulo,   // título personalizado guardado en el campo 'tipo'
-    nombre:      file.name,
-    storage_path: path,
-    tamanio:     file.size,
-    subido_por:  _currentUser?.display_name || _currentUser?.email || 'Usuario'
-  }]);
-  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
+    const { error: dbErr } = await sb.from('documentos_empleados').insert([{
+      empleado_id: String(_docsEmpId),
+      tipo:        titulo,   // título personalizado guardado en el campo 'tipo'
+      nombre:      file.name,
+      storage_path: path,
+      tamanio:     file.size,
+      subido_por:  _currentUser?.display_name || _currentUser?.email || 'Usuario'
+    }]);
+    if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
 
-  _docsCounts[_docsEmpId] = (_docsCounts[_docsEmpId] || 0) + 1;
-  renderTable(); // actualizar indicador en tabla
-  await logAudit('create', 'documentos', String(_docsEmpId), 'Adjunt\xf3 documento: ' + titulo + ' (' + file.name + ')');
-  showToast('&#10003; "' + escapeHTML(titulo) + '" adjuntado correctamente');
-  input.value = '';
-  if (tituloEl) tituloEl.value = '';
-  const form = document.getElementById('doc-adjuntar-form');
-  if (form) form.style.display = 'none';
-  loadDocumentos();
+    _docsCounts[_docsEmpId] = (_docsCounts[_docsEmpId] || 0) + 1;
+    renderTable(); // actualizar indicador en tabla
+    await logAudit('create', 'documentos', String(_docsEmpId), 'Adjunt\xf3 documento: ' + titulo + ' (' + file.name + ')');
+    showToast('&#10003; "' + escapeHTML(titulo) + '" adjuntado correctamente');
+    input.value = '';
+    if (tituloEl) tituloEl.value = '';
+    const form = document.getElementById('doc-adjuntar-form');
+    if (form) form.style.display = 'none';
+    loadDocumentos();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // Función legacy (usada en otros lugares del código)
