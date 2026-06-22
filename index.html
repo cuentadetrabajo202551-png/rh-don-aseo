@@ -5911,8 +5911,11 @@ function validateNovRow(row, cie10Map) {
   if (row.eps) {
     const v = removeAccents(row.eps.toString().trim().toUpperCase());
     const epsCat = CATALOGS.eps || [];
-    const inCat = epsCat.some(e => removeAccents(e.toUpperCase()) === v);
-    if (!inCat) {
+    const matchExacto = epsCat.find(e => removeAccents(e.toUpperCase()) === v);
+    if (matchExacto) {
+      // Normalizar a la grafía exacta del catálogo — si no, el <select> de edición no la reconoce después
+      row.eps = matchExacto;
+    } else {
       const sim = findSimilar(v, epsCat.map(e => removeAccents(e)));
       const simOrig = sim ? epsCat.find(e => removeAccents(e) === sim) : null;
       issues.push({ type:'warn', field:'EPS', msg:`EPS "${escapeHTML(row.eps)}" no está en catálogo${simOrig ? ` — ¿quisiste decir "${escapeHTML(simOrig)}"?` : ''}` });
@@ -6245,6 +6248,7 @@ async function simulateNovUpload(input) {
   if (typeof XLSX === 'undefined') { showToast('Librería Excel aún cargando, intenta en un segundo...'); return; }
 
   const file = input.files[0];
+  input.value = ''; // permite volver a seleccionar el mismo archivo más adelante (el navegador no dispara "change" si el valor no cambia)
   const reader = new FileReader();
   reader.onload = async function(e) {
     try {
@@ -7939,6 +7943,7 @@ function simulateUpload(input) {
   if(typeof XLSX === 'undefined') { showToast('Librer\xeda Excel a\xfan cargando, intenta en un segundo...'); return; }
 
   const file = input.files[0];
+  input.value = ''; // permite volver a seleccionar el mismo archivo más adelante (el navegador no dispara "change" si el valor no cambia)
   const reader = new FileReader();
   reader.onload = function(e) {
     try {
