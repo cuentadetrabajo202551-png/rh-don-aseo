@@ -2455,7 +2455,7 @@ function updateBulkBar() {
   const cnt = document.getElementById('bulk-count-num');
   const btnTodos = document.getElementById('btn-sel-todos');
 
-  if (bar) bar.style.display = n > 0 ? 'flex' : 'none';
+  if (bar) bar.style.display = (n > 0 && isEditor()) ? 'flex' : 'none';
   if (cnt) cnt.textContent = n;
 
   // Mostrar "Seleccionar todos" solo si hay empleados filtrados y es editor+
@@ -2717,7 +2717,7 @@ function renderTable(){
     const isSelected = _selectedEmps.has(emp.id);
     return `<tr class="${isSelected?'bg-selected':''}">
       <td style="text-align:center;width:36px">
-        <input type="checkbox" class="emp-check" ${isSelected?'checked':''} onchange="toggleEmpSelection(${emp.id},this.checked)">
+        ${isEditor() ? `<input type="checkbox" class="emp-check" ${isSelected?'checked':''} onchange="toggleEmpSelection(${emp.id},this.checked)">` : ''}
       </td>
       <td>
         <div class="emp-cell">
@@ -6022,6 +6022,9 @@ function applyRoleVisibility() {
   // Exportar Excel: todos los roles (incluyendo viewer)
   const btnExport = document.getElementById('btn-exportar-excel');
   if (btnExport) btnExport.style.display = '';
+  // Checkbox de selección masiva (encabezado): solo editores/admins
+  const checkAllHeader = document.getElementById('check-all-header');
+  if (checkAllHeader) checkAllHeader.style.display = isEditor() ? '' : 'none';
 
   // ── Botón Editar en panel de perfil del empleado ──────────────────────
   const editBtn = document.getElementById('panel-edit-btn');
