@@ -9100,7 +9100,8 @@ let _certEmp = null;
 // ══════════════════════════════════════════════════════════════
 let _certTabActiva = 'generar';
 let CERT_SOLICITUDES = [];
-let _certSolFiltroEstado = '';
+let _certSolFiltro = { empleadoQ:'', tipo:'', estado:'', desde:'', hasta:'' };
+const CERT_TIPOS = ['Certificado laboral','Detalle de horas extras','Liquidación de prestaciones sociales','Carta de cesantías','Otro'];
 
 function buildCertificados(tab) {
   _certTabActiva = tab;
@@ -9129,20 +9130,55 @@ function buildCertSolicitudes() {
   const cont = document.getElementById('cert-content-solicitudes');
   if (!cont) return;
   cont.innerHTML = `
-    <div class="cat-edit-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
-      <input type="text" class="form-input" id="certsol-cedula" placeholder="Cédula" style="width:140px">
-      <input type="text" class="form-input" id="certsol-nombre" placeholder="Nombre del empleado" style="width:220px">
-      <input type="text" class="form-input" id="certsol-correo" placeholder="Correo (para enviarlo)" style="width:200px">
-      <input type="text" class="form-input" id="certsol-tipo" placeholder="Tipo de certificado" value="Certificado laboral" style="width:180px">
-      <input type="text" class="form-input" id="certsol-obs" placeholder="Observaciones (opcional)" style="flex:1;min-width:180px">
-      <button class="btn btn-primary btn-sm" onclick="agregarSolicitudCertificado()">+ Agregar solicitud</button>
+    <div class="cert-form-card" style="margin-bottom:14px">
+      <div class="cert-section-label">Nueva solicitud</div>
+      <div style="display:flex;gap:10px;align-items:flex-start">
+        <div style="flex:1;position:relative">
+          <input type="text" id="certsol-search" class="form-input" placeholder="Buscar empleado por nombre o cédula..."
+            oninput="certsolSearchEmployee()" autocomplete="off" style="width:100%;padding-left:36px">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3)">
+            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
+          </svg>
+          <div id="certsol-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:3px"></div>
+        </div>
+        <button class="btn btn-ghost btn-sm" onclick="certsolClearEmployee()">Limpiar</button>
+      </div>
+      <input type="hidden" id="certsol-empleado-id">
+      <div id="certsol-emp-found" style="display:none;margin-top:12px">
+        <div style="background:var(--blue-light);border:1px solid #bfdbfe;border-radius:8px;padding:11px 14px;display:flex;align-items:center;gap:12px">
+          <div id="certsol-emp-avatar" class="emp-avatar m" style="width:36px;height:36px;font-size:13px;flex-shrink:0">?</div>
+          <div style="flex:1">
+            <div id="certsol-emp-name" style="font-size:14px;font-weight:700;color:var(--text)">—</div>
+            <div id="certsol-emp-meta" style="font-size:12px;color:var(--text2)">—</div>
+          </div>
+          <span id="certsol-emp-badge" class="badge badge-activo">ACTIVO</span>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
+        <input type="text" class="form-input" id="certsol-correo" placeholder="Correo (para enviarlo)" style="width:220px">
+        <select class="form-select" id="certsol-tipo" style="width:220px">
+          ${CERT_TIPOS.map(t => '<option value="'+escapeHTML(t)+'">'+escapeHTML(t)+'</option>').join('')}
+        </select>
+        <input type="text" class="form-input" id="certsol-obs" placeholder="Observaciones (opcional)" style="flex:1;min-width:180px">
+        <button class="btn btn-primary btn-sm" onclick="agregarSolicitudCertificado()">+ Agregar solicitud</button>
+      </div>
     </div>
+
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
-      <select class="form-select" id="certsol-filtro-estado" style="width:190px" onchange="_certSolOnFiltroEstado()">
-        <option value="">Todas</option>
+      <input type="text" class="form-input" id="certsolf-empleado" placeholder="Buscar empleado o cédula..." style="width:220px" oninput="certsolFiltrar()">
+      <select class="form-select" id="certsolf-tipo" style="width:200px" onchange="certsolFiltrar()">
+        <option value="">Todos los tipos</option>
+        ${CERT_TIPOS.map(t => '<option value="'+escapeHTML(t)+'">'+escapeHTML(t)+'</option>').join('')}
+      </select>
+      <select class="form-select" id="certsolf-estado" style="width:160px" onchange="certsolFiltrar()">
+        <option value="">Todos los estados</option>
         <option value="PENDIENTE">Pendientes</option>
         <option value="GENERADO">Generadas</option>
       </select>
+      <input type="date" class="form-input" id="certsolf-desde" style="width:140px" onchange="certsolFiltrar()" title="Desde">
+      <input type="date" class="form-input" id="certsolf-hasta" style="width:140px" onchange="certsolFiltrar()" title="Hasta">
+      <button class="btn btn-ghost btn-sm" onclick="certsolLimpiarFiltros()">Limpiar filtros</button>
     </div>
     <div class="table-wrap">
       <table class="table">
@@ -9154,15 +9190,100 @@ function buildCertSolicitudes() {
   loadCertSolicitudes().then(_certRenderSolicitudesTabla);
 }
 
-function _certSolOnFiltroEstado() {
-  _certSolFiltroEstado = document.getElementById('certsol-filtro-estado')?.value || '';
+function certsolSearchEmployee() {
+  const q = (document.getElementById('certsol-search')?.value||'').trim().toLowerCase();
+  const res = document.getElementById('certsol-search-results');
+  if (!res) return;
+  if (!q || q.length < 2) { res.style.display='none'; return; }
+
+  const matches = EMPLEADOS.filter(e =>
+    e.nombre.toLowerCase().includes(q) || e.cedula.includes(q)
+  ).slice(0, 12);
+
+  if (!matches.length) {
+    res.innerHTML = '<div class="combobox-empty">Sin resultados</div>';
+    res.style.display = 'block';
+    return;
+  }
+
+  res.innerHTML = matches.map(e => {
+    const g = e.genero==='FEMENINO'?'f':'m';
+    const ini = getInitials(e.nombre);
+    return '<div style="display:flex;align-items:center;gap:10px;padding:9px 12px;cursor:pointer;border-bottom:1px solid #f1f5f9" '
+      + 'onmouseover="this.style.background=\'#f8fafc\'" onmouseout="this.style.background=\'\'" '
+      + 'onclick="certsolSelectEmployee(' + e.id + ')">'
+      + '<div class="emp-avatar ' + g + '" style="width:28px;height:28px;font-size:10px;flex-shrink:0">' + escapeHTML(ini) + '</div>'
+      + '<div style="flex:1"><div style="font-size:13px;font-weight:600;color:var(--text)">' + escapeHTML(e.nombre) + '</div>'
+      + '<div style="font-size:11px;color:var(--text3)">CC ' + escapeHTML(e.cedula) + ' · ' + escapeHTML(e.cargo||'Sin cargo') + '</div></div>'
+      + '<span class="badge ' + (e.estado==='ACTIVO'?'badge-activo':'badge-inactivo') + '" style="font-size:10px">' + escapeHTML(e.estado) + '</span>'
+      + '</div>';
+  }).join('');
+  res.style.display = 'block';
+}
+
+function certsolSelectEmployee(id) {
+  const emp = EMPLEADOS.find(e => e.id === id);
+  if (!emp) return;
+  document.getElementById('certsol-empleado-id').value = emp.id;
+  document.getElementById('certsol-search').value = emp.nombre;
+  document.getElementById('certsol-search-results').style.display = 'none';
+  document.getElementById('certsol-emp-found').style.display = 'block';
+  const av = document.getElementById('certsol-emp-avatar');
+  av.textContent = getInitials(emp.nombre);
+  av.className = 'emp-avatar ' + (emp.genero==='FEMENINO'?'f':'m');
+  document.getElementById('certsol-emp-name').textContent = emp.nombre;
+  document.getElementById('certsol-emp-meta').textContent = (emp.cargo||'Sin cargo') + ' · ' + (emp.cliente||'Sin cliente') + ' · CC ' + emp.cedula;
+  const badge = document.getElementById('certsol-emp-badge');
+  badge.textContent = emp.estado;
+  badge.className = 'badge ' + (emp.estado==='ACTIVO'?'badge-activo':'badge-inactivo');
+  const correoEl = document.getElementById('certsol-correo');
+  if (correoEl && !correoEl.value && emp.correo) correoEl.value = emp.correo;
+}
+
+function certsolClearEmployee() {
+  const idEl = document.getElementById('certsol-empleado-id');
+  if (idEl) idEl.value = '';
+  const searchEl = document.getElementById('certsol-search');
+  if (searchEl) searchEl.value = '';
+  const found = document.getElementById('certsol-emp-found');
+  if (found) found.style.display = 'none';
+}
+
+function certsolFiltrar() {
+  _certSolFiltro = {
+    empleadoQ: (document.getElementById('certsolf-empleado')?.value || '').toLowerCase().trim(),
+    tipo: document.getElementById('certsolf-tipo')?.value || '',
+    estado: document.getElementById('certsolf-estado')?.value || '',
+    desde: document.getElementById('certsolf-desde')?.value || '',
+    hasta: document.getElementById('certsolf-hasta')?.value || ''
+  };
   _certRenderSolicitudesTabla();
+}
+
+function certsolLimpiarFiltros() {
+  ['certsolf-empleado','certsolf-tipo','certsolf-estado','certsolf-desde','certsolf-hasta'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
+  _certSolFiltro = { empleadoQ:'', tipo:'', estado:'', desde:'', hasta:'' };
+  _certRenderSolicitudesTabla();
+}
+
+function _certSolFiltrarLista() {
+  return CERT_SOLICITUDES.filter(s => {
+    if (_certSolFiltro.estado && s.estado !== _certSolFiltro.estado) return false;
+    if (_certSolFiltro.tipo && s.tipo_certificado !== _certSolFiltro.tipo) return false;
+    if (_certSolFiltro.desde && (s.fecha_solicitud||'') < _certSolFiltro.desde) return false;
+    if (_certSolFiltro.hasta && (s.fecha_solicitud||'') > (_certSolFiltro.hasta + 'T23:59:59')) return false;
+    if (_certSolFiltro.empleadoQ) {
+      const hay = ((s.empleado_nombre||'')+(s.empleado_cedula||'')).toLowerCase();
+      if (!hay.includes(_certSolFiltro.empleadoQ)) return false;
+    }
+    return true;
+  });
 }
 
 function _certRenderSolicitudesTabla() {
   const tbody = document.getElementById('certSolBody');
   if (!tbody) return;
-  const lista = _certSolFiltroEstado ? CERT_SOLICITUDES.filter(s => s.estado === _certSolFiltroEstado) : CERT_SOLICITUDES;
+  const lista = _certSolFiltrarLista();
   if (!lista.length) {
     tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>No hay solicitudes registradas</p></div></td></tr>';
     return;
@@ -9187,22 +9308,21 @@ function _certRenderSolicitudesTabla() {
 }
 
 async function agregarSolicitudCertificado() {
-  const cedula = document.getElementById('certsol-cedula')?.value?.trim();
-  const nombre = document.getElementById('certsol-nombre')?.value?.trim();
+  const empId = document.getElementById('certsol-empleado-id')?.value;
+  const emp = empId ? EMPLEADOS.find(e => e.id === Number(empId)) : null;
+  if (!emp) { showToast('Busca y selecciona un empleado de la lista — debe ser alguien que es o haya sido trabajador de la empresa'); return; }
   const correo = document.getElementById('certsol-correo')?.value?.trim() || '';
-  const tipo   = document.getElementById('certsol-tipo')?.value?.trim() || 'Certificado laboral';
+  const tipo   = document.getElementById('certsol-tipo')?.value || 'Certificado laboral';
   const obs    = document.getElementById('certsol-obs')?.value?.trim() || '';
-  if (!cedula || !nombre) { showToast('La cédula y el nombre son obligatorios'); return; }
 
   showBlockingOverlay('Guardando solicitud...');
   try {
     const { data, error } = await sb.from('certificados_solicitudes').insert([{
-      empleado_cedula: cedula, empleado_nombre: nombre, empleado_correo: correo, tipo_certificado: tipo, observaciones: obs
+      empleado_cedula: emp.cedula, empleado_nombre: emp.nombre, empleado_correo: correo, tipo_certificado: tipo, observaciones: obs
     }]).select().single();
     if (error) { showToast('Error: ' + error.message); return; }
-    await logAudit('create', 'certificados_solicitudes', String(data.id), 'Nueva solicitud de certificado: ' + nombre + ' (CC ' + cedula + ')');
-    document.getElementById('certsol-cedula').value = '';
-    document.getElementById('certsol-nombre').value = '';
+    await logAudit('create', 'certificados_solicitudes', String(data.id), 'Nueva solicitud de certificado: ' + emp.nombre + ' (CC ' + emp.cedula + ')');
+    certsolClearEmployee();
     document.getElementById('certsol-correo').value = '';
     document.getElementById('certsol-obs').value = '';
     showToast('✓ Solicitud agregada');
