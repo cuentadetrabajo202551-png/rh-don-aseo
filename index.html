@@ -7,6 +7,7 @@
 <title>RH — Módulo de Empleados</title>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1634,6 +1635,26 @@ tr.bg-selected td{background:#eff6ff!important}
       </div>
 
       <div id="lista-usuarios"></div>
+
+      <!-- ── COPIA DE SEGURIDAD (solo admin) ──────────────────────────── -->
+      <div style="margin-top:40px;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+        <div style="background:#f0fdf4;padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
+          <span style="font-size:13px;font-weight:700;color:#059669">Copia de Seguridad</span>
+        </div>
+        <div style="padding:20px;background:#fff">
+          <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
+            <div>
+              <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:4px">Respaldo completo del sistema</div>
+              <div style="font-size:12px;color:#475569">Descarga un .zip con el Excel de empleados, el Excel de novedades y <strong>todos</strong> los documentos adjuntos (de empleados y de novedades). Úsalo para tu copia de seguridad manual diaria.</div>
+            </div>
+            <button id="btn-respaldo-completo" onclick="descargarRespaldoCompleto()" style="background:#059669;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:13px;font-weight:700;cursor:pointer;white-space:nowrap;flex-shrink:0;transition:background .15s" onmouseover="this.style.background='#047857'" onmouseout="this.style.background='#059669'">
+              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" style="vertical-align:-1px;margin-right:5px"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+              Descargar respaldo completo (ZIP)
+            </button>
+          </div>
+        </div>
+      </div>
 
       <!-- ── ZONA DE PELIGRO (solo admin) ─────────────────────────────── -->
       <div style="margin-top:40px;border:1px solid #fecaca;border-radius:12px;overflow:hidden">
@@ -3698,16 +3719,7 @@ function buildEstadisticas() {
 // Exporta filteredData (lo que está visible con los filtros actuales).
 // Si no hay filtros activos → exporta todos.
 // Si hay filtros → exporta solo esos, con una nota en el nombre del archivo.
-function exportEmployees() {
-  const source = (filteredData.length > 0 && filteredData.length < EMPLEADOS.length)
-    ? filteredData   // hay filtro activo → exportar solo esos
-    : EMPLEADOS;     // sin filtro → exportar todos
-
-  if (!source.length) { showToast('No hay empleados para exportar'); return; }
-  if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
-
-  const esFiltrado = source.length < EMPLEADOS.length;
-
+function _construirWorkbookEmpleados(source, esFiltrado) {
   const HEADERS = [
     'CLIENTE *', 'NOMBRE COMPLETO *', 'CEDULA *', 'FECHA DE INGRESO *',
     'FECHA DE RETIRO', 'MOTIVO DE RETIRO', 'ESTADO *', 'GENERO *',
@@ -3722,11 +3734,6 @@ function exportEmployees() {
     'municipio','departamento','horas','salario','horas_extras','eps','afp','arl',
     'riesgo','correo','incapacitado','notas'
   ];
-
-  // Fila de aviso si es filtrado
-  const infoRow = esFiltrado
-    ? [`Exportacion filtrada — ${source.length} de ${EMPLEADOS.length} empleados`].concat(Array(25).fill(''))
-    : Array(26).fill('');
 
   const designRow = Array(26).fill('');
   const dataRows  = source.map(e => FIELDS.map(f => {
@@ -3753,6 +3760,19 @@ function exportEmployees() {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Empleados');
+  return wb;
+}
+
+function exportEmployees() {
+  const source = (filteredData.length > 0 && filteredData.length < EMPLEADOS.length)
+    ? filteredData   // hay filtro activo → exportar solo esos
+    : EMPLEADOS;     // sin filtro → exportar todos
+
+  if (!source.length) { showToast('No hay empleados para exportar'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
+
+  const esFiltrado = source.length < EMPLEADOS.length;
+  const wb = _construirWorkbookEmpleados(source, esFiltrado);
 
   const now   = new Date();
   const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
@@ -5720,12 +5740,7 @@ function buildNovedadesReportes() {
   });
 }
 
-// source: lista a exportar (por defecto todas). esFiltrado: si viene de un filtro activo en Historial.
-function exportarNovedadesExcel(source, esFiltrado) {
-  source = source || NOVEDADES;
-  if (!source.length) { showToast('No hay novedades para exportar'); return; }
-  if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
-
+function _construirWorkbookNovedades(source) {
   const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','VALOR PAGADO','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
   const dataRows = source.map(n => [
     n.empleado_nombre||'', n.empleado_cedula||'', n.empleado_cliente||'', n.empleado_cargo||'',
@@ -5740,6 +5755,16 @@ function exportarNovedadesExcel(source, esFiltrado) {
 
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Novedades');
+  return wb;
+}
+
+// source: lista a exportar (por defecto todas). esFiltrado: si viene de un filtro activo en Historial.
+function exportarNovedadesExcel(source, esFiltrado) {
+  source = source || NOVEDADES;
+  if (!source.length) { showToast('No hay novedades para exportar'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
+
+  const wb = _construirWorkbookNovedades(source);
 
   const now = new Date();
   const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
@@ -5753,6 +5778,114 @@ function exportarNovedadesHistorialFiltrado() {
   const lista = _novFiltrarLista();
   const esFiltrado = lista.length < NOVEDADES.length;
   exportarNovedadesExcel(lista, esFiltrado);
+}
+
+// ── RESPALDO COMPLETO (ZIP): empleados.xlsx + novedades.xlsx + todos los adjuntos ──
+function _sanitizarNombreArchivo(s) {
+  return String(s || '').replace(/[\\/:*?"<>|]/g, '_').trim().slice(0, 80) || 'archivo';
+}
+
+// Descarga `lista` con concurrencia limitada, llamando onProgreso(procesados, total) cada cierto avance.
+async function _procesarEnLotes(lista, concurrencia, fn, onProgreso) {
+  let idx = 0, procesados = 0;
+  const total = lista.length;
+  async function worker() {
+    while (idx < lista.length) {
+      const item = lista[idx++];
+      await fn(item);
+      procesados++;
+      if (onProgreso && (procesados % 25 === 0 || procesados === total)) onProgreso(procesados, total);
+    }
+  }
+  await Promise.all(Array.from({ length: Math.min(concurrencia, lista.length) }, worker));
+}
+
+async function descargarRespaldoCompleto() {
+  if (!isAdmin()) { showToast('Solo el administrador puede generar el respaldo completo'); return; }
+  if (typeof JSZip === 'undefined') { showToast('Librería ZIP cargando, intenta de nuevo en unos segundos...'); return; }
+  if (typeof XLSX === 'undefined')  { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
+
+  const btn = document.getElementById('btn-respaldo-completo');
+  const btnHtmlOriginal = btn ? btn.innerHTML : '';
+  if (btn) { btn.disabled = true; btn.innerHTML = '⏳ Generando respaldo...'; }
+
+  try {
+    showToast('Iniciando respaldo completo — esto puede tardar varios minutos, no cierres la página...');
+    const zip = new JSZip();
+
+    // 1. Excel de empleados (todos, sin filtrar)
+    const wbEmp = _construirWorkbookEmpleados(EMPLEADOS, false);
+    zip.file('empleados.xlsx', XLSX.write(wbEmp, { bookType: 'xlsx', type: 'array' }));
+
+    // 2. Excel de novedades (todas)
+    const wbNov = _construirWorkbookNovedades(NOVEDADES);
+    zip.file('novedades.xlsx', XLSX.write(wbNov, { bookType: 'xlsx', type: 'array' }));
+
+    // 3. Adjuntos de empleados
+    const { data: docsEmp, error: errDocsEmp } = await sb.from('documentos_empleados').select('*');
+    if (errDocsEmp) throw errDocsEmp;
+    const empMap = {};
+    EMPLEADOS.forEach(e => { empMap[String(e.id)] = e; });
+    let okEmp = 0, failEmp = 0;
+    if (docsEmp && docsEmp.length) {
+      showToast(`Descargando ${docsEmp.length} adjuntos de empleados...`);
+      await _procesarEnLotes(docsEmp, 6, async (d) => {
+        const emp = empMap[String(d.empleado_id)];
+        const carpeta = emp
+          ? _sanitizarNombreArchivo(`${emp.cedula || 'sin_cedula'}_${emp.nombre || 'sin_nombre'}`)
+          : `empleado_${d.empleado_id}`;
+        const { data: blob, error } = await sb.storage.from('documentos').download(d.storage_path);
+        if (error || !blob) { failEmp++; return; }
+        const nombreArchivo = _sanitizarNombreArchivo(d.nombre || d.storage_path.split('/').pop());
+        zip.file(`adjuntos_empleados/${carpeta}/${nombreArchivo}`, blob);
+        okEmp++;
+      }, (p, t) => showToast(`Adjuntos de empleados: ${p}/${t}...`));
+    }
+
+    // 4. Adjuntos de novedades (con datos del empleado/tipo vía relación FK)
+    const { data: soportes, error: errSop } = await sb.from('novedades_soportes')
+      .select('*, novedades(empleado_nombre, empleado_cedula, tipo, fecha_inicio)');
+    if (errSop) throw errSop;
+    let okNov = 0, failNov = 0;
+    if (soportes && soportes.length) {
+      showToast(`Descargando ${soportes.length} adjuntos de novedades...`);
+      await _procesarEnLotes(soportes, 6, async (s) => {
+        const nov = s.novedades;
+        const carpeta = nov
+          ? _sanitizarNombreArchivo(`${nov.empleado_nombre || 'sin_nombre'}_${nov.tipo || ''}_${nov.fecha_inicio || ''}_id${s.novedad_id}`)
+          : `novedad_${s.novedad_id}`;
+        const { data: blob, error } = await sb.storage.from('documentos').download(s.storage_path);
+        if (error || !blob) { failNov++; return; }
+        const nombreArchivo = _sanitizarNombreArchivo(s.nombre || s.storage_path.split('/').pop());
+        zip.file(`adjuntos_novedades/${carpeta}/${nombreArchivo}`, blob);
+        okNov++;
+      }, (p, t) => showToast(`Adjuntos de novedades: ${p}/${t}...`));
+    }
+
+    showToast('Comprimiendo archivo ZIP, un momento...');
+    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+
+    const now = new Date();
+    const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}_${String(now.getHours()).padStart(2,'0')}${String(now.getMinutes()).padStart(2,'0')}`;
+    const fname = `respaldo_don_aseo_${fecha}.zip`;
+
+    const url = URL.createObjectURL(zipBlob);
+    const a = document.createElement('a');
+    a.href = url; a.download = fname;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+
+    const fallos = failEmp + failNov;
+    await logAudit('export', 'respaldo', null,
+      `Respaldo completo generado: ${EMPLEADOS.length} empleados, ${NOVEDADES.length} novedades, ${okEmp} adjuntos de empleados, ${okNov} adjuntos de novedades` + (fallos ? ` (${fallos} adjuntos fallaron)` : ''));
+
+    showToast(`✓ Respaldo completo descargado → ${fname}` + (fallos ? ` — ${fallos} adjuntos no se pudieron incluir` : ''));
+  } catch (err) {
+    console.error(err);
+    showToast('Error generando el respaldo: ' + (err.message || err));
+  } finally {
+    if (btn) { btn.disabled = false; btn.innerHTML = btnHtmlOriginal; }
+  }
 }
 
 // ───────────────────────────────────────────────────────────────────────────
