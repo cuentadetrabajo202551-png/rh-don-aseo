@@ -9132,7 +9132,8 @@ function buildCertSolicitudes() {
     <div class="cat-edit-form" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:14px">
       <input type="text" class="form-input" id="certsol-cedula" placeholder="Cédula" style="width:140px">
       <input type="text" class="form-input" id="certsol-nombre" placeholder="Nombre del empleado" style="width:220px">
-      <input type="text" class="form-input" id="certsol-tipo" placeholder="Tipo de certificado" value="Laboral" style="width:160px">
+      <input type="text" class="form-input" id="certsol-correo" placeholder="Correo (para enviarlo)" style="width:200px">
+      <input type="text" class="form-input" id="certsol-tipo" placeholder="Tipo de certificado" value="Certificado laboral" style="width:180px">
       <input type="text" class="form-input" id="certsol-obs" placeholder="Observaciones (opcional)" style="flex:1;min-width:180px">
       <button class="btn btn-primary btn-sm" onclick="agregarSolicitudCertificado()">+ Agregar solicitud</button>
     </div>
@@ -9145,7 +9146,7 @@ function buildCertSolicitudes() {
     </div>
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Empleado</th><th>Tipo</th><th>Observaciones</th><th>Fecha solicitud</th><th>Estado</th><th></th></tr></thead>
+        <thead><tr><th>Empleado</th><th>Correo</th><th>Tipo</th><th>Observaciones</th><th>Fecha solicitud</th><th>Estado</th><th></th></tr></thead>
         <tbody id="certSolBody"></tbody>
       </table>
     </div>
@@ -9163,7 +9164,7 @@ function _certRenderSolicitudesTabla() {
   if (!tbody) return;
   const lista = _certSolFiltroEstado ? CERT_SOLICITUDES.filter(s => s.estado === _certSolFiltroEstado) : CERT_SOLICITUDES;
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="6"><div class="empty-state"><p>No hay solicitudes registradas</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>No hay solicitudes registradas</p></div></td></tr>';
     return;
   }
   tbody.innerHTML = lista.map(s => {
@@ -9172,13 +9173,14 @@ function _certRenderSolicitudesTabla() {
     return '<tr>'
       + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(s.empleado_nombre) + '</div>'
       + '<div class="td-sub">CC ' + escapeHTML(s.empleado_cedula) + '</div></td>'
+      + '<td style="font-size:12px">' + escapeHTML(s.empleado_correo||'—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(s.tipo_certificado||'—') + '</td>'
       + '<td style="font-size:12px;color:var(--text2);max-width:240px">' + escapeHTML(s.observaciones||'—') + '</td>'
       + '<td style="font-size:12px">' + fecha + '</td>'
       + '<td><span class="badge ' + (pendiente?'badge-inactivo':'badge-activo') + '">' + escapeHTML(s.estado) + '</span></td>'
       + '<td><div class="td-actions">'
       + (pendiente ? '<button class="btn btn-primary btn-sm" onclick="generarDesdeSolicitud(' + s.id + ')">Generar</button>' : '')
-      + (pendiente ? '<button class="btn-icon" title="Marcar como generada" onclick="marcarSolicitudGenerada(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>' : '')
+      + (pendiente ? '<button class="btn-icon" title="Marcar como generada" onclick="marcarSolicitudGenerada(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>' : '<button class="btn-icon" title="Devolver a pendiente" onclick="marcarSolicitudPendiente(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg></button>')
       + '<button class="btn-icon red" title="Eliminar" onclick="eliminarSolicitudCertificado(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>'
       + '</div></td></tr>';
   }).join('');
@@ -9187,19 +9189,21 @@ function _certRenderSolicitudesTabla() {
 async function agregarSolicitudCertificado() {
   const cedula = document.getElementById('certsol-cedula')?.value?.trim();
   const nombre = document.getElementById('certsol-nombre')?.value?.trim();
-  const tipo   = document.getElementById('certsol-tipo')?.value?.trim() || 'Laboral';
+  const correo = document.getElementById('certsol-correo')?.value?.trim() || '';
+  const tipo   = document.getElementById('certsol-tipo')?.value?.trim() || 'Certificado laboral';
   const obs    = document.getElementById('certsol-obs')?.value?.trim() || '';
   if (!cedula || !nombre) { showToast('La cédula y el nombre son obligatorios'); return; }
 
   showBlockingOverlay('Guardando solicitud...');
   try {
     const { data, error } = await sb.from('certificados_solicitudes').insert([{
-      empleado_cedula: cedula, empleado_nombre: nombre, tipo_certificado: tipo, observaciones: obs
+      empleado_cedula: cedula, empleado_nombre: nombre, empleado_correo: correo, tipo_certificado: tipo, observaciones: obs
     }]).select().single();
     if (error) { showToast('Error: ' + error.message); return; }
     await logAudit('create', 'certificados_solicitudes', String(data.id), 'Nueva solicitud de certificado: ' + nombre + ' (CC ' + cedula + ')');
     document.getElementById('certsol-cedula').value = '';
     document.getElementById('certsol-nombre').value = '';
+    document.getElementById('certsol-correo').value = '';
     document.getElementById('certsol-obs').value = '';
     showToast('✓ Solicitud agregada');
     await loadCertSolicitudes();
@@ -9213,10 +9217,33 @@ async function agregarSolicitudCertificado() {
 function generarDesdeSolicitud(id) {
   const sol = CERT_SOLICITUDES.find(s => s.id === id);
   if (!sol) return;
-  const emp = EMPLEADOS.find(e => e.cedula === sol.empleado_cedula);
-  if (!emp) { showToast('No se encontró ningún empleado con la cédula ' + sol.empleado_cedula + ' — verifica el dato'); return; }
+  // Comparar solo dígitos — tolera puntos, espacios u otros caracteres que a veces trae el dato del formulario
+  const cedNorm = (sol.empleado_cedula || '').replace(/\D/g, '');
+  const emp = EMPLEADOS.find(e => (e.cedula || '').replace(/\D/g, '') === cedNorm && cedNorm);
+  if (!emp) { showToast('No se encontró ningún empleado con la cédula "' + sol.empleado_cedula + '" — verifica el dato'); return; }
   buildCertificados('generar');
   certSelectEmployee(emp.id);
+}
+
+async function marcarSolicitudPendiente(id) {
+  if (!confirm('¿Devolver esta solicitud a estado pendiente?')) return;
+  showBlockingOverlay('Actualizando...');
+  try {
+    const { error } = await sb.from('certificados_solicitudes').update({
+      estado: 'PENDIENTE',
+      generado_por: null,
+      generado_por_nombre: null,
+      generado_en: null
+    }).eq('id', id);
+    if (error) { showToast('Error: ' + error.message); return; }
+    await logAudit('update', 'certificados_solicitudes', String(id), 'Solicitud devuelta a pendiente');
+    showToast('Solicitud devuelta a pendiente');
+    await loadCertSolicitudes();
+    _certRenderSolicitudesTabla();
+    refreshCertSolBadge();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 async function marcarSolicitudGenerada(id) {
