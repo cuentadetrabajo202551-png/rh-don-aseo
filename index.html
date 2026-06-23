@@ -6870,9 +6870,10 @@ function renderNovedadesEmpleado(empId) {
   }
 
   el.innerHTML = lista.map(n => {
+    const esVacaciones = (n.tipo||'').toUpperCase() === 'VACACIONES';
     const rango = n.vacaciones_pagadas
       ? ('Pagadas el ' + escapeHTML(n.fecha_inicio) + ' &middot; ' + n.dias + ' días')
-      : (escapeHTML(n.fecha_inicio) + ' a ' + escapeHTML(n.fecha_fin) + ' &middot; ' + n.dias + ' días');
+      : ((esVacaciones ? 'Disfrutadas: ' : '') + escapeHTML(n.fecha_inicio) + ' a ' + escapeHTML(n.fecha_fin) + ' &middot; ' + n.dias + ' días');
     const desc = (n.descripcion||'').trim();
     return '<div style="display:flex;align-items:center;gap:12px;padding:11px 14px;border:1px solid var(--border);border-radius:8px;margin-bottom:8px">'
       + '<span class="badge" style="background:#eff6ff;color:#1d4ed8;flex-shrink:0">' + escapeHTML(n.tipo) + '</span>'
