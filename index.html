@@ -4083,7 +4083,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     refreshCertSolBadge();
     refreshNovPorVencerBadge();
     await loadFromSupabase();
-    _startAutoSync();
+    _startRealtimeSync();
+    _startCertBadgeAutoRefresh();
   }
   // Si no hay sesion, la pantalla de login ya esta visible por defecto
 });
@@ -7481,6 +7482,7 @@ async function doLogin() {
   refreshNovPorVencerBadge();
   await loadFromSupabase();
   _startRealtimeSync();  // tiempo real vía Supabase Realtime
+  _startCertBadgeAutoRefresh();
   btn.disabled = false;
   btn.textContent = 'Iniciar sesion';
 }
@@ -9137,6 +9139,23 @@ async function refreshCertSolBadge() {
   const n = count || 0;
   const b1 = document.getElementById('cert-sol-badge');
   if (b1) { b1.textContent = n; b1.style.display = n > 0 ? '' : 'none'; }
+}
+
+// Refresco automático del contador de solicitudes (las nuevas llegan desde el Google Form,
+// que no dispara eventos locales). Mantiene el número al día sin tener que recargar la página.
+let _certBadgeTimer = null;
+function _startCertBadgeAutoRefresh() {
+  if (_certBadgeTimer) clearInterval(_certBadgeTimer);
+  _certBadgeTimer = setInterval(async () => {
+    refreshCertSolBadge();
+    // Si la pestaña "Solicitudes pendientes" está abierta, refrescar también la tabla
+    const cont = document.getElementById('cert-content-solicitudes');
+    const secActiva = document.getElementById('section-certificados')?.classList.contains('active');
+    if (cont && cont.style.display !== 'none' && secActiva) {
+      await loadCertSolicitudes();
+      _certRenderSolicitudesTabla();
+    }
+  }, 45000);
 }
 
 function buildCertSolicitudes() {
