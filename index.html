@@ -9780,9 +9780,9 @@ function certUpdatePreview() {
 
 function certPrint() {
   const content = document.getElementById('certDocBody')?.innerHTML;
-  if (!content) return;
-  const win = window.open('', '_blank', 'width=820,height=1000');
-  win.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Certificado Laboral - DON ASEO Ltda.</title>
+  if (!content) { showToast('Selecciona un empleado primero'); return; }
+
+  const docHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Certificado Laboral - DON ASEO Ltda.</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
     body{font-family:Arial,sans-serif;font-size:11pt;color:#1a1a1a;padding:15mm 20mm 12mm;line-height:1.75;background:#fff}
@@ -9790,11 +9790,37 @@ function certPrint() {
     .cert-body p{margin-bottom:11px;text-align:justify;font-family:Georgia,'Times New Roman',serif;font-size:11pt}
     @page{size:A4;margin:0}
     @media print{div[style*="page-break-inside"]{page-break-inside:avoid!important;break-inside:avoid!important}}
-  </style></head><body>
-${content}</body></html>`);
-  win.document.close();
-  win.focus();
-  setTimeout(() => { win.print(); }, 400);
+  </style></head><body>${content}</body></html>`;
+
+  // Usamos un iframe oculto en lugar de window.open — más confiable y no lo bloquea el navegador
+  let frame = document.getElementById('cert-print-frame');
+  if (frame) frame.remove();
+  frame = document.createElement('iframe');
+  frame.id = 'cert-print-frame';
+  frame.style.cssText = 'position:fixed;right:0;bottom:0;width:0;height:0;border:0;visibility:hidden';
+  document.body.appendChild(frame);
+
+  let yaImprimio = false;
+  const lanzarImpresion = () => {
+    if (yaImprimio) return;
+    yaImprimio = true;
+    try {
+      frame.contentWindow.focus();
+      frame.contentWindow.print();
+    } catch (e) {
+      showToast('No se pudo abrir la impresión: ' + e.message);
+    }
+  };
+
+  frame.onload = () => setTimeout(lanzarImpresion, 250);
+
+  const doc = frame.contentWindow.document;
+  doc.open();
+  doc.write(docHtml);
+  doc.close();
+
+  // Respaldo por si onload no se dispara (depende del navegador)
+  setTimeout(lanzarImpresion, 800);
 }
 
 // Close combobox dropdown when clicking outside
