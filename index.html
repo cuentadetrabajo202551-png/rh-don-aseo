@@ -9437,6 +9437,7 @@ function generarDesdeSolicitud(id) {
   // Guardar el correo que la persona escribió en la solicitud, para precargarlo al enviar
   _certCorreoSolicitud = sol.empleado_correo || '';
   _certOrigenSolicitud = true; // este certificado proviene de una solicitud del formulario
+  _certSolicitudActual = id;   // recordar la solicitud para marcarla como generada al enviar
 }
 
 async function marcarSolicitudPendiente(id) {
@@ -9635,6 +9636,7 @@ function certSearchEmployee() {
 
 let _certCorreoSolicitud = ''; // correo que la persona escribió en la solicitud (Google Form)
 let _certOrigenSolicitud = false; // true si el certificado se generó desde una solicitud del formulario
+let _certSolicitudActual = null; // id de la solicitud de la que se generó (para marcarla como generada)
 
 function certSelectEmployee(id) {
   const emp = EMPLEADOS.find(e => e.id === id);
@@ -9642,6 +9644,7 @@ function certSelectEmployee(id) {
   _certEmp = emp;
   _certCorreoSolicitud = ''; // al seleccionar un empleado a mano, no hay correo de solicitud
   _certOrigenSolicitud = false; // selección manual → origen manual (se marca aparte si viene de solicitud)
+  _certSolicitudActual = null;
 
   const res = document.getElementById('certSearchResults');
   if (res) res.style.display = 'none';
@@ -9678,6 +9681,7 @@ function certClearEmployee() {
   _certEmp = null;
   _certCorreoSolicitud = '';
   _certOrigenSolicitud = false;
+  _certSolicitudActual = null;
   document.getElementById('certSearch').value = '';
   document.getElementById('certEmpFound').style.display = 'none';
   document.getElementById('certOptions').style.display = 'none';
@@ -10003,6 +10007,8 @@ async function certEnviarCorreo() {
     if (!resp.ok || !data.ok) { showToast('No se pudo enviar: ' + (data.error || resp.status)); return; }
     await logAudit('create', 'certificados_envio', String(emp.id||''), 'Certificado enviado por correo a ' + destinatario.trim() + ' (' + emp.nombre + ')');
     _registrarCertificadoGenerado('ENVIADO', destinatario.trim()); // deja evidencia en el historial
+    // Si el certificado provino de una solicitud, marcarla como generada automáticamente
+    if (_certSolicitudActual) { await marcarSolicitudGenerada(_certSolicitudActual, true); _certSolicitudActual = null; }
     showToast('✓ Certificado enviado a ' + destinatario.trim());
   } catch (e) {
     showToast('Error generando/enviando el PDF: ' + e.message);
