@@ -9431,6 +9431,8 @@ function generarDesdeSolicitud(id) {
   if (!emp) { showToast('No se encontró ningún empleado con la cédula "' + sol.empleado_cedula + '" — verifica el dato'); return; }
   buildCertificados('generar');
   certSelectEmployee(emp.id);
+  // Guardar el correo que la persona escribió en la solicitud, para precargarlo al enviar
+  _certCorreoSolicitud = sol.empleado_correo || '';
 }
 
 async function marcarSolicitudPendiente(id) {
@@ -9527,10 +9529,13 @@ function certSearchEmployee() {
   res.style.display = 'block';
 }
 
+let _certCorreoSolicitud = ''; // correo que la persona escribió en la solicitud (Google Form)
+
 function certSelectEmployee(id) {
   const emp = EMPLEADOS.find(e => e.id === id);
   if (!emp) return;
   _certEmp = emp;
+  _certCorreoSolicitud = ''; // al seleccionar un empleado a mano, no hay correo de solicitud
 
   const res = document.getElementById('certSearchResults');
   if (res) res.style.display = 'none';
@@ -9565,6 +9570,7 @@ function certSelectEmployee(id) {
 
 function certClearEmployee() {
   _certEmp = null;
+  _certCorreoSolicitud = '';
   document.getElementById('certSearch').value = '';
   document.getElementById('certEmpFound').style.display = 'none';
   document.getElementById('certOptions').style.display = 'none';
@@ -9863,7 +9869,7 @@ async function certEnviarCorreo() {
   const el = document.getElementById('certDocBody');
   if (!el || !el.innerHTML.trim()) { showToast('No hay certificado para enviar'); return; }
 
-  const destinatario = prompt('Enviar el certificado al correo:', emp.correo || '');
+  const destinatario = prompt('Enviar el certificado al correo:', emp.correo || _certCorreoSolicitud || '');
   if (destinatario === null) return;
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(destinatario.trim())) { showToast('Correo no válido'); return; }
 
