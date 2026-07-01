@@ -9,6 +9,7 @@
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/html2pdf.js@0.10.3/dist/html2pdf.bundle.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -1560,6 +1561,11 @@ tr.bg-selected td{background:#eff6ff!important}
                   <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/></svg>
                   Imprimir / PDF
                 </button>
+                <button class="btn btn-primary btn-sm"
+                  onclick="certEnviarCorreo()">
+                  <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+                  Enviar por correo
+                </button>
               </div>
             </div>
             <div id="cert-print-area">
@@ -2251,6 +2257,10 @@ tr.bg-selected td{background:#eff6ff!important}
 // La clave 'anon' es segura de incluir aquí: solo permite lo que
 // las políticas de Row Level Security (RLS) autoricen.
 // ══════════════════════════════════════════════════════════════════════════
+// ── Envío de certificados por correo (script PHP en HostGator) ──
+const CERT_MAIL_ENDPOINT = 'https://www.donaseoltda.com/enviar-certificado.php';
+const CERT_MAIL_TOKEN    = 'donaseo-certificados-2026-xk92m'; // debe coincidir con $SECRETO del PHP
+
 const SUPABASE_URL = 'https://eimprmejytunsgzazdkh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbXBybWVqeXR1bnNnemF6ZGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMjc4NDEsImV4cCI6MjA5NTcwMzg0MX0.IG7Ou9YcIMQn7TdHd5WJuhNvAKL-LqVmuxWfkEo1_wQ';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
@@ -9844,6 +9854,55 @@ function certPrint() {
 
   // Respaldo por si onload no se dispara (depende del navegador)
   setTimeout(lanzarImpresion, 800);
+}
+
+// ── Enviar el certificado por correo con el PDF adjunto (vía script PHP en HostGator) ──
+async function certEnviarCorreo() {
+  const emp = _certEmp;
+  if (!emp) { showToast('Selecciona un empleado primero'); return; }
+  const el = document.getElementById('certDocBody');
+  if (!el || !el.innerHTML.trim()) { showToast('No hay certificado para enviar'); return; }
+
+  const destinatario = prompt('Enviar el certificado al correo:', emp.correo || '');
+  if (destinatario === null) return;
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(destinatario.trim())) { showToast('Correo no válido'); return; }
+
+  showBlockingOverlay('Generando PDF...');
+  try {
+    const opt = {
+      margin: [10,14,8,14],
+      filename: 'Certificado_' + (emp.cedula||'') + '.pdf',
+      image: { type:'jpeg', quality:0.98 },
+      html2canvas: { scale:2, useCORS:true },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
+    };
+    const blob = await html2pdf().set(opt).from(el).outputPdf('blob');
+    const b64  = await _blobABase64(blob);
+
+    showBlockingOverlay('Enviando correo...');
+    const resp = await fetch(CERT_MAIL_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({ to: destinatario.trim(), nombre: emp.nombre, filename: opt.filename, pdf_base64: b64, token: CERT_MAIL_TOKEN })
+    });
+    const data = await resp.json().catch(()=>({ ok:false, error:'Respuesta inválida del servidor' }));
+    if (!resp.ok || !data.ok) { showToast('No se pudo enviar: ' + (data.error || resp.status)); return; }
+    await logAudit('create', 'certificados_envio', String(emp.id||''), 'Certificado enviado por correo a ' + destinatario.trim() + ' (' + emp.nombre + ')');
+    showToast('✓ Certificado enviado a ' + destinatario.trim());
+  } catch (e) {
+    showToast('Error generando/enviando el PDF: ' + e.message);
+  } finally {
+    hideBlockingOverlay();
+  }
+}
+
+// Convierte un Blob a base64 (sin el prefijo "data:...;base64,")
+function _blobABase64(blob) {
+  return new Promise((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(String(r.result).split(',')[1]);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
 }
 
 // Close combobox dropdown when clicking outside
