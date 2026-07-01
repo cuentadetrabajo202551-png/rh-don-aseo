@@ -9436,6 +9436,7 @@ function generarDesdeSolicitud(id) {
   certSelectEmployee(emp.id);
   // Guardar el correo que la persona escribió en la solicitud, para precargarlo al enviar
   _certCorreoSolicitud = sol.empleado_correo || '';
+  _certOrigenSolicitud = true; // este certificado proviene de una solicitud del formulario
 }
 
 async function marcarSolicitudPendiente(id) {
@@ -9515,6 +9516,7 @@ async function _registrarCertificadoGenerado(accion, destinatario) {
       empleado_nombre: emp.nombre || '',
       tipo_certificado: 'Certificado laboral',
       accion: accion || 'GENERADO',
+      origen: _certOrigenSolicitud ? 'SOLICITUD' : 'MANUAL',
       destinatario: destinatario || null,
       generado_por: _currentUser?.id || null,
       generado_por_nombre: _currentUser?.display_name || _currentUser?.email || 'Usuario'
@@ -9537,7 +9539,7 @@ function buildCertHistorial() {
     </div>
     <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Empleado</th><th>Tipo</th><th>Acción</th><th>Enviado a</th><th>Generado por</th><th>Fecha y hora</th><th></th></tr></thead>
+        <thead><tr><th>Empleado</th><th>Tipo</th><th>Origen</th><th>Acción</th><th>Enviado a</th><th>Generado por</th><th>Fecha y hora</th><th></th></tr></thead>
         <tbody id="certHistBody"></tbody>
       </table>
     </div>
@@ -9557,17 +9559,20 @@ function _certRenderHistorialCertTabla() {
     ? CERT_GENERADOS.filter(c => ((c.empleado_nombre||'')+(c.empleado_cedula||'')).toLowerCase().includes(_certHistQuery))
     : CERT_GENERADOS;
   if (!lista.length) {
-    tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>No hay certificados registrados en el historial</p></div></td></tr>';
+    tbody.innerHTML = '<tr><td colspan="8"><div class="empty-state"><p>No hay certificados registrados en el historial</p></div></td></tr>';
     return;
   }
   tbody.innerHTML = lista.map(c => {
     const fecha = c.created_at ? (new Date(c.created_at).toLocaleDateString('es-CO') + ' ' + new Date(c.created_at).toLocaleTimeString('es-CO',{hour:'2-digit',minute:'2-digit'})) : '—';
     const enviado = c.accion === 'ENVIADO';
     const badge = '<span class="badge ' + (enviado?'badge-activo':'badge-inactivo') + '">' + escapeHTML(c.accion||'—') + '</span>';
+    const esSolicitud = c.origen === 'SOLICITUD';
+    const origenBadge = '<span class="badge" style="' + (esSolicitud ? 'background:#eff6ff;color:#1d4ed8' : 'background:#f1f5f9;color:#475569') + '">' + (esSolicitud ? 'Solicitud' : 'Manual') + '</span>';
     return '<tr>'
       + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(c.empleado_nombre) + '</div>'
       + '<div class="td-sub">CC ' + escapeHTML(c.empleado_cedula) + '</div></td>'
       + '<td style="font-size:12px">' + escapeHTML(c.tipo_certificado||'—') + '</td>'
+      + '<td>' + origenBadge + '</td>'
       + '<td>' + badge + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(c.destinatario||'—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(c.generado_por_nombre||'—') + '</td>'
@@ -9629,12 +9634,14 @@ function certSearchEmployee() {
 }
 
 let _certCorreoSolicitud = ''; // correo que la persona escribió en la solicitud (Google Form)
+let _certOrigenSolicitud = false; // true si el certificado se generó desde una solicitud del formulario
 
 function certSelectEmployee(id) {
   const emp = EMPLEADOS.find(e => e.id === id);
   if (!emp) return;
   _certEmp = emp;
   _certCorreoSolicitud = ''; // al seleccionar un empleado a mano, no hay correo de solicitud
+  _certOrigenSolicitud = false; // selección manual → origen manual (se marca aparte si viene de solicitud)
 
   const res = document.getElementById('certSearchResults');
   if (res) res.style.display = 'none';
@@ -9670,6 +9677,7 @@ function certSelectEmployee(id) {
 function certClearEmployee() {
   _certEmp = null;
   _certCorreoSolicitud = '';
+  _certOrigenSolicitud = false;
   document.getElementById('certSearch').value = '';
   document.getElementById('certEmpFound').style.display = 'none';
   document.getElementById('certOptions').style.display = 'none';
