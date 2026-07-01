@@ -9869,7 +9869,8 @@ async function certEnviarCorreo() {
   const el = document.getElementById('certDocBody');
   if (!el || !el.innerHTML.trim()) { showToast('No hay certificado para enviar'); return; }
 
-  const destinatario = prompt('Enviar el certificado al correo:', emp.correo || _certCorreoSolicitud || '');
+  // Prioridad: el correo escrito en la solicitud (Google Form) manda; si no hay, el de la ficha
+  const destinatario = prompt('Enviar el certificado al correo:', _certCorreoSolicitud || emp.correo || '');
   if (destinatario === null) return;
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(destinatario.trim())) { showToast('Correo no válido'); return; }
 
