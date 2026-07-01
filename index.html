@@ -9677,8 +9677,11 @@ function certUpdatePreview() {
 
   let filas = '';
   // Todos los registros de este empleado (por cédula), ordenados cronológicamente
+  // del primer contrato al más reciente. Se ordena por fecha REAL (no por texto),
+  // porque las fechas están en DD/MM/AAAA y un orden alfabético las desordena.
+  const _keyIngreso = (s) => { const p = _dmy(s); return p ? (p.y*10000 + p.m*100 + p.d) : 0; };
   const todosContratos = emp.cedula
-    ? EMPLEADOS.filter(e => e.cedula === emp.cedula).sort((a,b) => (a.ingreso||'').localeCompare(b.ingreso||''))
+    ? EMPLEADOS.filter(e => e.cedula === emp.cedula).sort((a,b) => _keyIngreso(a.ingreso) - _keyIngreso(b.ingreso))
     : [emp];
   const tieneHistorial = todosContratos.length > 1;
 
@@ -9746,7 +9749,7 @@ function certUpdatePreview() {
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
     }
   }
-  const tablaHTML = '<table style="width:100%;border-collapse:collapse;margin:0 0 22px">'
+  const tablaHTML = '<table style="width:100%;border-collapse:collapse;margin:0 0 14px">'
     + '<tbody>' + filas + '</tbody></table>';
 
   // ── NOTAS / OBSERVACIONES (opcional) ─────────────────────────────────────
@@ -9770,7 +9773,7 @@ function certUpdatePreview() {
     : '<div style="height:50px"></div>';
 
   const firmaHTML =
-    '<div style="margin-top:24px">'
+    '<div style="margin-top:14px">'
     + '<p style="font-size:12.5px;margin-bottom:4px">Cordialmente,</p>'
     + firmaImg
     + '<p style="font-size:12.5px;font-weight:700;margin:2px 0 0;line-height:1.4">'
@@ -9782,7 +9785,7 @@ function certUpdatePreview() {
 
   // ── PIE DE PÁGINA: 3 sedes ────────────────────────────────────────────────
   const piePagHTML =
-    '<div style="margin-top:28px;border-top:1px solid #003c9d;padding-top:8px;text-align:center;font-size:9px;font-weight:700;color:#003c9d;line-height:1.8">'
+    '<div style="margin-top:16px;border-top:1px solid #003c9d;padding-top:8px;text-align:center;font-size:9px;font-weight:700;color:#003c9d;line-height:1.8">'
     + 'MONTER\xcdA: Calle 34 No.4-63 Telefax: 782 4086<br>'
     + 'SINCELEJO: Calle 22 No. 14-56 Local 2 Calle Santander Tel: 281 2901<br>'
     + 'CARTAGENA: Edificio Rosal Cra. 19 No. 19-10 Apto B. Manga Calej\xf3n Santa Clara Tal: 643 7457<br>'
@@ -9805,7 +9808,7 @@ function certPrint() {
   const docHtml = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Certificado Laboral - DON ASEO Ltda.</title>
   <style>
     *{box-sizing:border-box;margin:0;padding:0}
-    body{font-family:Arial,sans-serif;font-size:11pt;color:#1a1a1a;padding:15mm 20mm 12mm;line-height:1.75;background:#fff}
+    body{font-family:Arial,sans-serif;font-size:11pt;color:#1a1a1a;padding:10mm 18mm 8mm;line-height:1.75;background:#fff}
     img{max-width:100%;display:block}
     .cert-body p{margin-bottom:11px;text-align:justify;font-family:Georgia,'Times New Roman',serif;font-size:11pt}
     @page{size:A4;margin:0}
