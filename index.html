@@ -10181,6 +10181,7 @@ async function certEnviarCorreo() {
     // Si el certificado provino de una solicitud, marcarla como generada automáticamente
     if (_certSolicitudActual) { await marcarSolicitudGenerada(_certSolicitudActual, true); _certSolicitudActual = null; }
     showToast('✓ Certificado enviado a ' + destinatario.trim());
+    certClearEmployee(); // limpiar el formulario tras enviar, para no reenviar por error
   } catch (e) {
     showToast('Error generando/enviando el PDF: ' + e.message);
   } finally {
