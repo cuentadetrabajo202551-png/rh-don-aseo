@@ -9330,7 +9330,8 @@ function _certSolFiltrarLista() {
     } else if (_certSolFiltro.estado && s.estado !== _certSolFiltro.estado) {
       return false;
     }
-    if (_certSolFiltro.tipo && s.tipo_certificado !== _certSolFiltro.tipo) return false;
+    // Comparar el tipo ignorando tildes y mayúsculas ("Carta de cesantias" del formulario vs "Carta de cesantías" del filtro)
+    if (_certSolFiltro.tipo && removeAccents((s.tipo_certificado||'').toUpperCase()) !== removeAccents(_certSolFiltro.tipo.toUpperCase())) return false;
     if (_certSolFiltro.desde && (s.fecha_solicitud||'') < _certSolFiltro.desde) return false;
     if (_certSolFiltro.hasta && (s.fecha_solicitud||'') > (_certSolFiltro.hasta + 'T23:59:59')) return false;
     if (_certSolFiltro.empleadoQ) {
