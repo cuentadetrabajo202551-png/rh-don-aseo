@@ -9212,40 +9212,7 @@ function buildCertSolicitudes() {
   const cont = document.getElementById('cert-content-solicitudes');
   if (!cont) return;
   cont.innerHTML = `
-    <div class="cert-form-card" style="margin-bottom:14px">
-      <div class="cert-section-label">Nueva solicitud</div>
-      <div style="display:flex;gap:10px;align-items:flex-start">
-        <div style="flex:1;position:relative">
-          <input type="text" id="certsol-search" class="form-input" placeholder="Buscar empleado por nombre o cédula..."
-            oninput="certsolSearchEmployee()" autocomplete="off" style="width:100%;padding-left:36px">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
-            style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3)">
-            <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
-          </svg>
-          <div id="certsol-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:3px"></div>
-        </div>
-        <button class="btn btn-ghost btn-sm" onclick="certsolClearEmployee()">Limpiar</button>
-      </div>
-      <input type="hidden" id="certsol-empleado-id">
-      <div id="certsol-emp-found" style="display:none;margin-top:12px">
-        <div style="background:var(--blue-light);border:1px solid #bfdbfe;border-radius:8px;padding:11px 14px;display:flex;align-items:center;gap:12px">
-          <div id="certsol-emp-avatar" class="emp-avatar m" style="width:36px;height:36px;font-size:13px;flex-shrink:0">?</div>
-          <div style="flex:1">
-            <div id="certsol-emp-name" style="font-size:14px;font-weight:700;color:var(--text)">—</div>
-            <div id="certsol-emp-meta" style="font-size:12px;color:var(--text2)">—</div>
-          </div>
-          <span id="certsol-emp-badge" class="badge badge-activo">ACTIVO</span>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:14px">
-        <input type="text" class="form-input" id="certsol-correo" placeholder="Correo (para enviarlo)" style="width:220px">
-        <select class="form-select" id="certsol-tipo" style="width:220px">
-          ${CERT_TIPOS.map(t => '<option value="'+escapeHTML(t)+'">'+escapeHTML(t)+'</option>').join('')}
-        </select>
-        <input type="text" class="form-input" id="certsol-obs" placeholder="Observaciones (opcional)" style="flex:1;min-width:180px">
-        <button class="btn btn-primary btn-sm" onclick="agregarSolicitudCertificado()">+ Agregar solicitud</button>
-      </div>
-    </div>
+    <div style="font-size:12px;color:var(--text3);margin-bottom:14px">Solicitudes recibidas desde el formulario de Google. Para generar un certificado por tu cuenta, usa la pestaña <strong>Generar certificado</strong> (queda registrado en el Historial).</div>
 
     <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px">
       <input type="text" class="form-input" id="certsolf-empleado" placeholder="Buscar empleado o cédula..." style="width:220px" oninput="certsolFiltrar()">
@@ -9825,6 +9792,8 @@ function certOnTipoDocChange() {
     if (esParcial) {
       const ga = document.getElementById('certGirarA');
       if (ga && !ga.value) ga.value = emp.nombre || '';
+      const co = document.getElementById('certConcepto');
+      if (co && !co.value) co.value = 'Remodelación de vivienda';
     }
   }
   certUpdatePreview();
@@ -9838,6 +9807,25 @@ function _certDdmmaaaaAIso(str) {
   return p.y + '-' + mm + '-' + dd;
 }
 
+// Encabezado oficial (logo + servicios en azul) — compartido entre certificado y cartas
+function _certHeaderHTML() {
+  return '<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:18px">'
+    + '<div style="flex-shrink:0;text-align:center">'
+    + (typeof LOGO_B64!=='undefined'&&LOGO_B64 ? '<img src="'+LOGO_B64+'" style="height:80px;width:auto">' : '')
+    + '<div style="font-size:10px;font-weight:700;color:#1e293b;margin-top:2px">NIT: 812 000 152-7</div>'
+    + '</div>'
+    + '<div style="flex:1;text-align:center;font-size:8px;font-weight:700;color:#003c9d;line-height:1.55;padding-top:4px">'
+    + 'ASEO TOTAL, BANCOS, EDIFICIOS, CENTROS COMERCIALES, CONJUNTOS CERRADOS Y CONDOMINIOS,<br>'
+    + 'ADMINISTRACION DE PROPIEDAD HORIZONTAL: PORTEROS, CONSERJES, ASEADORAS Y<br>'
+    + 'JARDINEROS, RECOLECCION DE BASURA, LIMPIEZA DE ALCANTARILLADOS Y RESUMIDEROS,<br>'
+    + 'OPERACI\xd3N Y MANTENIMIENTO DE PLANTAS DE RECICLAJE,<br>'
+    + 'CONSTRUCCI\xd3N Y DISE\xd1O DE RELLENOS SANITARIOS,<br>'
+    + 'CONSERVACI\xd3N DE PARQUES Y ESPACIOS PUBLICOS,<br>'
+    + 'DESCONTAMINACI\xd3N DE RIOS, CANALES Y DIQUES'
+    + '</div></div>'
+    + '<hr style="border:none;border-top:1px solid #cbd5e1;margin:0 0 18px">';
+}
+
 // Arma la carta de retiro de cesantías (total o parcial) en la vista previa
 function _certRenderCesantias(tipo) {
   const emp = _certEmp;
@@ -9849,12 +9837,8 @@ function _certRenderCesantias(tipo) {
   const fondo     = (document.getElementById('certFondo')?.value || '').trim();
   const fondoTxt  = fondo || '____________________';
 
-  // Logo + NIT (encabezado simple, consistente con el certificado)
-  const headerHTML =
-    '<div style="text-align:center;margin-bottom:26px">'
-    + (typeof LOGO_B64!=='undefined'&&LOGO_B64 ? '<img src="'+LOGO_B64+'" style="height:78px;width:auto;display:inline-block">' : '')
-    + '<div style="font-size:10px;font-weight:700;color:#1e293b;margin-top:2px">NIT: 812.000.152-7</div>'
-    + '</div>';
+  // Encabezado oficial (logo + servicios en azul), igual que el certificado laboral
+  const headerHTML = _certHeaderHTML();
 
   const firmaImg = (typeof FIRMA_GERENTE_B64!=='undefined'&&FIRMA_GERENTE_B64)
     ? '<img src="'+FIRMA_GERENTE_B64+'" alt="Firma" style="height:70px;width:auto;display:block;margin:2px 0 0">'
@@ -9954,23 +9938,8 @@ function certUpdatePreview() {
   const ingresoLargo = fechaLargaCert(emp.ingreso);
   const retiroLargo  = fechaLargaCert(emp.retiro);
 
-  // ── HEADER: logo izquierda + servicios derecha ───────────────────────────
-  const headerHTML =
-    '<div style="display:flex;align-items:flex-start;gap:16px;margin-bottom:18px">'
-    + '<div style="flex-shrink:0;text-align:center">'
-    + (typeof LOGO_B64!=='undefined'&&LOGO_B64 ? '<img src="'+LOGO_B64+'" style="height:80px;width:auto">' : '')
-    + '<div style="font-size:10px;font-weight:700;color:#1e293b;margin-top:2px">NIT: 812 000 152-7</div>'
-    + '</div>'
-    + '<div style="flex:1;text-align:center;font-size:8px;font-weight:700;color:#003c9d;line-height:1.55;padding-top:4px">'
-    + 'ASEO TOTAL, BANCOS, EDIFICIOS, CENTROS COMERCIALES, CONJUNTOS CERRADOS Y CONDOMINIOS,<br>'
-    + 'ADMINISTRACION DE PROPIEDAD HORIZONTAL: PORTEROS, CONSERJES, ASEADORAS Y<br>'
-    + 'JARDINEROS, RECOLECCION DE BASURA, LIMPIEZA DE ALCANTARILLADOS Y RESUMIDEROS,<br>'
-    + 'OPERACI\xd3N Y MANTENIMIENTO DE PLANTAS DE RECICLAJE,<br>'
-    + 'CONSTRUCCI\xd3N Y DISE\xd1O DE RELLENOS SANITARIOS,<br>'
-    + 'CONSERVACI\xd3N DE PARQUES Y ESPACIOS PUBLICOS,<br>'
-    + 'DESCONTAMINACI\xd3N DE RIOS, CANALES Y DIQUES'
-    + '</div></div>'
-    + '<hr style="border:none;border-top:1px solid #cbd5e1;margin:0 0 18px">';
+  // ── HEADER: logo izquierda + servicios derecha (compartido con las cartas de cesantías) ──
+  const headerHTML = _certHeaderHTML();
 
   // ── TÍTULO LEGAL ─────────────────────────────────────────────────────────
   const tituloHTML =
