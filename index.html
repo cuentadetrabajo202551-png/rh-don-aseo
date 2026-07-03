@@ -4122,6 +4122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     _resetInactivity();
     await loadCatalogsFromDB();
     await loadNovedadesFromDB();
+    await loadCorreccionesIgnoradas();
     refreshCertSolBadge();
     refreshNovPorVencerBadge();
     await loadFromSupabase();
@@ -7528,6 +7529,7 @@ async function doLogin() {
   btn.textContent = 'Cargando datos...';
   await loadCatalogsFromDB();
   await loadNovedadesFromDB();
+  await loadCorreccionesIgnoradas();
   refreshCertSolBadge();
   refreshNovPorVencerBadge();
   await loadFromSupabase();
@@ -8424,8 +8426,29 @@ let _simGroupsData  = [];
 let _posGroupsData  = [];
 const _posDismissed = new Set();  // nombres UPPER ignorados en posibles duplicados
 const _simDismissed = new Set();  // claves "TYPE_mainName" ignoradas en similares
-const _dupDismissed = new Set();  // cédulas marcadas como "historial válido" — ocultas en esta sesión
+const _dupDismissed = new Set();  // cédulas marcadas como "historial válido"
 let _posShowHistorico = false;    // toggle: mostrar grupos donde todos son INACTIVOS
+
+// ── Persistencia de sugerencias ignoradas ──────────────────────────────────
+// Guarda en Supabase lo que RH marca como "ignorar", para que NO reaparezca al
+// recargar y quede compartido entre usuarios. Requiere tabla correcciones_ignoradas.
+async function loadCorreccionesIgnoradas() {
+  const { data, error } = await sb.from('correcciones_ignoradas').select('tipo,clave');
+  if (error || !data) return;
+  data.forEach(r => {
+    if (r.tipo === 'exact')    _dupDismissed.add(r.clave);
+    if (r.tipo === 'possible') _posDismissed.add(r.clave);
+    if (r.tipo === 'similar')  _simDismissed.add(r.clave);
+  });
+}
+async function _persistirIgnorar(tipo, clave) {
+  try {
+    await sb.from('correcciones_ignoradas').upsert(
+      { tipo, clave, ignorado_por: _currentUser?.display_name || _currentUser?.email || 'Usuario' },
+      { onConflict: 'tipo,clave' }
+    );
+  } catch (e) { /* si falla el guardado, al menos queda ignorado en esta sesión */ }
+}
 
 // ── ACCIÓN: Resolver duplicado exacto (misma cédula, 2+ activos) ──────────
 async function resolverDupExacto(cedula, accion) {
@@ -8454,7 +8477,8 @@ async function resolverDupExacto(cedula, accion) {
 
   } else if (accion === 'historial') {
     _dupDismissed.add(cedula);
-    showToast('&#10003; Marcado como historial laboral v\xe1lido — no aparecerá de nuevo en esta sesión');
+    _persistirIgnorar('exact', cedula);
+    showToast('&#10003; Marcado como historial laboral v\xe1lido — no volver\xe1 a aparecer');
     await logAudit('update','empleados',cedula,'Historial v\xe1lido: dos registros activos confirmados');
 
   } else if (accion === 'reingreso') {
@@ -8534,8 +8558,9 @@ async function unificarPosiblesDup(idMantener, nameKey) {
 // nameKey = nombre en MAYÚSCULAS (clave estable que no cambia entre rebuilds)
 function descartarPosibleDup(nameKey) {
   _posDismissed.add(nameKey);
+  _persistirIgnorar('possible', nameKey);
   buildDuplicados();
-  showToast('&#10003; Par ignorado — no aparecer\xe1 de nuevo en esta sesi\xf3n');
+  showToast('&#10003; Par ignorado — no volver\xe1 a aparecer');
 }
 
 function togglePosHistorico() {
@@ -8630,11 +8655,19 @@ async function unificarVarianteNombre(idx) {
 
   let ok = 0;
   for (const v of variants) {
-    const { error } = await sb.from('empleados').update({ [campo]: targetName, updated_at: new Date().toISOString() }).eq(campo, v);
-    if (!error) {
-      EMPLEADOS.forEach(e => { if (e[campo] === v) e[campo] = targetName; });
-      ok++;
+    // Buscar los empleados de esta variante por comparación normalizada (mayúsculas/tildes/espacios),
+    // y actualizarlos por su ID — así el cambio SÍ pega en la ficha aunque el valor guardado tenga otra grafía.
+    const vNorm = removeAccents((v||'').trim().toUpperCase());
+    const ids = EMPLEADOS.filter(e => removeAccents((e[campo]||'').trim().toUpperCase()) === vNorm).map(e => e.id);
+    if (!ids.length) continue;
+    let variantOk = true;
+    for (let i = 0; i < ids.length; i += 500) {
+      const lote = ids.slice(i, i+500);
+      const { error } = await sb.from('empleados').update({ [campo]: targetName, updated_at: new Date().toISOString() }).in('id', lote);
+      if (error) { variantOk = false; break; }
+      lote.forEach(id => { const e = EMPLEADOS.find(x => x.id === id); if (e) e[campo] = targetName; });
     }
+    if (variantOk) ok++;
   }
 
   // Si el nombre nuevo no está en el catálogo, agregarlo
@@ -8660,8 +8693,9 @@ function descartarSimilar(idx) {
   if (!item) { showToast('Error: grupo no encontrado'); return; }
   const key = item.type + '_' + item.group[0].name;
   _simDismissed.add(key);
+  _persistirIgnorar('similar', key);
   buildDuplicados();
-  showToast('Sugerencia ignorada — no aparecer\xe1 de nuevo en esta sesi\xf3n');
+  showToast('Sugerencia ignorada — no volver\xe1 a aparecer');
 }
 
 // ─── DUPLICADOS DINAMICOS ─────────────────────────────────────────────────
