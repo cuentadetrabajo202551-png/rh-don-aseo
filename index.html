@@ -9260,6 +9260,7 @@ function buildCertSolicitudes() {
         <option value="CRITICO">⏱ Demoradas (5+ días)</option>
         <option value="GENERADO">Generadas</option>
         <option value="RECHAZADO">Rechazadas</option>
+        <option value="DERIVADO">Derivadas</option>
       </select>
       <input type="date" class="form-input" id="certsolf-desde" style="width:140px" onchange="certsolFiltrar()" title="Desde">
       <input type="date" class="form-input" id="certsolf-hasta" style="width:140px" onchange="certsolFiltrar()" title="Hasta">
@@ -9389,16 +9390,17 @@ function _certRenderSolicitudesTabla() {
     const pendiente  = s.estado === 'PENDIENTE';
     const generado   = s.estado === 'GENERADO';
     const rechazado  = s.estado === 'RECHAZADO';
+    const derivado   = s.estado === 'DERIVADO';
     const diasEspera = _certSolDiasEspera(s);
     const esCritico  = pendiente && diasEspera >= 5;
 
-    const estadoBadgeClass = generado ? 'badge-activo' : (rechazado ? '' : 'badge-inactivo');
-    const estadoBadgeStyle = rechazado ? 'background:#fee2e2;color:#dc2626' : '';
-    const estadoLabel = generado ? 'GENERADO' : (rechazado ? 'RECHAZADO' : 'PENDIENTE');
+    const estadoBadgeClass = generado ? 'badge-activo' : ((rechazado||derivado) ? '' : 'badge-inactivo');
+    const estadoBadgeStyle = rechazado ? 'background:#fee2e2;color:#dc2626' : (derivado ? 'background:#ede9fe;color:#6d28d9' : '');
+    const estadoLabel = generado ? 'GENERADO' : (rechazado ? 'RECHAZADO' : (derivado ? 'DERIVADO' : 'PENDIENTE'));
 
-    const obsHtml = rechazado && s.comentario_rechazo
-      ? escapeHTML(s.observaciones||'—') + '<div style="margin-top:4px;color:#dc2626;font-weight:600">Motivo de rechazo: ' + escapeHTML(s.comentario_rechazo) + '</div>'
-      : escapeHTML(s.observaciones||'—');
+    let obsHtml = escapeHTML(s.observaciones||'—');
+    if (rechazado && s.comentario_rechazo) obsHtml += '<div style="margin-top:4px;color:#dc2626;font-weight:600">Motivo de rechazo: ' + escapeHTML(s.comentario_rechazo) + '</div>';
+    if (derivado && s.comentario_rechazo)  obsHtml += '<div style="margin-top:4px;color:#6d28d9;font-weight:600">Derivado: ' + escapeHTML(s.comentario_rechazo) + '</div>';
 
     return '<tr' + (esCritico ? ' style="background:#fef2f2"' : '') + '>'
       + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(s.empleado_nombre) + '</div>'
@@ -9413,6 +9415,7 @@ function _certRenderSolicitudesTabla() {
       + '<td><div class="td-actions">'
       + (pendiente ? '<button class="btn btn-primary btn-sm" onclick="generarDesdeSolicitud(' + s.id + ')">Generar</button>' : '')
       + (pendiente ? '<button class="btn-icon" title="Marcar como generada" onclick="marcarSolicitudGenerada(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>' : '')
+      + (pendiente ? '<button class="btn-icon" title="Derivar a otra área (responder por correo)" style="color:#6d28d9" onclick="derivarSolicitud(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 17 20 12 15 7"/><path d="M4 18v-2a4 4 0 0 1 4-4h12"/></svg></button>' : '')
       + (pendiente ? '<button class="btn-icon red" title="Rechazar (con comentario)" onclick="rechazarSolicitudCertificado(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></button>' : '')
       + (!pendiente ? '<button class="btn-icon" title="Devolver a pendiente" onclick="marcarSolicitudPendiente(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8"/><polyline points="3 3 3 8 8 8"/></svg></button>' : '')
       + (isAdmin() ? '<button class="btn-icon red" title="Eliminar" onclick="eliminarSolicitudCertificado(' + s.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/></svg></button>' : '')
@@ -9440,6 +9443,63 @@ async function rechazarSolicitudCertificado(id) {
     await loadCertSolicitudes();
     _certRenderSolicitudesTabla();
     refreshCertSolBadge();
+  } finally {
+    hideBlockingOverlay();
+  }
+}
+
+// Derivar una solicitud a otra área: responde por correo al solicitante indicándole a dónde dirigirse
+async function derivarSolicitud(id) {
+  const sol = CERT_SOLICITUDES.find(s => s.id === id);
+  if (!sol) return;
+  if (!sol.empleado_correo || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(sol.empleado_correo)) {
+    showToast('Esta solicitud no tiene un correo válido para responder — no se puede derivar');
+    return;
+  }
+
+  // Mensaje editable: RH completa el área y el correo de destino
+  const plantilla =
+    'Hola ' + (sol.empleado_nombre || '') + ',\n\n' +
+    'Tu solicitud de "' + (sol.tipo_certificado || '') + '" no la gestiona el área de Recursos Humanos.\n' +
+    'Por favor comunícate directamente con el área de ______________ al correo: ______________.\n\n' +
+    'Cordialmente,\nRecursos Humanos - Don Aseo Ltda.';
+  const mensaje = prompt('Mensaje que se enviará a ' + sol.empleado_correo + '\n(completa el área y el correo de destino):', plantilla);
+  if (mensaje === null) return;
+  if (!mensaje.trim()) { showToast('Escribe el mensaje antes de enviar'); return; }
+
+  showBlockingOverlay('Enviando respuesta...');
+  try {
+    const resp = await fetch(CERT_MAIL_ENDPOINT, {
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body: JSON.stringify({
+        to: sol.empleado_correo,
+        nombre: sol.empleado_nombre || '',
+        asunto: 'Sobre tu solicitud - Don Aseo Ltda.',
+        mensaje: mensaje.trim(),
+        token: CERT_MAIL_TOKEN
+      })
+    });
+    const data = await resp.json().catch(()=>({ ok:false, error:'Respuesta inválida del servidor' }));
+    if (!resp.ok || !data.ok) { showToast('No se pudo enviar la respuesta: ' + (data.error || resp.status)); return; }
+
+    // Marcar la solicitud como derivada (guarda un resumen en el mismo campo del comentario)
+    const resumen = mensaje.trim().replace(/\s+/g,' ').slice(0, 200);
+    const { error } = await sb.from('certificados_solicitudes').update({
+      estado: 'DERIVADO',
+      comentario_rechazo: resumen,
+      generado_por: _currentUser?.id || null,
+      generado_por_nombre: _currentUser?.display_name || _currentUser?.email || 'Usuario',
+      generado_en: new Date().toISOString()
+    }).eq('id', id);
+    if (error) { showToast('Correo enviado, pero error al actualizar el estado: ' + error.message); }
+    else await logAudit('update', 'certificados_solicitudes', String(id), 'Solicitud derivada a otra área (respondida por correo a ' + sol.empleado_correo + ')');
+
+    showToast('✓ Respuesta enviada a ' + sol.empleado_correo + ' — solicitud derivada');
+    await loadCertSolicitudes();
+    _certRenderSolicitudesTabla();
+    refreshCertSolBadge();
+  } catch (e) {
+    showToast('Error enviando la respuesta: ' + e.message);
   } finally {
     hideBlockingOverlay();
   }
