@@ -1421,6 +1421,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <div class="catalog-list-item" onclick="loadCatalog('tiposDocumento',this)">Tipos de documento <span class="catalog-count" id="cc-tiposDocumento">—</span></div>
           <div class="catalog-list-item" onclick="loadCatalog('nivelesRiesgo',this)">Niveles de riesgo <span class="catalog-count" id="cc-nivelesRiesgo">—</span></div>
           <div class="catalog-list-item" onclick="loadCatalog('novedades_tipos',this)">Tipos de Novedad <span class="catalog-count" id="cc-novedades_tipos">—</span></div>
+          <div class="catalog-list-item" onclick="loadCatalog('fondosCesantias',this)">Fondos de cesant&iacute;as <span class="catalog-count" id="cc-fondosCesantias">—</span></div>
         </div>
         <div class="catalog-panel">
           <div class="catalog-panel-header">
@@ -1493,7 +1494,42 @@ tr.bg-selected td{background:#eff6ff!important}
 
         <!-- Opciones del certificado -->
         <div class="cert-form-card" id="certOptions" style="display:none">
-          <div class="cert-section-label">2. Configurar certificado</div>
+          <div class="cert-section-label">2. Configurar documento</div>
+          <div class="form-group" style="margin-bottom:14px">
+            <label class="form-label">Tipo de documento</label>
+            <select class="form-select" id="certTipoDoc" onchange="certOnTipoDocChange()">
+              <option value="laboral">Certificado laboral</option>
+              <option value="cesantias_total">Carta de cesantías — Retiro TOTAL</option>
+              <option value="cesantias_parcial">Carta de cesantías — Retiro PARCIAL</option>
+            </select>
+          </div>
+
+          <!-- Campos específicos de cartas de cesantías -->
+          <div id="cert-campos-cesantias" style="display:none">
+            <div class="cert-options-grid">
+              <div class="form-group">
+                <label class="form-label">Fondo de cesantías</label>
+                <select class="form-select" id="certFondo" onchange="certUpdatePreview()"></select>
+              </div>
+              <div class="form-group" id="cert-row-fecha-hasta">
+                <label class="form-label">Laboró hasta</label>
+                <input type="date" class="form-input" id="certFechaHasta" oninput="certUpdatePreview()">
+              </div>
+              <div class="form-group" id="cert-row-valor" style="display:none">
+                <label class="form-label">Valor del retiro</label>
+                <input type="text" inputmode="numeric" class="form-input" id="certValorRetiro" placeholder="Ej: 1.467.000" oninput="_novFormatMiles(this);certUpdatePreview()">
+              </div>
+              <div class="form-group" id="cert-row-concepto" style="display:none">
+                <label class="form-label">Concepto del retiro</label>
+                <input type="text" class="form-input" id="certConcepto" placeholder="Ej: Remodelación de vivienda" oninput="certUpdatePreview()">
+              </div>
+              <div class="form-group" id="cert-row-girar" style="display:none;grid-column:span 2">
+                <label class="form-label">Para ser girado a</label>
+                <input type="text" class="form-input" id="certGirarA" placeholder="Nombre del beneficiario" oninput="certUpdatePreview()">
+              </div>
+            </div>
+          </div>
+
           <div class="cert-options-grid">
             <div class="form-group">
               <label class="form-label">Fecha del certificado</label>
@@ -1503,7 +1539,7 @@ tr.bg-selected td{background:#eff6ff!important}
               <label class="form-label">Firmante</label>
               <input type="text" class="form-input" id="certFirmante" value="FERNANDO CESAR LOPEZ CASTILLO" oninput="certUpdatePreview()">
             </div>
-            <div class="form-group" style="grid-column:span 2">
+            <div class="form-group" id="cert-row-salario" style="grid-column:span 2">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                 <label class="form-label" style="margin:0">Salario devengado (texto)</label>
                 <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text2)">
@@ -1531,7 +1567,7 @@ tr.bg-selected td{background:#eff6ff!important}
                 <option value="REGULAR">REGULAR</option>
               </select>
             </div>
-            <div class="form-group" style="grid-column:span 2">
+            <div class="form-group" id="cert-row-notas" style="grid-column:span 2">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                 <label class="form-label" style="margin:0">Notas / Observaciones</label>
                 <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text2)">
@@ -4504,6 +4540,7 @@ const CATALOGS = {
   escolaridad:['Primaria','Bachiller','Técnico','Tecnologo','Profesional','Posgrado'],
   tiposDocumento:['CC - Cédula de ciudadanía','CE - Cédula de extranjería','PA - Pasaporte','TI - Tarjeta de identidad','NUIP'],
   nivelesRiesgo:['1','2','3','4','5'],
+  fondosCesantias:['PROTECCION','PORVENIR','COLFONDOS','SKANDIA','FNA - FONDO NACIONAL DEL AHORRO'],
   // Municipios: 1033 municipios de Colombia — usados en validación y sugerencias
   municipios:[
     'Abejorral','Abrego','Abriaqui','Acacias','Acandi','Acevedo','Achi','Agrado',
@@ -4677,13 +4714,14 @@ const CATALOG_TITLES = {
   afp:'AFP / Pensión', arl:'ARL', municipios:'Municipios',
   departamentos:'Departamentos', motivosRetiro:'Motivos de retiro',
   escolaridad:'Nivel de Escolaridad', tiposDocumento:'Tipos de documento',
-  nivelesRiesgo:'Niveles de riesgo', novedades_tipos:'Tipos de Novedad'
+  nivelesRiesgo:'Niveles de riesgo', novedades_tipos:'Tipos de Novedad',
+  fondosCesantias:'Fondos de cesantías'
 };
 const CATALOG_USAGE = {
   clientes:{max:500},cargos:{max:2000},eps:{max:500},afp:{max:500},
   arl:{max:500},municipios:{max:7991},departamentos:{max:7991},
   motivosRetiro:{max:7991},escolaridad:{max:7991},tiposDocumento:{max:7991},nivelesRiesgo:{max:7991},
-  novedades_tipos:{max:50}
+  novedades_tipos:{max:50}, fondosCesantias:{max:50}
 };
 let activeCatalog = 'clientes';
 
@@ -4701,6 +4739,12 @@ function initCatalogs(){
   if(fMotivo){
     fMotivo.innerHTML = `<option value="">— Sin retiro —</option>` +
       CATALOGS.motivosRetiro.map(v=>`<option value="${v}">${v}</option>`).join('');
+  }
+  // Fondos de cesantías (cartas de cesantías)
+  const certFondo = document.getElementById('certFondo');
+  if(certFondo){
+    certFondo.innerHTML = `<option value="">— Seleccionar —</option>` +
+      (CATALOGS.fondosCesantias||[]).map(v=>`<option value="${v}">${v}</option>`).join('');
   }
   updateCatalogSidebar();   // actualiza contadores del sidebar con tamaños reales
   loadCatalog('clientes', document.querySelector('.catalog-list-item'));
@@ -9439,6 +9483,14 @@ function generarDesdeSolicitud(id) {
   _certCorreoSolicitud = sol.empleado_correo || '';
   _certOrigenSolicitud = true; // este certificado proviene de una solicitud del formulario
   _certSolicitudActual = id;   // recordar la solicitud para marcarla como generada al enviar
+
+  // Si la solicitud es de carta de cesantías, preseleccionar ese tipo de documento
+  // (por defecto TOTAL; RH cambia a PARCIAL si corresponde)
+  if ((sol.tipo_certificado||'').toLowerCase().includes('cesant')) {
+    const tdoc = document.getElementById('certTipoDoc');
+    if (tdoc) { tdoc.value = 'cesantias_total'; certOnTipoDocChange(); }
+    showToast('Solicitud de cesantías — elige TOTAL o PARCIAL y completa los datos');
+  }
 }
 
 async function marcarSolicitudPendiente(id) {
@@ -9516,7 +9568,7 @@ async function _registrarCertificadoGenerado(accion, destinatario) {
     await sb.from('certificados_generados').insert([{
       empleado_cedula: emp.cedula || '',
       empleado_nombre: emp.nombre || '',
-      tipo_certificado: 'Certificado laboral',
+      tipo_certificado: _certTipoDocLabel(),
       accion: accion || 'GENERADO',
       origen: _certOrigenSolicitud ? 'SOLICITUD' : 'MANUAL',
       destinatario: destinatario || null,
@@ -9675,7 +9727,14 @@ function certSelectEmployee(id) {
 
   document.getElementById('certOptions').style.display = 'block';
   document.getElementById('certPreviewWrap').style.display = 'block';
-  certUpdatePreview();
+
+  // Reiniciar a "Certificado laboral" y limpiar campos de cesantías al cambiar de empleado
+  const tdoc = document.getElementById('certTipoDoc');
+  if (tdoc) tdoc.value = 'laboral';
+  ['certFondo','certFechaHasta','certValorRetiro','certConcepto','certGirarA'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.value = '';
+  });
+  certOnTipoDocChange(); // aplica visibilidad + vista previa
 }
 
 function certClearEmployee() {
@@ -9722,9 +9781,150 @@ function fechaLargaISO(iso) {
 }
 // ────────────────────────────────────────────────────────────────────────────
 
+// Tipo de documento activo: 'laboral' | 'cesantias_total' | 'cesantias_parcial'
+function _certTipoDoc() { return document.getElementById('certTipoDoc')?.value || 'laboral'; }
+
+// Etiqueta legible para historial/nombre de archivo según el tipo de documento
+function _certTipoDocLabel() {
+  const t = _certTipoDoc();
+  if (t === 'cesantias_total')   return 'Carta cesantías (total)';
+  if (t === 'cesantias_parcial') return 'Carta cesantías (parcial)';
+  return 'Certificado laboral';
+}
+
+// Muestra/oculta los campos según el tipo de documento elegido
+function certOnTipoDocChange() {
+  const t = _certTipoDoc();
+  const esCesantias = (t === 'cesantias_total' || t === 'cesantias_parcial');
+  const esParcial   = (t === 'cesantias_parcial');
+
+  // Campos exclusivos del certificado laboral
+  ['cert-row-salario','certHorasRow','certDesempenoRow','cert-row-notas'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = esCesantias ? 'none' : '';
+  });
+  // Bloque de campos de cesantías
+  const bloque = document.getElementById('cert-campos-cesantias');
+  if (bloque) bloque.style.display = esCesantias ? 'block' : 'none';
+  // Dentro de cesantías: fecha "hasta" solo para total; valor/concepto/girar solo para parcial
+  const rowHasta = document.getElementById('cert-row-fecha-hasta');
+  if (rowHasta) rowHasta.style.display = (t === 'cesantias_total') ? '' : 'none';
+  ['cert-row-valor','cert-row-concepto'].forEach(id => {
+    const el = document.getElementById(id); if (el) el.style.display = esParcial ? '' : 'none';
+  });
+  const rowGirar = document.getElementById('cert-row-girar');
+  if (rowGirar) rowGirar.style.display = esParcial ? '' : 'none';
+
+  // Precargas útiles al cambiar a cesantías
+  const emp = _certEmp;
+  if (emp) {
+    if (t === 'cesantias_total') {
+      const fh = document.getElementById('certFechaHasta');
+      if (fh && !fh.value && emp.retiro) fh.value = _certDdmmaaaaAIso(emp.retiro);
+    }
+    if (esParcial) {
+      const ga = document.getElementById('certGirarA');
+      if (ga && !ga.value) ga.value = emp.nombre || '';
+    }
+  }
+  certUpdatePreview();
+}
+
+// Convierte "DD/MM/AAAA" a "AAAA-MM-DD" (para inputs date). Devuelve '' si no es válido.
+function _certDdmmaaaaAIso(str) {
+  const p = _dmy(str);
+  if (!p) return '';
+  const mm = String(p.m).padStart(2,'0'), dd = String(p.d).padStart(2,'0');
+  return p.y + '-' + mm + '-' + dd;
+}
+
+// Arma la carta de retiro de cesantías (total o parcial) en la vista previa
+function _certRenderCesantias(tipo) {
+  const emp = _certEmp;
+  if (!emp) return;
+  const parcial   = (tipo === 'cesantias_parcial');
+  const fechaIso  = document.getElementById('certFecha')?.value || new Date().toISOString().slice(0,10);
+  const fechaTxt  = fechaLargaISO(fechaIso);
+  const firma     = (document.getElementById('certFirmante')?.value || 'FERNANDO CESAR LOPEZ CASTILLO').trim().toUpperCase();
+  const fondo     = (document.getElementById('certFondo')?.value || '').trim();
+  const fondoTxt  = fondo || '____________________';
+
+  // Logo + NIT (encabezado simple, consistente con el certificado)
+  const headerHTML =
+    '<div style="text-align:center;margin-bottom:26px">'
+    + (typeof LOGO_B64!=='undefined'&&LOGO_B64 ? '<img src="'+LOGO_B64+'" style="height:78px;width:auto;display:inline-block">' : '')
+    + '<div style="font-size:10px;font-weight:700;color:#1e293b;margin-top:2px">NIT: 812.000.152-7</div>'
+    + '</div>';
+
+  const firmaImg = (typeof FIRMA_GERENTE_B64!=='undefined'&&FIRMA_GERENTE_B64)
+    ? '<img src="'+FIRMA_GERENTE_B64+'" alt="Firma" style="height:70px;width:auto;display:block;margin:2px 0 0">'
+    : '<div style="height:50px"></div>';
+
+  const firmaHTML =
+    '<div style="margin-top:38px;font-size:12.5px;line-height:1.6">'
+    + '<p style="margin-bottom:4px">Cordialmente,</p>'
+    + firmaImg
+    + '<p style="font-weight:700;margin:2px 0 0">' + escapeHTML(firma) + '<br>'
+    + 'CC 6.883.516<br>Representante Legal<br>Don Aseo Ltda.</p>'
+    + '</div>';
+
+  let cuerpo = '';
+  if (!parcial) {
+    // ── RETIRO TOTAL ──
+    const hastaIso = document.getElementById('certFechaHasta')?.value || '';
+    const hastaTxt = hastaIso ? fechaLargaISO(hastaIso) : '____________________';
+    cuerpo =
+      '<p style="font-size:12.5px;margin-bottom:20px">Monter\xeda, ' + fechaTxt + '</p>'
+      + '<p style="font-size:12.5px;margin-bottom:2px">Se\xf1ores:</p>'
+      + '<p style="font-size:12.5px;font-weight:700;margin-bottom:2px">FONDO DE CESANT\xcdAS ' + escapeHTML(fondoTxt) + '</p>'
+      + '<p style="font-size:12.5px;margin-bottom:18px">Ciudad</p>'
+      + '<p style="font-size:12.5px;margin-bottom:18px">Cordial Saludo:</p>'
+      + '<p style="font-size:12.5px;line-height:1.8;text-align:justify;margin-bottom:16px">'
+      + 'Por medio del presente, nos permitimos autorizar el retiro <strong>total</strong> de las cesant\xedas consignadas a nombre de '
+      + '<strong>' + escapeHTML(emp.nombre||'') + '</strong>, identificado con c\xe9dula No. <strong>' + escapeHTML(emp.cedula||'') + '</strong>, '
+      + 'quien labor\xf3 bajo nuestra raz\xf3n social Don Aseo Ltda Nit: 812.000.152-7, hasta el <strong>' + hastaTxt + '</strong>.</p>';
+  } else {
+    // ── RETIRO PARCIAL ──
+    const valor    = (document.getElementById('certValorRetiro')?.value || '').trim();
+    const valorTxt = valor ? ('$' + valor) : '____________________';
+    const concepto = (document.getElementById('certConcepto')?.value || '').trim() || '____________________';
+    const girarA   = (document.getElementById('certGirarA')?.value || '').trim() || (emp.nombre||'');
+    cuerpo =
+      '<p style="font-size:12.5px;margin-bottom:20px">Monter\xeda, ' + fechaTxt + '</p>'
+      + '<p style="font-size:12.5px;margin-bottom:2px">Se\xf1ores:</p>'
+      + '<p style="font-size:12.5px;font-weight:700;margin-bottom:2px">' + escapeHTML(fondoTxt) + '</p>'
+      + '<p style="font-size:12.5px;margin-bottom:16px">Ciudad</p>'
+      + '<p style="font-size:12.5px;font-weight:700;margin-bottom:16px">Asunto: RETIRO PARCIAL DE CESANT\xcdAS PARA VIVIENDA</p>'
+      + '<p style="font-size:12.5px;margin-bottom:16px">Respetados Se\xf1ores:</p>'
+      + '<p style="font-size:12.5px;line-height:1.8;text-align:justify;margin-bottom:16px">'
+      + 'Yo <strong>' + escapeHTML(firma) + '</strong>, en mi condici\xf3n de Representante Legal de la empresa DON ASEO LTDA, Nit: 812.000.152-7, '
+      + 'seg\xfan lo dispuesto en el art\xedculo 21 de la ley 1429 de 2010 (que modific\xf3 el Art 256 del C\xf3digo Sustantivo del Trabajo) y a la aclaraci\xf3n '
+      + 'contenida en la carta circular 011 del 07 de febrero del 2011 del Ministerio de la Protecci\xf3n Social, solicito a usted se sirva autorizar el '
+      + 'retiro parcial de cesant\xedas para vivienda al funcionario se\xf1alado en las siguientes condiciones:</p>'
+      + '<p style="font-size:12.5px;line-height:1.9;margin-bottom:16px">'
+      + 'Nombre del Funcionario: <strong>' + escapeHTML(emp.nombre||'') + '</strong><br>'
+      + 'Identificaci\xf3n: <strong>' + escapeHTML(emp.cedula||'') + '</strong><br>'
+      + 'Valor del Retiro: <strong>' + escapeHTML(valorTxt) + '</strong><br>'
+      + 'Concepto del Retiro: <strong>' + escapeHTML(concepto) + '</strong></p>'
+      + '<p style="font-size:12.5px;margin-bottom:16px">Para ser Girado a: <strong>' + escapeHTML(girarA) + '</strong></p>'
+      + '<p style="font-size:12.5px;line-height:1.8;text-align:justify;margin-bottom:16px">'
+      + 'La empresa ha verificado que el trabajador va a utilizar sus cesant\xedas en las inversiones u operaciones permitidas por ley.</p>';
+  }
+
+  const body = document.getElementById('certDocBody');
+  if (body) body.innerHTML = headerHTML + cuerpo + firmaHTML;
+}
+
 function certUpdatePreview() {
   const emp = _certEmp;
   if (!emp) return;
+
+  // Si el documento es una carta de cesantías, se arma con su propio formato y se termina aquí
+  const _tdoc = _certTipoDoc();
+  if (_tdoc === 'cesantias_total' || _tdoc === 'cesantias_parcial') {
+    _certRenderCesantias(_tdoc);
+    return;
+  }
 
   const fecha     = document.getElementById('certFecha')?.value || new Date().toISOString().slice(0,10);
   const firma     = (document.getElementById('certFirmante')?.value || 'FERNANDO CESAR LOPEZ CASTILLO').trim().toUpperCase();
@@ -9991,7 +10191,7 @@ async function certEnviarCorreo() {
   try {
     const opt = {
       margin: [10,14,8,14],
-      filename: 'Certificado_' + (emp.cedula||'') + '.pdf',
+      filename: _certTipoDocLabel().replace(/[^A-Za-z0-9]+/g,'_') + '_' + (emp.cedula||'') + '.pdf',
       image: { type:'jpeg', quality:0.98 },
       html2canvas: { scale:2, useCORS:true },
       jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
