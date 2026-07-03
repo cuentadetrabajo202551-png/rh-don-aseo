@@ -1547,7 +1547,7 @@ tr.bg-selected td{background:#eff6ff!important}
                 </label>
               </div>
               <input type="text" class="form-input" id="certSalarioText"
-                value="UN SALARIO MINIMO LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY"
+                value="SALARIO MÍNIMO MENSUAL LEGAL VIGENTE (SMMLV) + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY"
                 oninput="certUpdatePreview()">
             </div>
             <div class="form-group" id="certHorasRow">
@@ -9913,7 +9913,7 @@ function certUpdatePreview() {
 
   const fecha     = document.getElementById('certFecha')?.value || new Date().toISOString().slice(0,10);
   const firma     = (document.getElementById('certFirmante')?.value || 'FERNANDO CESAR LOPEZ CASTILLO').trim().toUpperCase();
-  const salTxt    = (document.getElementById('certSalarioText')?.value || 'UN SALARIO MINIMO LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY').trim();
+  const salTxt    = (document.getElementById('certSalarioText')?.value || 'SALARIO MÍNIMO MENSUAL LEGAL VIGENTE (SMMLV) + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY').trim();
   const horasTxt  = (document.getElementById('certHorasText')?.value || '44 HORAS SEMANALES').trim();
   const desempeno = document.getElementById('certDesempeno')?.value || 'BUENO';
   const incSal    = document.getElementById('certIncSalario')?.checked !== false;
