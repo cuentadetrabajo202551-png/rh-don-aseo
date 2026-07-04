@@ -2286,6 +2286,25 @@ tr.bg-selected td{background:#eff6ff!important}
   </div>
 </div>
 
+<!-- MODAL: Derivar solicitud (responder por correo a otra área) -->
+<div id="derivar-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:20px">
+  <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);width:100%;max-width:560px;overflow:hidden">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="font-size:15px;font-weight:800;color:var(--text)">Derivar solicitud a otra área</div>
+      <button onclick="cerrarDerivarModal()" style="background:none;border:none;font-size:20px;line-height:1;color:var(--text3);cursor:pointer">&times;</button>
+    </div>
+    <div style="padding:20px 22px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:10px">Se enviará este mensaje por correo a <strong id="derivar-destinatario">—</strong>. Completa el área y el correo de destino.</div>
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Mensaje</label>
+      <textarea id="derivar-mensaje" rows="9" style="width:100%;box-sizing:border-box;padding:12px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:13px;line-height:1.6;font-family:inherit;resize:vertical;min-height:160px;outline:none" onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"></textarea>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarDerivarModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="enviarDerivacion()">Enviar respuesta</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 // ───────────────────── DATA ─────────────────────
@@ -9199,6 +9218,8 @@ let _certEmp = null;
 let _certTabActiva = 'generar';
 let CERT_SOLICITUDES = [];
 let _certSolFiltro = { empleadoQ:'', tipo:'', estado:'', desde:'', hasta:'' };
+let _certSolPage = 1;
+const CERTSOL_PAGE_SIZE = 10;
 const CERT_TIPOS = ['Certificado laboral','Detalle de horas extras','Liquidación de prestaciones sociales','Carta de cesantías','Otro'];
 
 function buildCertificados(tab) {
@@ -9266,6 +9287,7 @@ function buildCertSolicitudes() {
       <input type="date" class="form-input" id="certsolf-hasta" style="width:140px" onchange="certsolFiltrar()" title="Hasta">
       <button class="btn btn-ghost btn-sm" onclick="certsolLimpiarFiltros()">Limpiar filtros</button>
     </div>
+    <div id="certSolPager" style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;margin-bottom:10px"></div>
     <div class="table-wrap">
       <table class="table">
         <thead><tr><th>Empleado</th><th>Correo</th><th>Tipo</th><th>Observaciones</th><th>Fecha solicitud</th><th>Estado</th><th></th></tr></thead>
@@ -9273,6 +9295,7 @@ function buildCertSolicitudes() {
       </table>
     </div>
   `;
+  _certSolPage = 1;
   loadCertSolicitudes().then(_certRenderSolicitudesTabla);
 }
 
@@ -9343,12 +9366,19 @@ function certsolFiltrar() {
     desde: document.getElementById('certsolf-desde')?.value || '',
     hasta: document.getElementById('certsolf-hasta')?.value || ''
   };
+  _certSolPage = 1;
   _certRenderSolicitudesTabla();
 }
 
 function certsolLimpiarFiltros() {
   ['certsolf-empleado','certsolf-tipo','certsolf-estado','certsolf-desde','certsolf-hasta'].forEach(id => { const el = document.getElementById(id); if (el) el.value = ''; });
   _certSolFiltro = { empleadoQ:'', tipo:'', estado:'', desde:'', hasta:'' };
+  _certSolPage = 1;
+  _certRenderSolicitudesTabla();
+}
+
+function _certSolIrPagina(p) {
+  _certSolPage = p;
   _certRenderSolicitudesTabla();
 }
 
@@ -9381,11 +9411,38 @@ function _certRenderSolicitudesTabla() {
   const tbody = document.getElementById('certSolBody');
   if (!tbody) return;
   const lista = _certSolFiltrarLista();
+  const pager = document.getElementById('certSolPager');
   if (!lista.length) {
     tbody.innerHTML = '<tr><td colspan="7"><div class="empty-state"><p>No hay solicitudes registradas</p></div></td></tr>';
+    if (pager) pager.innerHTML = '';
     return;
   }
-  tbody.innerHTML = lista.map(s => {
+
+  // Paginación en lotes de 10
+  const totalPags = Math.max(1, Math.ceil(lista.length / CERTSOL_PAGE_SIZE));
+  if (_certSolPage > totalPags) _certSolPage = totalPags;
+  if (_certSolPage < 1) _certSolPage = 1;
+  const ini = (_certSolPage - 1) * CERTSOL_PAGE_SIZE;
+  const pageItems = lista.slice(ini, ini + CERTSOL_PAGE_SIZE);
+
+  if (pager) {
+    if (totalPags > 1) {
+      let btns = '<button class="page-btn" onclick="_certSolIrPagina(' + (_certSolPage-1) + ')" ' + (_certSolPage<=1?'disabled':'') + '>&#8249;</button>';
+      for (let p = 1; p <= totalPags; p++) {
+        if (totalPags > 9 && p > 2 && p < totalPags-1 && Math.abs(p - _certSolPage) > 1) {
+          if (p === 3 || p === totalPags-2) btns += '<span style="padding:0 4px;color:var(--text3)">…</span>';
+          continue;
+        }
+        btns += '<button class="page-btn' + (p===_certSolPage?' active':'') + '" onclick="_certSolIrPagina(' + p + ')">' + p + '</button>';
+      }
+      btns += '<button class="page-btn" onclick="_certSolIrPagina(' + (_certSolPage+1) + ')" ' + (_certSolPage>=totalPags?'disabled':'') + '>&#8250;</button>';
+      pager.innerHTML = '<span style="font-size:12px;color:var(--text3)">' + (ini+1) + '&#8211;' + Math.min(ini+CERTSOL_PAGE_SIZE, lista.length) + ' de ' + lista.length + '</span><div style="display:flex;gap:4px">' + btns + '</div>';
+    } else {
+      pager.innerHTML = '<span style="font-size:12px;color:var(--text3)">' + lista.length + ' solicitud' + (lista.length!==1?'es':'') + '</span>';
+    }
+  }
+
+  tbody.innerHTML = pageItems.map(s => {
     const fecha = s.fecha_solicitud ? new Date(s.fecha_solicitud).toLocaleDateString('es-CO') : '—';
     const pendiente  = s.estado === 'PENDIENTE';
     const generado   = s.estado === 'GENERADO';
@@ -9448,25 +9505,38 @@ async function rechazarSolicitudCertificado(id) {
   }
 }
 
-// Derivar una solicitud a otra área: responde por correo al solicitante indicándole a dónde dirigirse
-async function derivarSolicitud(id) {
+// Derivar una solicitud a otra área: abre un modal para redactar la respuesta al solicitante
+let _derivarSolId = null;
+function derivarSolicitud(id) {
   const sol = CERT_SOLICITUDES.find(s => s.id === id);
   if (!sol) return;
   if (!sol.empleado_correo || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(sol.empleado_correo)) {
     showToast('Esta solicitud no tiene un correo válido para responder — no se puede derivar');
     return;
   }
-
-  // Mensaje editable: RH completa el área y el correo de destino
+  _derivarSolId = id;
   const plantilla =
     'Hola ' + (sol.empleado_nombre || '') + ',\n\n' +
     'Tu solicitud de "' + (sol.tipo_certificado || '') + '" no la gestiona el área de Recursos Humanos.\n' +
     'Por favor comunícate directamente con el área de ______________ al correo: ______________.\n\n' +
     'Cordialmente,\nRecursos Humanos - Don Aseo Ltda.';
-  const mensaje = prompt('Mensaje que se enviará a ' + sol.empleado_correo + '\n(completa el área y el correo de destino):', plantilla);
-  if (mensaje === null) return;
+  document.getElementById('derivar-destinatario').textContent = sol.empleado_correo;
+  document.getElementById('derivar-mensaje').value = plantilla;
+  document.getElementById('derivar-modal').style.display = 'flex';
+}
+
+function cerrarDerivarModal() {
+  document.getElementById('derivar-modal').style.display = 'none';
+  _derivarSolId = null;
+}
+
+async function enviarDerivacion() {
+  const sol = CERT_SOLICITUDES.find(s => s.id === _derivarSolId);
+  if (!sol) { cerrarDerivarModal(); return; }
+  const mensaje = document.getElementById('derivar-mensaje').value;
   if (!mensaje.trim()) { showToast('Escribe el mensaje antes de enviar'); return; }
 
+  cerrarDerivarModal();
   showBlockingOverlay('Enviando respuesta...');
   try {
     const resp = await fetch(CERT_MAIL_ENDPOINT, {
@@ -9490,9 +9560,23 @@ async function derivarSolicitud(id) {
       generado_por: _currentUser?.id || null,
       generado_por_nombre: _currentUser?.display_name || _currentUser?.email || 'Usuario',
       generado_en: new Date().toISOString()
-    }).eq('id', id);
+    }).eq('id', sol.id);
     if (error) { showToast('Correo enviado, pero error al actualizar el estado: ' + error.message); }
-    else await logAudit('update', 'certificados_solicitudes', String(id), 'Solicitud derivada a otra área (respondida por correo a ' + sol.empleado_correo + ')');
+    else await logAudit('update', 'certificados_solicitudes', String(sol.id), 'Solicitud derivada a otra área (respondida por correo a ' + sol.empleado_correo + ')');
+
+    // Dejar constancia también en el Historial de certificados
+    try {
+      await sb.from('certificados_generados').insert([{
+        empleado_cedula: sol.empleado_cedula || '',
+        empleado_nombre: sol.empleado_nombre || '',
+        tipo_certificado: sol.tipo_certificado || 'Solicitud',
+        accion: 'DERIVADO',
+        origen: 'SOLICITUD',
+        destinatario: sol.empleado_correo || null,
+        generado_por: _currentUser?.id || null,
+        generado_por_nombre: _currentUser?.display_name || _currentUser?.email || 'Usuario'
+      }]);
+    } catch (e) { /* si falla el registro en historial, no interrumpe */ }
 
     showToast('✓ Respuesta enviada a ' + sol.empleado_correo + ' — solicitud derivada');
     await loadCertSolicitudes();
