@@ -2305,6 +2305,31 @@ tr.bg-selected td{background:#eff6ff!important}
   </div>
 </div>
 
+<!-- MODAL: Enviar certificado/documento por correo -->
+<div id="enviar-correo-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:20px">
+  <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);width:100%;max-width:440px;overflow:hidden">
+    <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
+      <div style="display:flex;align-items:center;gap:9px">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
+        <div style="font-size:15px;font-weight:800;color:var(--text)">Enviar por correo</div>
+      </div>
+      <button onclick="cerrarEnviarCorreoModal()" style="background:none;border:none;font-size:20px;line-height:1;color:var(--text3);cursor:pointer">&times;</button>
+    </div>
+    <div style="padding:20px 22px">
+      <div style="font-size:12px;color:var(--text2);margin-bottom:12px">Se generará el PDF del documento y se enviará al correo que indiques. Puedes corregirlo antes de enviar.</div>
+      <label style="display:block;font-size:12px;font-weight:700;color:var(--text);margin-bottom:6px">Correo del destinatario</label>
+      <input type="email" id="enviar-correo-input" placeholder="nombre@correo.com"
+        style="width:100%;box-sizing:border-box;padding:11px 14px;border:1.5px solid var(--border);border-radius:10px;font-size:14px;outline:none"
+        onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'"
+        onkeydown="if(event.key==='Enter'){event.preventDefault();confirmarEnvioCorreo();}">
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px">
+      <button class="btn btn-ghost btn-sm" onclick="cerrarEnviarCorreoModal()">Cancelar</button>
+      <button class="btn btn-primary btn-sm" onclick="confirmarEnvioCorreo()">Generar y enviar</button>
+    </div>
+  </div>
+</div>
+
 
 <script>
 // ───────────────────── DATA ─────────────────────
@@ -10330,11 +10355,29 @@ async function certEnviarCorreo() {
   const el = document.getElementById('certDocBody');
   if (!el || !el.innerHTML.trim()) { showToast('No hay certificado para enviar'); return; }
 
-  // Prioridad: el correo escrito en la solicitud (Google Form) manda; si no hay, el de la ficha
-  const destinatario = prompt('Enviar el certificado al correo:', _certCorreoSolicitud || emp.correo || '');
-  if (destinatario === null) return;
-  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(destinatario.trim())) { showToast('Correo no válido'); return; }
+  // Abre el modal con el correo precargado (prioridad: el de la solicitud; si no, el de la ficha)
+  const input = document.getElementById('enviar-correo-input');
+  if (input) input.value = _certCorreoSolicitud || emp.correo || '';
+  document.getElementById('enviar-correo-modal').style.display = 'flex';
+  if (input) setTimeout(() => input.focus(), 50);
+}
 
+function cerrarEnviarCorreoModal() {
+  const m = document.getElementById('enviar-correo-modal');
+  if (m) m.style.display = 'none';
+}
+
+// Genera el PDF del certificado/documento y lo envía al correo indicado en el modal
+async function confirmarEnvioCorreo() {
+  const emp = _certEmp;
+  if (!emp) { cerrarEnviarCorreoModal(); return; }
+  const el = document.getElementById('certDocBody');
+  if (!el || !el.innerHTML.trim()) { showToast('No hay documento para enviar'); return; }
+
+  const destinatario = (document.getElementById('enviar-correo-input')?.value || '').trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(destinatario)) { showToast('Correo no válido'); return; }
+
+  cerrarEnviarCorreoModal();
   showBlockingOverlay('Generando PDF...');
   try {
     const opt = {
@@ -10350,15 +10393,15 @@ async function certEnviarCorreo() {
     showBlockingOverlay('Enviando correo...');
     const resp = await fetch(CERT_MAIL_ENDPOINT, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ to: destinatario.trim(), nombre: emp.nombre, filename: opt.filename, pdf_base64: b64, token: CERT_MAIL_TOKEN })
+      body: JSON.stringify({ to: destinatario, nombre: emp.nombre, filename: opt.filename, pdf_base64: b64, token: CERT_MAIL_TOKEN })
     });
     const data = await resp.json().catch(()=>({ ok:false, error:'Respuesta inválida del servidor' }));
     if (!resp.ok || !data.ok) { showToast('No se pudo enviar: ' + (data.error || resp.status)); return; }
-    await logAudit('create', 'certificados_envio', String(emp.id||''), 'Certificado enviado por correo a ' + destinatario.trim() + ' (' + emp.nombre + ')');
-    _registrarCertificadoGenerado('ENVIADO', destinatario.trim()); // deja evidencia en el historial
+    await logAudit('create', 'certificados_envio', String(emp.id||''), 'Certificado enviado por correo a ' + destinatario + ' (' + emp.nombre + ')');
+    _registrarCertificadoGenerado('ENVIADO', destinatario); // deja evidencia en el historial
     // Si el certificado provino de una solicitud, marcarla como generada automáticamente
     if (_certSolicitudActual) { await marcarSolicitudGenerada(_certSolicitudActual, true); _certSolicitudActual = null; }
-    showToast('✓ Certificado enviado a ' + destinatario.trim());
+    showToast('✓ Certificado enviado a ' + destinatario);
     certClearEmployee(); // limpiar el formulario tras enviar, para no reenviar por error
   } catch (e) {
     showToast('Error generando/enviando el PDF: ' + e.message);
