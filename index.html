@@ -9039,7 +9039,9 @@ function toggleSimVariantEmps(divId, campo, variantName) {
   if (!div) return;
   if (div.style.display === 'block') { div.style.display = 'none'; return; }
 
-  const emps = EMPLEADOS.filter(e => e[campo] && e[campo].trim().toUpperCase() === variantName.toUpperCase());
+  // Coincidencia EXACTA (sensible a mayúsculas) — así "GECELCA 3 AIRE" y "Gecelca 3 Aire"
+  // se listan por separado y no se mezclan al ver una variante puntual.
+  const emps = EMPLEADOS.filter(e => e[campo] && e[campo].trim() === variantName);
   if (!emps.length) {
     div.innerHTML = '<div style="padding:8px 12px;font-size:11px;color:var(--text3)">Sin empleados encontrados</div>';
     div.style.display = 'block'; return;
