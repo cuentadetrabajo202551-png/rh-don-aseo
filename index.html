@@ -2484,6 +2484,9 @@ function showSection(id, el) {
     updateCatalogSidebar();
     renderCatalogItems(activeCatalog||'clientes', document.getElementById('catalogSearch')?.value||'', _catPage);
   }
+  // Recalcular sugerencias siempre al entrar — así si se agregó/editó algo en Catálogos
+  // (u ocurrió cualquier otro cambio) desde la última vez, se ve reflejado sin recargar la página.
+  if (id === 'duplicados') buildDuplicados();
   if (id === 'usuarios') {
     if (!isAdmin()) {
       // No-admin intentando entrar a Gestión de Usuarios — redirigir al dashboard
@@ -2558,53 +2561,17 @@ function _matchFiltroCatalogo(valorEmpleado, filtroSeleccionado, catalogo){
   return v === removeAccents(filtroSeleccionado.trim().toUpperCase());
 }
 
-// Búsqueda amplia (nombre/cédula/cliente/cargo): ignora tildes y mayúsculas siempre (rápido,
-// igual de veloz que antes). Si esa búsqueda directa no encuentra nada, se reintenta una vez
-// con tolerancia a pequeños errores de tipeo palabra por palabra (ej. "cincelejo" encuentra
-// "Sincelejo") — así escribir rápido y sin tildes sigue siendo instantáneo, y el modo más
-// costoso solo se paga en el caso raro de que la búsqueda normal no halle resultados.
+// Búsqueda amplia (nombre/cédula/cliente/cargo): ignora tildes y mayúsculas/minúsculas.
 function _normTexto(s){ return removeAccents(String(s||'')).toLowerCase(); }
-function _tokenizarBusqueda(s){ return _normTexto(s).split(/[^a-z0-9]+/).filter(Boolean); }
-// Cachea el texto plano y las palabras normalizadas de cada empleado en el propio objeto —
-// el caché se autoinvalida comparando el texto crudo, así que si el empleado cambia
-// (edición/import/tiempo real) se recalcula solo.
-function _hayNormCached(e){
-  const raw = (e.nombre||'')+' '+(e.cedula||'')+' '+(e.cliente||'')+' '+(e.cargo||'');
-  if (e._searchRaw !== raw) {
-    e._searchRaw = raw;
-    e._searchFlat = _normTexto(raw);
-    e._searchWords = null; // se calcula perezosamente solo si hace falta el modo tolerante
-  }
-  return e._searchFlat;
-}
-function _hayWordsCached(e){
-  _hayNormCached(e); // asegura que _searchRaw/_searchFlat estén al día
-  if (!e._searchWords) e._searchWords = e._searchFlat.split(/[^a-z0-9]+/).filter(Boolean);
-  return e._searchWords;
-}
-function _coincideBusquedaWords(queryWords, hayWords){
-  if(!queryWords.length) return true;
-  return queryWords.every(qw => hayWords.some(hw => {
-    if (hw.includes(qw)) return true;
-    if (qw.length < 4) return false;
-    // Antes de calcular distancia de edición (costoso), descarta pares cuya diferencia de
-    // longitud ya haría imposible superar el puntaje mínimo — evita miles de cálculos por tecla.
-    const L = Math.max(hw.length, qw.length);
-    if (Math.abs(hw.length - qw.length) >= 0.28 * L) return false;
-    return simScore(hw, qw) > 0.72;
-  }));
-}
 
 function filterTable(){
-  const qRaw = document.getElementById('searchInput').value;
-  const qFlat = _normTexto(qRaw).trim();
+  const q = _normTexto(document.getElementById('searchInput').value).trim();
   const estado = document.getElementById('filterEstado').value;
   const cliente   = document.getElementById('filterCliente').value;
   const cargo     = document.getElementById('filterCargo').value;
   const genero    = document.getElementById('filterGenero').value;
   const criticos  = document.getElementById('filterCriticos')?.value || '';
-
-  const pasaOtrosFiltros = e => {
+  filteredData = EMPLEADOS.filter(e=>{
     if(estado && e.estado!==estado) return false;
     if(cliente && !_matchFiltroCatalogo(e.cliente, cliente, CATALOGS.clientes||[])) return false;
     if(cargo && !_matchFiltroCatalogo(e.cargo, cargo, CATALOGS.cargos||[])) return false;
@@ -2612,19 +2579,12 @@ function filterTable(){
     if(criticos === 'sin_nombre'  && e.nombre  && e.nombre.trim())  return false;
     if(criticos === 'sin_cliente' && e.cliente && e.cliente.trim()) return false;
     if(criticos === 'sin_cedula'  && e.cedula  && e.cedula.trim())  return false;
+    if(q){
+      const hay = _normTexto((e.nombre||'')+' '+(e.cedula||'')+' '+(e.cliente||'')+' '+(e.cargo||''));
+      if(!hay.includes(q)) return false;
+    }
     return true;
-  };
-
-  filteredData = EMPLEADOS.filter(e => pasaOtrosFiltros(e) && (!qFlat || _hayNormCached(e).includes(qFlat)));
-
-  // Respaldo tolerante a errores de tipeo: solo si había texto de búsqueda y no apareció nada
-  if (!filteredData.length && qFlat) {
-    // Palabras más largas primero: son las que menos empleados van a coincidir, así el
-    // .every() descarta rápido a los que no aplican sin revisar las palabras cortas ("de","la").
-    const qWords = _tokenizarBusqueda(qRaw).sort((a,b)=>b.length-a.length);
-    filteredData = EMPLEADOS.filter(e => pasaOtrosFiltros(e) && _coincideBusquedaWords(qWords, _hayWordsCached(e)));
-  }
-
+  });
   currentPage=1;
   renderTable();
   updateBulkBar();       // después de filteredData → cuenta correcta
@@ -7086,6 +7046,7 @@ function saveCatalogItem(){
   initCatalogs();
   persistCatalog(activeCatalog);
   showToast(`"${val}" agregado al catálogo de ${CATALOG_TITLES[activeCatalog]}`);
+  setTimeout(() => buildDuplicados(), 300); // refresca Corrección de Datos con el catálogo actualizado
 }
 
 function editCatalogInline(idx, key){
@@ -7100,6 +7061,7 @@ function editCatalogInline(idx, key){
   initCatalogs();
   persistCatalog(key);
   showToast(`Catálogo actualizado: "${old}" → "${norm}"`);
+  setTimeout(() => buildDuplicados(), 300);
 }
 
 function deleteCatalogItem(key, idx){
@@ -7110,6 +7072,7 @@ function deleteCatalogItem(key, idx){
   initCatalogs();
   persistCatalog(key);
   showToast(`"${item}" eliminado del catálogo`);
+  setTimeout(() => buildDuplicados(), 300);
 }
 
 function addCatalogItem(catKey, targetSelectId){
@@ -9089,16 +9052,27 @@ function buildDuplicados() {
 
   // ── Nombres similares: variantes en TODOS los campos de catálogo ───
   // (cliente, cargo, EPS, AFP, ARL, municipio, departamento, escolaridad, motivo)
-  // Dos nombres se consideran "la misma variante" solo si además de tener un puntaje de
-  // similitud alto, la diferencia real entre ellos es de POCOS caracteres (typo/mayúsculas/tilde).
-  // Sin este tope absoluto, textos largos que comparten un prefijo enorme pero terminan en una
-  // palabra totalmente distinta (ej. "...seccional Sincelejo" vs "...seccional Bolívar", que son
-  // sedes/entidades DISTINTAS) obtienen un puntaje alto por el prefijo compartido y se agrupaban
-  // por error como si fueran la misma entidad mal escrita.
-  const MAX_DIFERENCIA_ABSOLUTA = 3;
+  // Dos nombres se consideran "la misma variante" con un análisis PALABRA POR PALABRA, no por
+  // similitud del texto completo — comparar el texto completo falla con nombres tipo plantilla
+  // que comparten un prefijo largo pero terminan en algo totalmente distinto: "Edificio Coral"
+  // vs "Edificio Vitral" (dos edificios DISTINTOS) o "...seccional Sincelejo" vs "...seccional
+  // Bolívar" (dos sedes DISTINTAS) sacan un puntaje global alto por el prefijo compartido, aunque
+  // la palabra que en verdad cambia sea corta y no tenga nada que ver con un error de tipeo.
+  function _soloFormato(s){ return String(s||'').toUpperCase().replace(/[^A-ZÁÉÍÓÚÑÜ0-9]/g,''); }
+  function _splitPalabras(s){ return String(s||'').toUpperCase().split(/[^A-ZÁÉÍÓÚÑÜ0-9]+/).filter(Boolean); }
   function _esVarianteReal(a, b) {
     if (simScore(a, b) <= 0.75) return false;
-    return editDistance(a.toUpperCase(), b.toUpperCase()) <= MAX_DIFERENCIA_ABSOLUTA;
+    // Si solo difieren en mayúsculas, espacios o puntuación (sin cambiar ninguna letra/número),
+    // es sin duda la misma entidad con otra grafía.
+    if (_soloFormato(a) === _soloFormato(b)) return true;
+    // Si no, deben tener la MISMA cantidad de palabras y solo UNA debe diferir — y esa única
+    // palabra debe parecerse mucho a sí misma (typo/tilde), no ser una palabra distinta.
+    const wa = _splitPalabras(a), wb = _splitPalabras(b);
+    if (wa.length !== wb.length) return false;
+    let difPos = -1, difCount = 0;
+    for (let i = 0; i < wa.length; i++) { if (wa[i] !== wb[i]) { difCount++; difPos = i; } }
+    if (difCount !== 1) return false;
+    return simScore(wa[difPos], wb[difPos]) > 0.6;
   }
   function groupSimilarNames(map){
     const entries=Object.entries(map).sort((a,b)=>b[1]-a[1]);
