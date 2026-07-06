@@ -2500,6 +2500,20 @@ function showSection(id, el) {
 // entrada del catálogo (para no perder de vista los que están mal escritos o son nuevos).
 const FILTRO_FUERA_CATALOGO = '__fuera_catalogo__';
 
+// Valores crudos de EMPLEADOS para un campo que NO coinciden con ninguna entrada del
+// catálogo (ignorando mayúsculas/tildes), agrupados por igualdad exacta y contados —
+// así se puede elegir uno puntual y ver solo esos registros para corregirlos.
+function _valoresFueraCatalogo(campo, catalogo){
+  const conteo = {};
+  EMPLEADOS.forEach(e=>{
+    const v = (e[campo]||'').trim();
+    if(!v) return;
+    const enCatalogo = catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === removeAccents(v.toUpperCase()));
+    if(!enCatalogo) conteo[v] = (conteo[v]||0)+1;
+  });
+  return Object.entries(conteo).sort((a,b)=>b[1]-a[1]);
+}
+
 function initFilters(){
   // Las opciones salen del CATÁLOGO (fuente de verdad), no de los valores crudos de EMPLEADOS
   // — así "AUX. DE SERVICIOS GENERALES" y "Aux. de Servicios Generales" no aparecen como dos
@@ -2511,17 +2525,25 @@ function initFilters(){
   // Reconstruir desde cero (evita opciones duplicadas al refrescar) y preservar selección
   if(cs){
     const prev = cs.value;
+    const fuera = _valoresFueraCatalogo('cliente', CATALOGS.clientes||[]);
     cs.innerHTML = '<option value="">Todos los clientes</option>'
-      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo</option>`
-      + clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-    if(prev === FILTRO_FUERA_CATALOGO || clientes.includes(prev)) cs.value = prev;
+      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo (todos)</option>`
+      + clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('')
+      + (fuera.length ? '<optgroup label="⚠ Fuera del catálogo — por valor">'
+          + fuera.map(([v,n])=>`<option value="${escapeHTML(v)}">${escapeHTML(v)} (${n})</option>`).join('')
+          + '</optgroup>' : '');
+    if(prev === FILTRO_FUERA_CATALOGO || clientes.includes(prev) || fuera.some(([v])=>v===prev)) cs.value = prev;
   }
   if(cc){
     const prev = cc.value;
+    const fuera = _valoresFueraCatalogo('cargo', CATALOGS.cargos||[]);
     cc.innerHTML = '<option value="">Todos los cargos</option>'
-      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo</option>`
-      + cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-    if(prev === FILTRO_FUERA_CATALOGO || cargos.includes(prev)) cc.value = prev;
+      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo (todos)</option>`
+      + cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('')
+      + (fuera.length ? '<optgroup label="⚠ Fuera del catálogo — por valor">'
+          + fuera.map(([v,n])=>`<option value="${escapeHTML(v)}">${escapeHTML(v)} (${n})</option>`).join('')
+          + '</optgroup>' : '');
+    if(prev === FILTRO_FUERA_CATALOGO || cargos.includes(prev) || fuera.some(([v])=>v===prev)) cc.value = prev;
   }
 }
 
@@ -9021,13 +9043,24 @@ function buildDuplicados() {
 
   // ── Nombres similares: variantes en TODOS los campos de catálogo ───
   // (cliente, cargo, EPS, AFP, ARL, municipio, departamento, escolaridad, motivo)
+  // Dos nombres se consideran "la misma variante" solo si además de tener un puntaje de
+  // similitud alto, la diferencia real entre ellos es de POCOS caracteres (typo/mayúsculas/tilde).
+  // Sin este tope absoluto, textos largos que comparten un prefijo enorme pero terminan en una
+  // palabra totalmente distinta (ej. "...seccional Sincelejo" vs "...seccional Bolívar", que son
+  // sedes/entidades DISTINTAS) obtienen un puntaje alto por el prefijo compartido y se agrupaban
+  // por error como si fueran la misma entidad mal escrita.
+  const MAX_DIFERENCIA_ABSOLUTA = 3;
+  function _esVarianteReal(a, b) {
+    if (simScore(a, b) <= 0.75) return false;
+    return editDistance(a.toUpperCase(), b.toUpperCase()) <= MAX_DIFERENCIA_ABSOLUTA;
+  }
   function groupSimilarNames(map){
     const entries=Object.entries(map).sort((a,b)=>b[1]-a[1]);
     const groups=[]; const used=new Set();
     entries.forEach(([name,count])=>{
       if(used.has(name)) return;
       const group=[{name,count,isMain:true}];
-      entries.forEach(([n2,c2])=>{ if(n2!==name&&!used.has(n2)&&simScore(name,n2)>0.75){group.push({name:n2,count:c2});used.add(n2);}});
+      entries.forEach(([n2,c2])=>{ if(n2!==name&&!used.has(n2)&&_esVarianteReal(name,n2)){group.push({name:n2,count:c2});used.add(n2);}});
       used.add(name);
       if(group.length>1) groups.push(group);
     });
@@ -9066,9 +9099,26 @@ function buildDuplicados() {
     return best; // null si no hay match
   }
 
-  const allGroups = Object.keys(_SIM_TYPE_CONFIG).flatMap(type =>
-    groupSimilarNames(campoMaps[type]).map(g => ({ type, group: g }))
-  );
+  // Además de agrupar variantes entre sí (2+ grafías distintas de empleados), también se
+  // marca como "sugerencia" cualquier valor ÚNICO (sin ninguna otra variante entre empleados)
+  // que no coincida EXACTO con el catálogo pero sí coincida ignorando mayúsculas/tildes.
+  // Caso típico: se crea/edita un ítem del catálogo con tilde ("...Nación...") y los empleados
+  // ya existentes quedaron con la grafía sin tilde ("...Nacion...") — sin esto, al no tener
+  // "pareja" entre sí, esos registros nunca aparecerían para unificarlos al catálogo.
+  const allGroups = Object.keys(_SIM_TYPE_CONFIG).flatMap(type => {
+    const map = campoMaps[type];
+    const peerGroups = groupSimilarNames(map);
+    const usedNames = new Set(peerGroups.flatMap(g => g.map(v => v.name)));
+    const catalog = CATALOGS[_SIM_TYPE_CONFIG[type].catKey] || [];
+    const soloMismatch = [];
+    Object.entries(map).forEach(([name, count]) => {
+      if (usedNames.has(name)) return;
+      if (catalog.includes(name)) return; // ya coincide exacto, nada que corregir
+      const match = catalog.find(c => removeAccents(c.toUpperCase()) === removeAccents(name.toUpperCase()));
+      if (match) soloMismatch.push([{ name, count, isMain: true }]);
+    });
+    return [...peerGroups, ...soloMismatch].map(g => ({ type, group: g }));
+  });
 
   // ── Filtrar grupos ignorados y guardar ANTES de renderizar (índices estables)
   const filteredSim = allGroups.filter(({type,group}) => !_simDismissed.has(type + '_' + group[0].name));
@@ -9129,7 +9179,7 @@ function buildDuplicados() {
         return '<div class="sim-card">'
           + '<div class="sim-header"><div class="sim-title">'
           + '<span style="background:'+tb+';color:'+tc+';padding:2px 7px;border-radius:4px;font-size:10px">'+escapeHTML(type)+'</span>'
-          + ' '+group.length+' variantes &mdash; '+total.toLocaleString('es-CO')+' registros'
+          + ' '+group.length+(group.length===1?' variante':' variantes')+' &mdash; '+total.toLocaleString('es-CO')+' registros'
           + '</div>'
           + '<button class="dup-btn primary" onclick="unificarVarianteNombre('+idx+')">Unificar todos</button>'
           + '</div>'
