@@ -4880,7 +4880,12 @@ function renderCatalogItems(key, q, page) {
   const start   = (_catPage - 1) * CAT_PAGE_SIZE;
   const pageItems = filtered.slice(start, start + CAT_PAGE_SIZE);
 
-  // Calcular usos reales (case-insensitive). Tipos de novedad se cuentan desde NOVEDADES, el resto desde EMPLEADOS.
+  // Calcular usos reales — coincidencia EXACTA (sensible a mayúsculas/tildes) contra la
+  // grafía tal cual está en el catálogo. Si el conteo se hiciera ignorando mayúsculas,
+  // una entrada del catálogo terminaría "heredando" los usos de otra grafía distinta
+  // (ej. "Escuela Taller..." mostraría los 111 usos de "ESCUELA TALLER..." en vez de su 1 uso real),
+  // ocultando que la mayoría de los registros en realidad NO coinciden con el catálogo.
+  // Tipos de novedad se cuentan desde NOVEDADES, el resto desde EMPLEADOS.
   const esNovedades = key === 'novedades_tipos';
   const usageMap = getCatalogUsage(key);
   const hasData  = esNovedades ? NOVEDADES.length > 0 : EMPLEADOS.length > 0;
@@ -4888,8 +4893,7 @@ function renderCatalogItems(key, q, page) {
   // Filas de items
   const rows = pageItems.map((item, i) => {
     const itemStr  = String(item);
-    const usageKey = Object.keys(usageMap).find(k => k.toUpperCase() === itemStr.toUpperCase());
-    const usage    = usageKey ? usageMap[usageKey] : 0;
+    const usage    = usageMap[itemStr.trim()] || 0;
     const usageTxt = hasData
       ? (usage > 0 ? `${usage} uso${usage!==1?'s':''} en ${esNovedades?'novedades':'empleados'}` : 'Sin usos registrados')
       : (esNovedades ? '&#8212; sin novedades registradas a\xfan' : '&#8212; sin datos importados a\xfan');
