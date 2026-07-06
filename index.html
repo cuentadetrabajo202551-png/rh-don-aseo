@@ -1546,9 +1546,9 @@ tr.bg-selected td{background:#eff6ff!important}
                   <input type="checkbox" id="certIncSalario" checked onchange="certUpdatePreview()"> Incluir en certificado
                 </label>
               </div>
-              <input type="text" class="form-input" id="certSalarioText"
-                value="SALARIO MÍNIMO MENSUAL LEGAL VIGENTE (SMMLV) + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY"
-                oninput="certUpdatePreview()">
+              <textarea class="form-input" id="certSalarioText" rows="2"
+                style="resize:vertical;min-height:44px"
+                oninput="certUpdatePreview()">SALARIO MÍNIMO MENSUAL LEGAL VIGENTE (SMMLV) + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY</textarea>
             </div>
             <div class="form-group" id="certHorasRow">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
@@ -9896,6 +9896,10 @@ function certSelectEmployee(id) {
     htxt.value = emp.horas === '12 HORAS' ? '12 HORAS DIARIAS' : '44 HORAS SEMANALES';
   }
 
+  // Pre-fill salario text based on employee's actual salario vs. SMMLV vigente
+  const stxt = document.getElementById('certSalarioText');
+  if (stxt) stxt.value = _certSalarioDefault(emp);
+
   document.getElementById('certOptions').style.display = 'block';
   document.getElementById('certPreviewWrap').style.display = 'block';
 
@@ -9921,18 +9925,30 @@ function certClearEmployee() {
 }
 
 // ── Helper: formatea valor monetario en pesos colombianos ────────────────────
+function _parseCOPNumber(val) {
+  if (!val) return NaN;
+  const clean = String(val).trim().replace(/\$|\s/g, '');
+  if (/,\d{1,2}$/.test(clean)) return parseFloat(clean.replace(/\./g, '').replace(',', '.'));
+  return parseFloat(clean.replace(/\./g, '').replace(',', ''));
+}
+
 function formatCOP(val) {
   if (!val) return '';
-  const s = String(val).trim();
-  let clean = s.replace(/\$|\s/g, '');
-  let num;
-  if (/,\d{1,2}$/.test(clean)) {
-    num = parseFloat(clean.replace(/\./g, '').replace(',', '.'));
-  } else {
-    num = parseFloat(clean.replace(/\./g, '').replace(',', ''));
-  }
-  if (isNaN(num)) return s;
+  const num = _parseCOPNumber(val);
+  if (isNaN(num)) return String(val).trim();
   return '$' + Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+// Texto por defecto de "Salario Devengado" en el certificado:
+// si el salario del empleado es EXACTAMENTE el SMMLV vigente, se usa la frase legal genérica;
+// si es distinto (mayor o menor), se muestra el valor exacto seguido de la frase de auxilio de transporte.
+const SMMLV_VIGENTE = 1750905;
+function _certSalarioDefault(emp) {
+  const num = _parseCOPNumber(emp && emp.salario);
+  if (num === SMMLV_VIGENTE) {
+    return 'SALARIO MÍNIMO MENSUAL LEGAL VIGENTE (SMMLV) + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY';
+  }
+  return formatCOP(emp && emp.salario) + '\nSALARIO + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY';
 }
 
 // ── Helper: convierte "01/06/2015" → "01 DE JUNIO DEL 2015" ────────────────
@@ -10117,6 +10133,7 @@ function certUpdatePreview() {
   const fecha     = document.getElementById('certFecha')?.value || new Date().toISOString().slice(0,10);
   const firma     = (document.getElementById('certFirmante')?.value || 'FERNANDO CESAR LOPEZ CASTILLO').trim().toUpperCase();
   const salTxt    = (document.getElementById('certSalarioText')?.value || 'SALARIO MÍNIMO MENSUAL LEGAL VIGENTE (SMMLV) + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY').trim();
+  const salTxtHTML = escapeHTML(salTxt).replace(/\n/g, '<br>');
   const horasTxt  = (document.getElementById('certHorasText')?.value || '44 HORAS SEMANALES').trim();
   const desempeno = document.getElementById('certDesempeno')?.value || 'BUENO';
   const incSal    = document.getElementById('certIncSalario')?.checked !== false;
@@ -10202,7 +10219,7 @@ function certUpdatePreview() {
       filas +=
         '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
         +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
-        +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '');
     } else {
@@ -10210,7 +10227,7 @@ function certUpdatePreview() {
       filas +=
         '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
         +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
-        +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '')
         +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>';
@@ -10234,7 +10251,7 @@ function certUpdatePreview() {
       filas +=
         '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
         +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
-        +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
     } else {
@@ -10244,7 +10261,7 @@ function certUpdatePreview() {
         +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(emp.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
-        +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+escapeHTML(salTxt)+'</td></tr>' : '')
+        +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
