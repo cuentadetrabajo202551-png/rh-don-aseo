@@ -8663,14 +8663,30 @@ async function adoptarCedula(idReferencia, nameKey) {
   setTimeout(() => buildDuplicados(), 300);
 }
 
-// ── ACCIÓN: Unificar variantes de nombres similares (cargos/clientes) ──────
+// Campos tipo catálogo que "Nombres similares" analiza en busca de variantes
+// (mayúsculas/minúsculas, tildes, espacios) — cada uno mapea al campo real del
+// empleado y a la clave del catálogo maestro correspondiente.
+const _SIM_TYPE_CONFIG = {
+  CLIENTE:      { campo:'cliente',      campoLabel:'cliente',          catKey:'clientes' },
+  CARGO:        { campo:'cargo',        campoLabel:'cargo',            catKey:'cargos' },
+  EPS:          { campo:'eps',          campoLabel:'EPS',              catKey:'eps' },
+  AFP:          { campo:'afp',          campoLabel:'AFP',              catKey:'afp' },
+  ARL:          { campo:'arl',          campoLabel:'ARL',              catKey:'arl' },
+  MUNICIPIO:    { campo:'municipio',    campoLabel:'municipio',        catKey:'municipios' },
+  DEPARTAMENTO: { campo:'departamento', campoLabel:'departamento',     catKey:'departamentos' },
+  ESCOLARIDAD:  { campo:'escolaridad',  campoLabel:'escolaridad',      catKey:'escolaridad' },
+  MOTIVO:       { campo:'motivo',       campoLabel:'motivo de retiro', catKey:'motivosRetiro' },
+};
+
+// ── ACCIÓN: Unificar variantes de nombres similares (cualquier campo de catálogo) ──
 async function unificarVarianteNombre(idx) {
   const item = _simGroupsData[idx];
   if (!item) { showToast('Error: grupo no encontrado'); return; }
   const { type, group } = item;
-  const campo      = type === 'CARGO' ? 'cargo' : 'cliente';
-  const campoLabel = type === 'CARGO' ? 'cargo' : 'cliente';
-  const catKey     = type === 'CARGO' ? 'cargos' : 'clientes';
+  const cfg        = _SIM_TYPE_CONFIG[type] || _SIM_TYPE_CONFIG.CLIENTE;
+  const campo      = cfg.campo;
+  const campoLabel = cfg.campoLabel;
+  const catKey     = cfg.catKey;
   const totalReg   = group.reduce((s,g) => s+g.count, 0);
 
   // Leer nombre destino desde el select; si es "nuevo" leer el input
@@ -8879,7 +8895,8 @@ function buildDuplicados() {
     }).join('');
   }
 
-  // ── Nombres similares: variantes de cargos y clientes ─────────────
+  // ── Nombres similares: variantes en TODOS los campos de catálogo ───
+  // (cliente, cargo, EPS, AFP, ARL, municipio, departamento, escolaridad, motivo)
   function groupSimilarNames(map){
     const entries=Object.entries(map).sort((a,b)=>b[1]-a[1]);
     const groups=[]; const used=new Set();
@@ -8892,16 +8909,29 @@ function buildDuplicados() {
     });
     return groups;
   }
-  const cargoMap={},cliMap={};
-  EMPLEADOS.forEach(e=>{ if(e.cargo){const k=e.cargo.trim().toUpperCase();cargoMap[k]=(cargoMap[k]||0)+1;} if(e.cliente){const k=e.cliente.trim().toUpperCase();cliMap[k]=(cliMap[k]||0)+1;} });
+  // Clave = valor TAL CUAL viene (solo trim, sin forzar mayúsculas) — así una
+  // misma entidad guardada con distinta grafía ("GECELCA 3 AIRE" / "Gecelca 3 Aire")
+  // queda en entradas separadas y groupSimilarNames() puede detectarla como variante
+  // (simScore ya compara ignorando mayúsculas internamente).
+  const campoMaps = {};
+  Object.keys(_SIM_TYPE_CONFIG).forEach(type => { campoMaps[type] = {}; });
+  EMPLEADOS.forEach(e=>{
+    Object.entries(_SIM_TYPE_CONFIG).forEach(([type,{campo}])=>{
+      const raw = e[campo];
+      if(!raw) return;
+      const k = raw.trim();
+      if(!k) return;
+      campoMaps[type][k]=(campoMaps[type][k]||0)+1;
+    });
+  });
 
   // Función que busca la mejor coincidencia en el catálogo para un grupo de variantes
   function findCatMatch(groupVariants, type) {
-    const catalog = type === 'CARGO' ? CATALOGS.cargos : CATALOGS.clientes;
+    const catalog = CATALOGS[_SIM_TYPE_CONFIG[type]?.catKey] || [];
     let best = null, bestSc = 0.78;
     groupVariants.forEach(v => {
       // Coincidencia exacta (insensible a mayúsculas/tilde)
-      const exact = catalog.find(c => removeAccents(c.toUpperCase()) === removeAccents(v.name));
+      const exact = catalog.find(c => removeAccents(c.toUpperCase()) === removeAccents(v.name.toUpperCase()));
       if (exact) { best = exact; bestSc = 1; return; }
       // Coincidencia fuzzy
       catalog.forEach(c => {
@@ -8912,7 +8942,9 @@ function buildDuplicados() {
     return best; // null si no hay match
   }
 
-  const allGroups=[...groupSimilarNames(cliMap).map(g=>({type:'CLIENTE',group:g})),...groupSimilarNames(cargoMap).map(g=>({type:'CARGO',group:g}))];
+  const allGroups = Object.keys(_SIM_TYPE_CONFIG).flatMap(type =>
+    groupSimilarNames(campoMaps[type]).map(g => ({ type, group: g }))
+  );
 
   // ── Filtrar grupos ignorados y guardar ANTES de renderizar (índices estables)
   const filteredSim = allGroups.filter(({type,group}) => !_simDismissed.has(type + '_' + group[0].name));
@@ -8927,14 +8959,16 @@ function buildDuplicados() {
     const infoSim = '<div style="font-size:11px;color:var(--text3);margin-bottom:10px">'
       + filteredSim.length+' sugerencias pendientes'+(ignorados?' &mdash; '+ignorados+' ignoradas en esta sesi\xf3n':'')+'</div>';
 
+    const _simColorByType = { CLIENTE:'blue', CARGO:'orange', EPS:'purple', AFP:'blue', ARL:'orange', MUNICIPIO:'purple', DEPARTAMENTO:'blue', ESCOLARIDAD:'orange', MOTIVO:'purple' };
     elNames.innerHTML = infoSim
       + filteredSim.map(({type,group},_si)=>{
-        const tc=type==='CARGO'?'var(--orange)':'var(--blue)';
-        const tb=type==='CARGO'?'var(--orange-light)':'var(--blue-light)';
+        const _simColor=_simColorByType[type]||'blue';
+        const tc='var(--'+_simColor+')';
+        const tb='var(--'+_simColor+'-light)';
         const total=group.reduce((s,g)=>s+g.count,0);
         const idx = _si;
         const catMatch = findCatMatch(group.map(v=>v), type);
-        const catKey   = type === 'CARGO' ? 'cargos' : 'clientes';
+        const catKey   = _SIM_TYPE_CONFIG[type]?.catKey;
         const catalog  = CATALOGS[catKey] || [];
 
         // Select de destino: catálogo + opción nueva
@@ -8979,7 +9013,7 @@ function buildDuplicados() {
           + '<div class="sim-variants">'
           + group.map((v,i)=>{
               const divId = 'sim-emps-'+idx+'-'+i;
-              const campo = type==='CARGO'?'cargo':'cliente';
+              const campo = _SIM_TYPE_CONFIG[type]?.campo || 'cliente';
               const vSafe = v.name.replace(/\\/g,'\\\\').replace(/'/g,"\\'");
               return '<div class="sim-variant" style="flex-wrap:wrap;row-gap:4px">'
                 + '<span style="width:36px;font-size:10px;color:var(--text3)">'+(i+1)+'</span>'
