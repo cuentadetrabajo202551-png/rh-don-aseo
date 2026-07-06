@@ -2496,22 +2496,44 @@ function showSection(id, el) {
 }
 
 // ───────────────────── TABLE ─────────────────────
+// Valor especial para filtrar los registros cuyo cliente/cargo NO coincide con ninguna
+// entrada del catálogo (para no perder de vista los que están mal escritos o son nuevos).
+const FILTRO_FUERA_CATALOGO = '__fuera_catalogo__';
+
 function initFilters(){
-  const clientes = [...new Set(EMPLEADOS.map(e=>e.cliente).filter(Boolean))].sort();
-  const cargos = [...new Set(EMPLEADOS.map(e=>e.cargo).filter(Boolean))].sort();
+  // Las opciones salen del CATÁLOGO (fuente de verdad), no de los valores crudos de EMPLEADOS
+  // — así "AUX. DE SERVICIOS GENERALES" y "Aux. de Servicios Generales" no aparecen como dos
+  // opciones distintas: una sola opción del catálogo y el filtro compara ignorando mayúsculas/tildes.
+  const clientes = [...(CATALOGS.clientes||[])].sort();
+  const cargos = [...(CATALOGS.cargos||[])].sort();
   const cs = document.getElementById('filterCliente');
   const cc = document.getElementById('filterCargo');
   // Reconstruir desde cero (evita opciones duplicadas al refrescar) y preservar selección
   if(cs){
     const prev = cs.value;
-    cs.innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-    if(clientes.includes(prev)) cs.value = prev;
+    cs.innerHTML = '<option value="">Todos los clientes</option>'
+      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo</option>`
+      + clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+    if(prev === FILTRO_FUERA_CATALOGO || clientes.includes(prev)) cs.value = prev;
   }
   if(cc){
     const prev = cc.value;
-    cc.innerHTML = '<option value="">Todos los cargos</option>' + cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-    if(cargos.includes(prev)) cc.value = prev;
+    cc.innerHTML = '<option value="">Todos los cargos</option>'
+      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo</option>`
+      + cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+    if(prev === FILTRO_FUERA_CATALOGO || cargos.includes(prev)) cc.value = prev;
   }
+}
+
+// Coincidencia de filtro cliente/cargo: ignora mayúsculas y tildes contra la grafía del catálogo,
+// y soporta el valor especial "fuera del catálogo".
+function _matchFiltroCatalogo(valorEmpleado, filtroSeleccionado, catalogo){
+  const v = removeAccents((valorEmpleado||'').trim().toUpperCase());
+  if(filtroSeleccionado === FILTRO_FUERA_CATALOGO){
+    if(!v) return false; // sin valor no cuenta como "fuera de catálogo"
+    return !catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === v);
+  }
+  return v === removeAccents(filtroSeleccionado.trim().toUpperCase());
 }
 
 function filterTable(){
@@ -2523,8 +2545,8 @@ function filterTable(){
   const criticos  = document.getElementById('filterCriticos')?.value || '';
   filteredData = EMPLEADOS.filter(e=>{
     if(estado && e.estado!==estado) return false;
-    if(cliente && e.cliente!==cliente) return false;
-    if(cargo && e.cargo!==cargo) return false;
+    if(cliente && !_matchFiltroCatalogo(e.cliente, cliente, CATALOGS.clientes||[])) return false;
+    if(cargo && !_matchFiltroCatalogo(e.cargo, cargo, CATALOGS.cargos||[])) return false;
     if(genero && e.genero!==genero) return false;
     if(criticos === 'sin_nombre'  && e.nombre  && e.nombre.trim())  return false;
     if(criticos === 'sin_cliente' && e.cliente && e.cliente.trim()) return false;
@@ -2917,9 +2939,10 @@ function renderActiveFilters(){
   const cliente=document.getElementById('filterCliente').value;
   const cargo=document.getElementById('filterCargo').value;
   const genero=document.getElementById('filterGenero').value;
+  const etiquetaFiltro = v => v === FILTRO_FUERA_CATALOGO ? '⚠ Fuera del catálogo' : v;
   if(estado) tags.push(`Estado: ${estado}`);
-  if(cliente) tags.push(`Cliente: ${cliente}`);
-  if(cargo) tags.push(`Cargo: ${cargo}`);
+  if(cliente) tags.push(`Cliente: ${etiquetaFiltro(cliente)}`);
+  if(cargo) tags.push(`Cargo: ${etiquetaFiltro(cargo)}`);
   if(genero) tags.push(`Género: ${genero}`);
   cont.innerHTML=tags.map(t=>`<span class="filter-tag">${t} <span onclick="clearFilters()">✕</span></span>`).join('');
 }
