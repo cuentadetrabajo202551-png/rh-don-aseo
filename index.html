@@ -8667,15 +8667,15 @@ async function adoptarCedula(idReferencia, nameKey) {
 // (mayúsculas/minúsculas, tildes, espacios) — cada uno mapea al campo real del
 // empleado y a la clave del catálogo maestro correspondiente.
 const _SIM_TYPE_CONFIG = {
-  CLIENTE:      { campo:'cliente',      campoLabel:'cliente',          catKey:'clientes' },
-  CARGO:        { campo:'cargo',        campoLabel:'cargo',            catKey:'cargos' },
-  EPS:          { campo:'eps',          campoLabel:'EPS',              catKey:'eps' },
-  AFP:          { campo:'afp',          campoLabel:'AFP',              catKey:'afp' },
-  ARL:          { campo:'arl',          campoLabel:'ARL',              catKey:'arl' },
-  MUNICIPIO:    { campo:'municipio',    campoLabel:'municipio',        catKey:'municipios' },
-  DEPARTAMENTO: { campo:'departamento', campoLabel:'departamento',     catKey:'departamentos' },
-  ESCOLARIDAD:  { campo:'escolaridad',  campoLabel:'escolaridad',      catKey:'escolaridad' },
-  MOTIVO:       { campo:'motivo',       campoLabel:'motivo de retiro', catKey:'motivosRetiro' },
+  CLIENTE:      { campo:'cliente',      campoLabel:'cliente',          campoLabelPlural:'clientes',             catKey:'clientes' },
+  CARGO:        { campo:'cargo',        campoLabel:'cargo',            campoLabelPlural:'cargos',               catKey:'cargos' },
+  EPS:          { campo:'eps',          campoLabel:'EPS',              campoLabelPlural:'EPS',                  catKey:'eps' },
+  AFP:          { campo:'afp',          campoLabel:'AFP',              campoLabelPlural:'AFP',                  catKey:'afp' },
+  ARL:          { campo:'arl',          campoLabel:'ARL',              campoLabelPlural:'ARL',                  catKey:'arl' },
+  MUNICIPIO:    { campo:'municipio',    campoLabel:'municipio',        campoLabelPlural:'municipios',           catKey:'municipios' },
+  DEPARTAMENTO: { campo:'departamento', campoLabel:'departamento',     campoLabelPlural:'departamentos',        catKey:'departamentos' },
+  ESCOLARIDAD:  { campo:'escolaridad',  campoLabel:'escolaridad',      campoLabelPlural:'escolaridad',          catKey:'escolaridad' },
+  MOTIVO:       { campo:'motivo',       campoLabel:'motivo de retiro', campoLabelPlural:'motivos de retiro',    catKey:'motivosRetiro' },
 };
 
 // ── ACCIÓN: Unificar variantes de nombres similares (cualquier campo de catálogo) ──
@@ -8686,6 +8686,7 @@ async function unificarVarianteNombre(idx) {
   const cfg        = _SIM_TYPE_CONFIG[type] || _SIM_TYPE_CONFIG.CLIENTE;
   const campo      = cfg.campo;
   const campoLabel = cfg.campoLabel;
+  const campoLabelPlural = cfg.campoLabelPlural;
   const catKey     = cfg.catKey;
   const totalReg   = group.reduce((s,g) => s+g.count, 0);
 
@@ -8702,8 +8703,10 @@ async function unificarVarianteNombre(idx) {
     showToast('Selecciona el nombre destino antes de unificar'); return;
   }
 
-  // Variantes a cambiar: todas las del grupo que sean distintas del target
-  const variants = group.map(g => g.name).filter(n => n !== targetName.toUpperCase() && n !== targetName);
+  // Variantes a cambiar: todas las del grupo cuya grafía EXACTA sea distinta del target
+  // (si comparáramos también contra targetName.toUpperCase() se excluirían por error variantes
+  // en mayúsculas que en realidad sí necesitan corregirse a la grafía exacta del catálogo)
+  const variants = group.map(g => g.name).filter(n => n !== targetName);
 
   if (!variants.length) { showToast('Todas las variantes ya tienen ese nombre'); return; }
 
@@ -8736,7 +8739,7 @@ async function unificarVarianteNombre(idx) {
     CATALOGS[catKey].sort();
     persistCatalog(catKey);
     initCatalogs();
-    showToast('&#10003; "' + escapeHTML(targetName) + '" agregado al cat\xe1logo de ' + campoLabel + 's');
+    showToast('&#10003; "' + escapeHTML(targetName) + '" agregado al cat\xe1logo de ' + campoLabelPlural);
   }
 
   filteredData = [...EMPLEADOS];
