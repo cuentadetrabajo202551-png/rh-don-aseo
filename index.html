@@ -724,11 +724,6 @@ tr.bg-selected td{background:#eff6ff!important}
     Novedades
     <span class="sb-badge" id="sb-novedades-badge" style="display:none">0</span>
   </div>
-  <div id="sb-nav-alertas" class="sb-item" onclick="showSection('alertas',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-    Alertas de Datos
-    <span class="sb-badge" id="sb-alertas-badge" style="display:none">0</span>
-  </div>
   <div id="sb-nav-importacion" class="sb-item" onclick="showSection('importacion',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
     Importaci&#243;n Masiva
@@ -1068,93 +1063,6 @@ tr.bg-selected td{background:#eff6ff!important}
 
 
     <!-- ═══════════════════════════════════════ ALERTAS ═══ -->
-    <div id="section-alertas" class="section">
-      <div class="section-header">
-        <div>
-          <div class="section-title">Alertas de Calidad de Datos</div>
-          <div class="section-sub">Registros que requieren revisi&#243;n o correcci&#243;n</div>
-        </div>
-      </div>
-
-      <!-- Estado vac&#237;o: se muestra cuando no hay empleados importados -->
-      <div id="alertas-empty" style="display:none">
-        <div style="text-align:center;padding:60px 24px;color:var(--text3)">
-          <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;display:block;opacity:.3"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
-          <p style="font-size:14px;color:var(--text2);margin-bottom:4px">Sin datos importados a&#250;n</p>
-          <small>Las alertas se calcular&#225;n autom&#225;ticamente cuando importes empleados</small>
-        </div>
-      </div>
-
-      <div class="alerts-grid" id="alertas-grid">
-
-        <div class="alert-section-card">
-          <div class="alert-section-header">
-            <div class="alert-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41a2 2 0 0 1 1.95-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.87-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-              Activos sin celular
-            </div>
-            <span class="alert-count-badge" id="badge-sin-celular">0</span>
-          </div>
-          <div class="alert-emp-list" id="alertSinCelular"></div>
-        </div>
-
-        <div class="alert-section-card">
-          <div class="alert-section-header">
-            <div class="alert-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8"/></svg>
-              Registros sin c&#233;dula
-            </div>
-            <span class="alert-count-badge orange" id="badge-sin-cedula">0</span>
-          </div>
-          <div class="alert-emp-list" id="alertSinCedula"></div>
-        </div>
-
-        <div class="alert-section-card">
-          <div class="alert-section-header">
-            <div class="alert-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--purple,#7c3aed)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8"/><line x1="12" y1="11" x2="12" y2="15"/></svg>
-              Activos sin cargo asignado
-            </div>
-            <span class="alert-count-badge" style="background:#ede9fe;color:#7c3aed" id="badge-sin-cargo">0</span>
-          </div>
-          <div class="alert-emp-list" id="alertSinCargo"></div>
-        </div>
-
-        <div class="alert-section-card">
-          <div class="alert-section-header">
-            <div class="alert-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
-              Activos sin cliente / entidad
-            </div>
-            <span class="alert-count-badge blue" id="badge-sin-cliente">0</span>
-          </div>
-          <div class="alert-emp-list" id="alertSinCliente"></div>
-        </div>
-
-        <div class="alert-section-card">
-          <div class="alert-section-header">
-            <div class="alert-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a16207" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5m4 0h10m0 0V9m0 6v6"/></svg>
-              Cargos con nombres inconsistentes
-            </div>
-            <span class="alert-count-badge yellow" id="badge-cargos-inc">&#8212;</span>
-          </div>
-          <div class="alert-emp-list" id="alertCargosInconsistentes"></div>
-        </div>
-
-        <div class="alert-section-card">
-          <div class="alert-section-header">
-            <div class="alert-section-title">
-              <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
-              C&#233;dulas con m&#250;ltiples registros (historial)
-            </div>
-            <span class="alert-count-badge blue" id="badge-historial">0</span>
-          </div>
-          <div class="alert-emp-list" id="alertHistorial"></div>
-        </div>
-
-      </div>
-    </div><!-- /alertas -->
 
 
     <!-- ══════════════════════════════ IMPORTACIÓN MASIVA ══ -->
@@ -1385,14 +1293,97 @@ tr.bg-selected td{background:#eff6ff!important}
 
       <!-- Tabs internas -->
       <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0">
-        <div class="panel-tab active" id="dup-tab-exact" onclick="switchDupTab('exact')" style="font-size:13px;padding:10px 16px">Duplicados exactos <span id="dup-count-exact" class="sb-badge" style="position:static;margin-left:6px;display:none">0</span></div>
+        <div class="panel-tab active" id="dup-tab-alertas" onclick="switchDupTab('alertas')" style="font-size:13px;padding:10px 16px">Alertas de Datos <span id="dup-count-alertas" class="sb-badge" style="position:static;margin-left:6px;background:var(--red);display:none">0</span></div>
+        <div class="panel-tab" id="dup-tab-exact" onclick="switchDupTab('exact')" style="font-size:13px;padding:10px 16px">Duplicados exactos <span id="dup-count-exact" class="sb-badge" style="position:static;margin-left:6px;display:none">0</span></div>
         <div class="panel-tab" id="dup-tab-possible" onclick="switchDupTab('possible')" style="font-size:13px;padding:10px 16px">Posibles duplicados <span id="dup-count-possible" class="sb-badge" style="position:static;margin-left:6px;background:var(--orange);display:none">0</span></div>
         <div class="panel-tab" id="dup-tab-names" onclick="switchDupTab('names')" style="font-size:13px;padding:10px 16px">Nombres similares <span id="dup-count-names" class="sb-badge" style="position:static;margin-left:6px;background:var(--purple);display:none">0</span></div>
         <div class="panel-tab" id="dup-tab-masiva" onclick="switchDupTab('masiva')" style="font-size:13px;padding:10px 16px">Edición Masiva</div>
       </div>
 
+      <!-- ALERTAS: generado por renderAlerts() (antes era su propia sección, ahora vive aquí) -->
+      <div id="dup-content-alertas">
+        <!-- Estado vacío: se muestra cuando no hay empleados importados -->
+        <div id="alertas-empty" style="display:none">
+          <div style="text-align:center;padding:60px 24px;color:var(--text3)">
+            <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="margin:0 auto 12px;display:block;opacity:.3"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <p style="font-size:14px;color:var(--text2);margin-bottom:4px">Sin datos importados aún</p>
+            <small>Las alertas se calcularán automáticamente cuando importes empleados</small>
+          </div>
+        </div>
+
+        <div class="alerts-grid" id="alertas-grid">
+
+          <div class="alert-section-card">
+            <div class="alert-section-header">
+              <div class="alert-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--red)" stroke-width="2"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.41a2 2 0 0 1 1.95-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 8.96a16 16 0 0 0 6 6l.87-.87a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
+                Activos sin celular
+              </div>
+              <span class="alert-count-badge" id="badge-sin-celular">0</span>
+            </div>
+            <div class="alert-emp-list" id="alertSinCelular"></div>
+          </div>
+
+          <div class="alert-section-card">
+            <div class="alert-section-header">
+              <div class="alert-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--orange)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8"/></svg>
+                Registros sin cédula
+              </div>
+              <span class="alert-count-badge orange" id="badge-sin-cedula">0</span>
+            </div>
+            <div class="alert-emp-list" id="alertSinCedula"></div>
+          </div>
+
+          <div class="alert-section-card">
+            <div class="alert-section-header">
+              <div class="alert-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--purple,#7c3aed)" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2"/><path d="M16 3H8"/><line x1="12" y1="11" x2="12" y2="15"/></svg>
+                Activos sin cargo asignado
+              </div>
+              <span class="alert-count-badge" style="background:#ede9fe;color:#7c3aed" id="badge-sin-cargo">0</span>
+            </div>
+            <div class="alert-emp-list" id="alertSinCargo"></div>
+          </div>
+
+          <div class="alert-section-card">
+            <div class="alert-section-header">
+              <div class="alert-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#0891b2" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                Activos sin cliente / entidad
+              </div>
+              <span class="alert-count-badge blue" id="badge-sin-cliente">0</span>
+            </div>
+            <div class="alert-emp-list" id="alertSinCliente"></div>
+          </div>
+
+          <div class="alert-section-card">
+            <div class="alert-section-header">
+              <div class="alert-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#a16207" stroke-width="2"><path d="M9 3H5a2 2 0 0 0-2 2v4m6-6h10a2 2 0 0 1 2 2v4M9 3v11m0 0H5m4 0h10m0 0V9m0 6v6"/></svg>
+                Cargos con nombres inconsistentes
+              </div>
+              <span class="alert-count-badge yellow" id="badge-cargos-inc">—</span>
+            </div>
+            <div class="alert-emp-list" id="alertCargosInconsistentes"></div>
+          </div>
+
+          <div class="alert-section-card">
+            <div class="alert-section-header">
+              <div class="alert-section-title">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+                Cédulas con múltiples registros (historial)
+              </div>
+              <span class="alert-count-badge blue" id="badge-historial">0</span>
+            </div>
+            <div class="alert-emp-list" id="alertHistorial"></div>
+          </div>
+
+        </div>
+      </div>
+
       <!-- EXACT: generado por buildDuplicados() -->
-      <div id="dup-content-exact"></div>
+      <div id="dup-content-exact" style="display:none"></div>
 
       <!-- POSSIBLE: generado por buildDuplicados() -->
       <div id="dup-content-possible" style="display:none"></div>
@@ -2612,7 +2603,7 @@ function showSection(id, el) {
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',empleados:'Empleados',alertas:'Alertas de Calidad de Datos',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios',estadisticas:'Estadísticas de Rotación',fechas:'Cumpleaños & Fechas Críticas',novedades:'Novedades'};
+  const titles = {dashboard:'Dashboard',empleados:'Empleados',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios',estadisticas:'Estadísticas de Rotación',fechas:'Cumpleaños & Fechas Críticas',novedades:'Novedades'};
   document.getElementById('breadcrumb').textContent = titles[id]||id;
   if (id === 'auditoria') loadAuditLog();
   if (id === 'estadisticas') buildEstadisticas();
@@ -2629,6 +2620,7 @@ function showSection(id, el) {
   // Se muestra un spinner primero y el cálculo (pesado) se difiere un instante para que el
   // navegador alcance a pintarlo — si no, la pantalla se siente "trabada" mientras procesa.
   if (id === 'duplicados') {
+    try { renderAlerts(); } catch(e) {} // barato — se refresca de una vez, sin spinner
     const spinnerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text3)">'
       + '<div style="width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px"></div>'
       + '<div style="font-size:13px">Analizando datos...</div></div>';
@@ -3815,7 +3807,7 @@ function _buildCumpleanos(container) {
 
   if (sinFecha.length) {
     html += '<div class="event-section-title" style="margin-top:20px">⚠ Sin fecha de nacimiento (' + sinFecha.length + ')</div>';
-    html += '<div style="background:var(--orange-light);border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e">Estos ' + sinFecha.length + ' empleados activos no tienen fecha de nacimiento registrada — no aparecen en la lista de cumpleaños. <a href="#" onclick="showSection(\'alertas\',document.getElementById(\'sb-nav-alertas\'));return false" style="color:var(--orange);font-weight:700">Ver en alertas →</a></div>';
+    html += '<div style="background:var(--orange-light);border-radius:8px;padding:10px 14px;font-size:12px;color:#92400e">Estos ' + sinFecha.length + ' empleados activos no tienen fecha de nacimiento registrada — no aparecen en la lista de cumpleaños. <a href="#" onclick="_irAAlertas();return false" style="color:var(--orange);font-weight:700">Ver en alertas →</a></div>';
   }
 
   container.innerHTML = html;
@@ -3928,7 +3920,7 @@ function _buildFechasCriticas(container) {
   if (sinCel || sinEPS || sinAFP || sinNac) {
     html += '<div class="event-section-title" style="margin-top:20px">⚠ Datos críticos faltantes</div>';
     html += '<div style="display:grid;grid-template-columns:1fr 1fr;gap:8px">'
-      + (sinCel ? '<div class="event-card critico"><div class="event-emoji">📵</div><div><div class="event-name">Sin celular</div><div class="event-detail">'+sinCel+' empleados activos</div></div><a href="#" onclick="showSection(\'alertas\',document.getElementById(\'sb-nav-alertas\'));return false" class="event-badge critico" style="text-decoration:none">Ver →</a></div>' : '')
+      + (sinCel ? '<div class="event-card critico"><div class="event-emoji">📵</div><div><div class="event-name">Sin celular</div><div class="event-detail">'+sinCel+' empleados activos</div></div><a href="#" onclick="_irAAlertas();return false" class="event-badge critico" style="text-decoration:none">Ver →</a></div>' : '')
       + (sinEPS ? '<div class="event-card critico"><div class="event-emoji">🏥</div><div><div class="event-name">Sin EPS</div><div class="event-detail">'+sinEPS+' empleados activos</div></div></div>' : '')
       + (sinAFP ? '<div class="event-card critico"><div class="event-emoji">💼</div><div><div class="event-name">Sin AFP</div><div class="event-detail">'+sinAFP+' empleados activos</div></div></div>' : '')
       + (sinNac ? '<div class="event-card critico"><div class="event-emoji">📅</div><div><div class="event-name">Sin fecha de nacimiento</div><div class="event-detail">'+sinNac+' empleados activos</div></div></div>' : '')
@@ -4397,7 +4389,7 @@ function refreshDashboard() {
 
   if (empty) {
     // Resetear badges del sidebar aunque no haya datos
-    const sa=document.getElementById('sb-alertas-badge');
+    const sa=document.getElementById('dup-count-alertas');
     if(sa){sa.textContent='0';sa.style.display='none';}
     const sac=document.getElementById('sb-activos-badge');
     if(sac){sac.textContent='0';sac.style.display='none';}
@@ -4436,8 +4428,8 @@ function refreshDashboard() {
   const sinCliD   = EMPLEADOS.filter(e=>e.estado==='ACTIVO'&&!e.cliente).length;
   const totalAlerts=sinCelD+sinCedD+sinCargoD+sinCliD;
   if(cl){cl.textContent=totalAlerts+' alerta'+(totalAlerts!==1?'s':'');cl.style.display=totalAlerts>0?'':'none';}
-  // Badge alertas sidebar
-  const sa=document.getElementById('sb-alertas-badge');
+  // Badge de la pestaña "Alertas de Datos" (ahora dentro de Corrección de Datos)
+  const sa=document.getElementById('dup-count-alertas');
   if(sa){sa.textContent=totalAlerts;sa.style.display=totalAlerts>0?'':'none';}
 }
 
@@ -4471,7 +4463,7 @@ function buildDashAlerts() {
   EMPLEADOS.forEach(e=>{ if(e.cedula) cedCount[e.cedula]=(cedCount[e.cedula]||0)+1; });
   const histCount = Object.values(cedCount).filter(v=>v>1).length;
 
-  const go = "showSection('alertas',document.getElementById('sb-nav-alertas'))";
+  const go = "_irAAlertas()";
   if(sinCel>0)  chips.push(`<div class="alert-chip" onclick="${go}"><div class="alert-dot red"></div><div class="alert-chip-text"><strong>Sin celular</strong>${sinCel} activos sin número</div><div class="alert-chip-count" style="color:var(--red)">${sinCel}</div></div>`);
   if(sinCed>0)  chips.push(`<div class="alert-chip" onclick="${go}"><div class="alert-dot orange"></div><div class="alert-chip-text"><strong>Sin cédula</strong>${sinCed} registros sin identificación</div><div class="alert-chip-count" style="color:var(--orange)">${sinCed}</div></div>`);
   if(sinNom>0)  chips.push(`<div class="alert-chip" onclick="${go}"><div class="alert-dot orange"></div><div class="alert-chip-text"><strong>Sin nombre</strong>${sinNom} registros sin nombre</div><div class="alert-chip-count" style="color:var(--orange)">${sinNom}</div></div>`);
@@ -7414,9 +7406,10 @@ async function loadUserProfile(user) {
 }
 
 // Secciones permitidas por rol
+// "alertas" ya no es una sección propia — vive como pestaña dentro de "duplicados"
 const ROLE_SECTIONS = {
-  admin:    ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','usuarios','novedades'],
-  editor:   ['dashboard','empleados','alertas','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','novedades'],
+  admin:    ['dashboard','empleados','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','usuarios','novedades'],
+  editor:   ['dashboard','empleados','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','novedades'],
   auxiliar: ['dashboard','empleados','novedades'],
   viewer:   ['dashboard','empleados','fechas','estadisticas']
 };
@@ -7433,7 +7426,6 @@ function applyRoleVisibility() {
 
   // ── Sidebar: mostrar/ocultar items según ROLE_SECTIONS (fuente única de verdad) ──
   const navItems = {
-    'sb-nav-alertas':      'alertas',
     'sb-nav-importacion':  'importacion',
     'sb-nav-duplicados':   'duplicados',
     'sb-nav-catalogos':    'catalogos',
@@ -7450,7 +7442,7 @@ function applyRoleVisibility() {
 
   // Ocultar la etiqueta "Sistema" si el rol no ve nada de esa categoría
   const sysLabel = document.getElementById('sb-label-sistema');
-  const veSistema = ['alertas','importacion','duplicados','catalogos','certificados','auditoria','usuarios'].some(canAccess);
+  const veSistema = ['importacion','duplicados','catalogos','certificados','auditoria','usuarios'].some(canAccess);
   if (sysLabel) sysLabel.style.display = veSistema ? '' : 'none';
 
   // ── Botones en sección Empleados ──────────────────────────────────────
@@ -8765,12 +8757,19 @@ function downloadTemplate(){
 
 // ───────────────────── DUP TABS ─────────────────────
 function switchDupTab(tab){
-  ['exact','possible','names','masiva'].forEach(t=>{
+  ['alertas','exact','possible','names','masiva'].forEach(t=>{
     document.getElementById('dup-tab-'+t)?.classList.toggle('active',t===tab);
     const c = document.getElementById('dup-content-'+t);
     if(c) c.style.display = t===tab?'block':'none';
   });
   if (tab === 'masiva') { initMasEditFilters(); filterMasEdit(); }
+}
+
+// Atajo para los enlaces "Ver en alertas →" (Dashboard, Cumpleaños & Fechas, etc.) — ahora
+// que Alertas de Datos vive dentro de Corrección de Datos, en vez de su propia sección.
+function _irAAlertas(){
+  showSection('duplicados', document.getElementById('sb-nav-duplicados'));
+  switchDupTab('alertas');
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -8786,19 +8785,33 @@ const MASEDIT_PAGE_SIZE = 12;
 const _masEditSelected = new Set();
 
 function initMasEditFilters(){
+  // Igual que initFilters() de Empleados: catálogo + los valores fuera de catálogo por
+  // separado, para que desde aquí mismo se puedan seleccionar y corregir en bloque.
   const clientes = [...(CATALOGS.clientes||[])].sort();
   const cargos = [...(CATALOGS.cargos||[])].sort();
   const cs = document.getElementById('masEditFilterCliente');
   const cc = document.getElementById('masEditFilterCargo');
   if(cs){
     const prev = cs.value;
-    cs.innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-    if(clientes.includes(prev)) cs.value = prev;
+    const fuera = _valoresFueraCatalogo('cliente', CATALOGS.clientes||[]);
+    cs.innerHTML = '<option value="">Todos los clientes</option>'
+      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo (todos)</option>`
+      + clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('')
+      + (fuera.length ? '<optgroup label="⚠ Fuera del catálogo — por valor">'
+          + fuera.map(([v,n])=>`<option value="${escapeHTML(v)}">${escapeHTML(v)} (${n})</option>`).join('')
+          + '</optgroup>' : '');
+    if(prev === FILTRO_FUERA_CATALOGO || clientes.includes(prev) || fuera.some(([v])=>v===prev)) cs.value = prev;
   }
   if(cc){
     const prev = cc.value;
-    cc.innerHTML = '<option value="">Todos los cargos</option>' + cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
-    if(cargos.includes(prev)) cc.value = prev;
+    const fuera = _valoresFueraCatalogo('cargo', CATALOGS.cargos||[]);
+    cc.innerHTML = '<option value="">Todos los cargos</option>'
+      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo (todos)</option>`
+      + cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('')
+      + (fuera.length ? '<optgroup label="⚠ Fuera del catálogo — por valor">'
+          + fuera.map(([v,n])=>`<option value="${escapeHTML(v)}">${escapeHTML(v)} (${n})</option>`).join('')
+          + '</optgroup>' : '');
+    if(prev === FILTRO_FUERA_CATALOGO || cargos.includes(prev) || fuera.some(([v])=>v===prev)) cc.value = prev;
   }
 }
 
@@ -8844,9 +8857,10 @@ function renderMasEditActiveFilters(){
   const cliente = document.getElementById('masEditFilterCliente')?.value;
   const cargo = document.getElementById('masEditFilterCargo')?.value;
   const genero = document.getElementById('masEditFilterGenero')?.value;
+  const etiquetaFiltro = v => v === FILTRO_FUERA_CATALOGO ? '⚠ Fuera del catálogo' : v;
   if(estado) tags.push(`Estado: ${estado}`);
-  if(cliente) tags.push(`Cliente: ${cliente}`);
-  if(cargo) tags.push(`Cargo: ${cargo}`);
+  if(cliente) tags.push(`Cliente: ${etiquetaFiltro(cliente)}`);
+  if(cargo) tags.push(`Cargo: ${etiquetaFiltro(cargo)}`);
   if(genero) tags.push(`Género: ${genero}`);
   cont.innerHTML = tags.map(t=>`<span class="filter-tag">${escapeHTML(t)} <span onclick="clearMasEditFilters()">✕</span></span>`).join('');
 }
