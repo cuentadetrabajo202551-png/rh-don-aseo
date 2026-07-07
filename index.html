@@ -1380,11 +1380,15 @@ tr.bg-selected td{background:#eff6ff!important}
         </div>
       </div>
 
+      <!-- Resumen "fuera de catálogo" — generado por buildDuplicados() -->
+      <div id="dup-resumen-fuera-catalogo" style="margin-bottom:16px"></div>
+
       <!-- Tabs internas -->
       <div style="display:flex;gap:4px;margin-bottom:20px;border-bottom:1px solid var(--border);padding-bottom:0">
         <div class="panel-tab active" id="dup-tab-exact" onclick="switchDupTab('exact')" style="font-size:13px;padding:10px 16px">Duplicados exactos <span id="dup-count-exact" class="sb-badge" style="position:static;margin-left:6px;display:none">0</span></div>
         <div class="panel-tab" id="dup-tab-possible" onclick="switchDupTab('possible')" style="font-size:13px;padding:10px 16px">Posibles duplicados <span id="dup-count-possible" class="sb-badge" style="position:static;margin-left:6px;background:var(--orange);display:none">0</span></div>
         <div class="panel-tab" id="dup-tab-names" onclick="switchDupTab('names')" style="font-size:13px;padding:10px 16px">Nombres similares <span id="dup-count-names" class="sb-badge" style="position:static;margin-left:6px;background:var(--purple);display:none">0</span></div>
+        <div class="panel-tab" id="dup-tab-masiva" onclick="switchDupTab('masiva')" style="font-size:13px;padding:10px 16px">Edición Masiva</div>
       </div>
 
       <!-- EXACT: generado por buildDuplicados() -->
@@ -1395,6 +1399,83 @@ tr.bg-selected td{background:#eff6ff!important}
 
       <!-- NAMES: generado por buildDuplicados() -->
       <div id="dup-content-names" style="display:none"></div>
+
+      <!-- EDICIÓN MASIVA: filtra como en Empleados, selecciona y aplica un cambio a todos a la vez -->
+      <div id="dup-content-masiva" style="display:none">
+        <div style="background:var(--orange-light);border:1px solid #fde68a;border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:12px;color:#92400e">
+          &#9888; Filtra como quieras, selecciona los empleados y aplica un cambio de cliente, cargo, EPS, AFP, ARL, municipio, departamento, escolaridad o motivo a todos a la vez. Revisa bien el resumen antes de confirmar — no se puede deshacer.
+        </div>
+
+        <div class="search-bar">
+          <div class="search-input-wrap">
+            <span class="search-icon"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/></svg></span>
+            <input type="text" class="search-input" id="masEditSearchInput" placeholder="Buscar por nombre, cédula, cliente, cargo..." oninput="filterMasEdit()">
+          </div>
+          <select class="filter-select" id="masEditFilterEstado" onchange="filterMasEdit()">
+            <option value="">Todos los estados</option>
+            <option value="ACTIVO">Activo</option>
+            <option value="INACTIVO">Inactivo</option>
+          </select>
+          <select class="filter-select" id="masEditFilterCliente" onchange="filterMasEdit()">
+            <option value="">Todos los clientes</option>
+          </select>
+          <select class="filter-select" id="masEditFilterCargo" onchange="filterMasEdit()">
+            <option value="">Todos los cargos</option>
+          </select>
+          <select class="filter-select" id="masEditFilterGenero" onchange="filterMasEdit()">
+            <option value="">Todos los géneros</option>
+            <option value="FEMENINO">Femenino</option>
+            <option value="MASCULINO">Masculino</option>
+          </select>
+          <select class="filter-select" id="masEditFilterCriticos" onchange="filterMasEdit()" style="color:var(--orange);font-weight:600">
+            <option value="" style="color:var(--text2);font-weight:400">&#9888; Datos críticos</option>
+            <option value="sin_nombre">Sin nombre</option>
+            <option value="sin_cliente">Sin cliente / entidad</option>
+            <option value="sin_cedula">Sin cédula</option>
+          </select>
+          <button class="btn btn-ghost btn-sm" onclick="clearMasEditFilters()">Limpiar</button>
+        </div>
+
+        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:10px">
+          <div style="display:flex;align-items:center;gap:10px">
+            <div class="results-info" id="masEditResultsInfo">Mostrando empleados</div>
+            <button id="masEditBtnSelTodos" class="btn btn-ghost btn-sm" style="display:none" onclick="toggleMasEditSelectAll()">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+              Seleccionar todos
+            </button>
+          </div>
+          <div class="active-filters" id="masEditActiveFilters"></div>
+        </div>
+
+        <div id="masEditBulkBar" class="bulk-bar" style="display:none">
+          <div class="bulk-count">Seleccionados <span id="masEditBulkCountNum">0</span></div>
+          <div class="bulk-spacer"></div>
+          <button class="bulk-btn editar" onclick="abrirModalMasEdit()">&#9998; Editar campos en bloque</button>
+          <button class="bulk-btn cancel" onclick="limpiarMasEditSeleccion()">&times; Cancelar</button>
+        </div>
+
+        <div class="table-wrap">
+          <table id="masEditTable">
+            <thead>
+              <tr>
+                <th style="width:36px;text-align:center">
+                  <input type="checkbox" class="emp-check" id="masEditCheckAllHeader" title="Seleccionar todos los filtrados" onchange="toggleMasEditSelectAll(this.checked)">
+                </th>
+                <th>Empleado</th>
+                <th>Cédula</th>
+                <th>Estado</th>
+                <th>Cliente / Entidad</th>
+                <th>Cargo</th>
+              </tr>
+            </thead>
+            <tbody id="masEditTableBody"></tbody>
+          </table>
+          <div class="pagination" id="masEditPaginationBar">
+            <div class="pagination-info" id="masEditPaginationInfo"></div>
+            <div class="pagination-btns" id="masEditPaginationBtns"></div>
+          </div>
+        </div>
+      </div>
     </div><!-- /duplicados -->
 
 
@@ -2017,6 +2098,65 @@ tr.bg-selected td{background:#eff6ff!important}
   </div>
 </div>
 
+<!-- MODAL EDICIÓN MASIVA (Corrección de Datos → Edición Masiva): cualquier campo de catálogo -->
+<div id="modal-masedit-bulk" class="bulk-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarModalMasEdit()">
+  <div class="bulk-modal" style="max-width:520px">
+    <div class="bulk-modal-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+      Edición masiva de empleados
+    </div>
+    <div class="bulk-modal-body" style="max-height:60vh;overflow-y:auto">
+      <div style="background:var(--blue-light);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:12px;color:var(--blue-dark)">
+        <span id="masedit-resumen">0 empleados</span> seleccionados. Elige los valores <strong>del catálogo</strong> en los campos que quieras cambiar. Deja en «No cambiar» todo lo demás.
+      </div>
+      <div class="form-grid" style="grid-template-columns:1fr 1fr;gap:14px 12px">
+        <div class="form-group">
+          <label class="form-label">Cliente / Entidad</label>
+          <select class="form-select" id="masedit-cliente" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Cargo</label>
+          <select class="form-select" id="masedit-cargo" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">EPS</label>
+          <select class="form-select" id="masedit-eps" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">AFP / Pensión</label>
+          <select class="form-select" id="masedit-afp" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">ARL</label>
+          <select class="form-select" id="masedit-arl" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Municipio de trabajo</label>
+          <select class="form-select" id="masedit-municipio" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Departamento</label>
+          <select class="form-select" id="masedit-departamento" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Escolaridad</label>
+          <select class="form-select" id="masedit-escolaridad" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+        <div class="form-group">
+          <label class="form-label">Motivo de retiro</label>
+          <select class="form-select" id="masedit-motivo" style="width:100%"><option value="">— No cambiar —</option></select>
+        </div>
+      </div>
+    </div>
+    <div class="bulk-modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalMasEdit()">Cancelar</button>
+      <button class="btn btn-primary" onclick="ejecutarMasEdit()">
+        &#10003; Aplicar a seleccionados
+      </button>
+    </div>
+  </div>
+</div>
+
 <!-- MODAL EDITAR PERFIL DE USUARIO (admin edita a otros) -->
 <div id="modal-overlay-usuario" onclick="if(event.target===this)cerrarEditarUsuario()"
   style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:center;justify-content:center;padding:24px">
@@ -2486,7 +2626,18 @@ function showSection(id, el) {
   }
   // Recalcular sugerencias siempre al entrar — así si se agregó/editó algo en Catálogos
   // (u ocurrió cualquier otro cambio) desde la última vez, se ve reflejado sin recargar la página.
-  if (id === 'duplicados') buildDuplicados();
+  // Se muestra un spinner primero y el cálculo (pesado) se difiere un instante para que el
+  // navegador alcance a pintarlo — si no, la pantalla se siente "trabada" mientras procesa.
+  if (id === 'duplicados') {
+    const spinnerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text3)">'
+      + '<div style="width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px"></div>'
+      + '<div style="font-size:13px">Analizando datos...</div></div>';
+    ['dup-content-exact','dup-content-possible','dup-content-names'].forEach(elId=>{
+      const el = document.getElementById(elId);
+      if(el) el.innerHTML = spinnerHTML;
+    });
+    setTimeout(() => buildDuplicados(), 50);
+  }
   if (id === 'usuarios') {
     if (!isAdmin()) {
       // No-admin intentando entrar a Gestión de Usuarios — redirigir al dashboard
@@ -7813,6 +7964,11 @@ function _rtFlushUI() {
   const dupSection = document.getElementById('section-duplicados');
   if (dupSection?.classList.contains('active')) {
     try { buildDuplicados(); } catch(e) {}
+    // Si la pestaña "Edición Masiva" está abierta, refrescarla también con lo que cambió el otro usuario
+    const masivaTab = document.getElementById('dup-content-masiva');
+    if (masivaTab && masivaTab.style.display !== 'none') {
+      try { filterMasEdit(); } catch(e) {}
+    }
   }
   try { refreshCatalogIfVisible(); } catch(e) {}
   const dot = document.getElementById('sb-sync-dot');
@@ -8609,11 +8765,279 @@ function downloadTemplate(){
 
 // ───────────────────── DUP TABS ─────────────────────
 function switchDupTab(tab){
-  ['exact','possible','names'].forEach(t=>{
+  ['exact','possible','names','masiva'].forEach(t=>{
     document.getElementById('dup-tab-'+t)?.classList.toggle('active',t===tab);
     const c = document.getElementById('dup-content-'+t);
     if(c) c.style.display = t===tab?'block':'none';
   });
+  if (tab === 'masiva') { initMasEditFilters(); filterMasEdit(); }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// ── EDICIÓN MASIVA (Corrección de Datos) ─────────────────────────────────
+// Mismo patrón de filtros/selección/paginación que la sección Empleados
+// (filterTable/renderTable/_selectedEmps), pero con estado propio para no
+// interferir con la tabla de Empleados, y permitiendo editar en bloque
+// cualquiera de los 9 campos de catálogo (no solo cliente/cargo).
+// ══════════════════════════════════════════════════════════════════════════
+let filteredDataMasiva = [];
+let masEditPage = 1;
+const MASEDIT_PAGE_SIZE = 12;
+const _masEditSelected = new Set();
+
+function initMasEditFilters(){
+  const clientes = [...(CATALOGS.clientes||[])].sort();
+  const cargos = [...(CATALOGS.cargos||[])].sort();
+  const cs = document.getElementById('masEditFilterCliente');
+  const cc = document.getElementById('masEditFilterCargo');
+  if(cs){
+    const prev = cs.value;
+    cs.innerHTML = '<option value="">Todos los clientes</option>' + clientes.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+    if(clientes.includes(prev)) cs.value = prev;
+  }
+  if(cc){
+    const prev = cc.value;
+    cc.innerHTML = '<option value="">Todos los cargos</option>' + cargos.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+    if(cargos.includes(prev)) cc.value = prev;
+  }
+}
+
+function filterMasEdit(){
+  const q = _normTexto(document.getElementById('masEditSearchInput')?.value||'').trim();
+  const estado = document.getElementById('masEditFilterEstado')?.value||'';
+  const cliente = document.getElementById('masEditFilterCliente')?.value||'';
+  const cargo = document.getElementById('masEditFilterCargo')?.value||'';
+  const genero = document.getElementById('masEditFilterGenero')?.value||'';
+  const criticos = document.getElementById('masEditFilterCriticos')?.value||'';
+  filteredDataMasiva = EMPLEADOS.filter(e=>{
+    if(estado && e.estado!==estado) return false;
+    if(cliente && !_matchFiltroCatalogo(e.cliente, cliente, CATALOGS.clientes||[])) return false;
+    if(cargo && !_matchFiltroCatalogo(e.cargo, cargo, CATALOGS.cargos||[])) return false;
+    if(genero && e.genero!==genero) return false;
+    if(criticos === 'sin_nombre'  && e.nombre  && e.nombre.trim())  return false;
+    if(criticos === 'sin_cliente' && e.cliente && e.cliente.trim()) return false;
+    if(criticos === 'sin_cedula'  && e.cedula  && e.cedula.trim())  return false;
+    if(q){
+      const hay = _normTexto((e.nombre||'')+' '+(e.cedula||'')+' '+(e.cliente||'')+' '+(e.cargo||''));
+      if(!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  masEditPage = 1;
+  renderMasEditTable();
+  updateMasEditBulkBar();
+  renderMasEditActiveFilters();
+}
+
+function clearMasEditFilters(){
+  ['masEditSearchInput'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  ['masEditFilterEstado','masEditFilterCliente','masEditFilterCargo','masEditFilterGenero','masEditFilterCriticos'].forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
+  _masEditSelected.clear();
+  filterMasEdit();
+}
+
+function renderMasEditActiveFilters(){
+  const cont = document.getElementById('masEditActiveFilters');
+  if(!cont) return;
+  const tags = [];
+  const estado = document.getElementById('masEditFilterEstado')?.value;
+  const cliente = document.getElementById('masEditFilterCliente')?.value;
+  const cargo = document.getElementById('masEditFilterCargo')?.value;
+  const genero = document.getElementById('masEditFilterGenero')?.value;
+  if(estado) tags.push(`Estado: ${estado}`);
+  if(cliente) tags.push(`Cliente: ${cliente}`);
+  if(cargo) tags.push(`Cargo: ${cargo}`);
+  if(genero) tags.push(`Género: ${genero}`);
+  cont.innerHTML = tags.map(t=>`<span class="filter-tag">${escapeHTML(t)} <span onclick="clearMasEditFilters()">✕</span></span>`).join('');
+}
+
+function renderMasEditTable(){
+  const start = (masEditPage-1)*MASEDIT_PAGE_SIZE;
+  const page = filteredDataMasiva.slice(start, start+MASEDIT_PAGE_SIZE);
+  const tbody = document.getElementById('masEditTableBody');
+  if(!tbody) return;
+  const info = document.getElementById('masEditResultsInfo');
+  if(info) info.textContent = `Mostrando ${Math.min(MASEDIT_PAGE_SIZE,filteredDataMasiva.length-start)} de ${filteredDataMasiva.length} empleado${filteredDataMasiva.length!==1?'s':''}`;
+
+  if(!filteredDataMasiva.length){
+    tbody.innerHTML = `<tr><td colspan="6"><div class="empty-state" style="padding:30px"><p style="font-size:13px;color:var(--text2)">Sin resultados con estos filtros</p></div></td></tr>`;
+    renderMasEditPagination();
+    return;
+  }
+
+  tbody.innerHTML = page.map(emp=>{
+    const g = emp.genero==='FEMENINO'?'f':'m';
+    const ini = emp.cedula?getInitials(emp.nombre):'?';
+    const isSelected = _masEditSelected.has(emp.id);
+    return `<tr class="${isSelected?'bg-selected':''}">
+      <td style="text-align:center;width:36px">
+        <input type="checkbox" class="emp-check" ${isSelected?'checked':''} onchange="toggleMasEditSelection(${emp.id},this.checked)">
+      </td>
+      <td>
+        <div style="display:flex;align-items:center;gap:8px">
+          <div class="emp-avatar ${g}" style="width:28px;height:28px;font-size:10px;flex-shrink:0">${escapeHTML(ini)}</div>
+          <span style="font-size:13px;font-weight:600">${escapeHTML(emp.nombre||'Sin nombre')}</span>
+        </div>
+      </td>
+      <td style="font-size:12px;color:var(--text2)">${escapeHTML(emp.cedula||'—')}</td>
+      <td><span class="badge ${emp.estado==='ACTIVO'?'badge-activo':'badge-inactivo'}">${escapeHTML(emp.estado||'—')}</span></td>
+      <td style="font-size:12px">${escapeHTML(emp.cliente||'—')}</td>
+      <td style="font-size:12px">${escapeHTML(emp.cargo||'—')}</td>
+    </tr>`;
+  }).join('');
+  renderMasEditPagination();
+}
+
+function renderMasEditPagination(){
+  const total = Math.ceil(filteredDataMasiva.length/MASEDIT_PAGE_SIZE);
+  const info = document.getElementById('masEditPaginationInfo');
+  const btns = document.getElementById('masEditPaginationBtns');
+  if(!info || !btns) return;
+  info.textContent = `Página ${masEditPage} de ${Math.max(1,total)}`;
+  let html = `<button class="page-btn" onclick="goMasEditPage(${masEditPage-1})" ${masEditPage<=1?'disabled':''}>‹</button>`;
+  for(let i=1;i<=total;i++){
+    if(total>7 && i>2 && i<total-1 && Math.abs(i-masEditPage)>1){ if(i===3||i===total-2) html+='<span style="padding:0 4px;color:var(--text3)">…</span>'; continue; }
+    html += `<button class="page-btn${i===masEditPage?' active':''}" onclick="goMasEditPage(${i})">${i}</button>`;
+  }
+  html += `<button class="page-btn" onclick="goMasEditPage(${masEditPage+1})" ${masEditPage>=total?'disabled':''}>›</button>`;
+  btns.innerHTML = html;
+}
+
+function goMasEditPage(p){
+  const total = Math.ceil(filteredDataMasiva.length/MASEDIT_PAGE_SIZE);
+  if(p<1||p>total) return;
+  masEditPage = p;
+  renderMasEditTable();
+}
+
+function toggleMasEditSelection(id, checked){
+  if(checked) _masEditSelected.add(id); else _masEditSelected.delete(id);
+  updateMasEditBulkBar();
+  const all = filteredDataMasiva.every(e=>_masEditSelected.has(e.id));
+  const none = !filteredDataMasiva.some(e=>_masEditSelected.has(e.id));
+  const hdr = document.getElementById('masEditCheckAllHeader');
+  if(hdr){ hdr.checked = all; hdr.indeterminate = !all && !none; }
+}
+
+function toggleMasEditSelectAll(checked){
+  if(checked === undefined){
+    const allSelected = filteredDataMasiva.every(e=>_masEditSelected.has(e.id));
+    checked = !allSelected;
+  }
+  if(checked) filteredDataMasiva.forEach(e=>_masEditSelected.add(e.id));
+  else _masEditSelected.clear();
+  const hdr = document.getElementById('masEditCheckAllHeader');
+  if(hdr){ hdr.checked = checked; hdr.indeterminate = false; }
+  renderMasEditTable();
+  updateMasEditBulkBar();
+}
+
+function updateMasEditBulkBar(){
+  const n = _masEditSelected.size;
+  const bar = document.getElementById('masEditBulkBar');
+  const cnt = document.getElementById('masEditBulkCountNum');
+  const btnTodos = document.getElementById('masEditBtnSelTodos');
+  if(bar) bar.style.display = (n>0 && isEditor()) ? 'flex' : 'none';
+  if(cnt) cnt.textContent = n;
+  if(btnTodos) btnTodos.style.display = (isEditor() && filteredDataMasiva.length>0) ? '' : 'none';
+  if(btnTodos){
+    const allSel = filteredDataMasiva.length>0 && filteredDataMasiva.every(e=>_masEditSelected.has(e.id));
+    btnTodos.innerHTML = allSel
+      ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Deseleccionar todos'
+      : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Seleccionar todos (' + filteredDataMasiva.length + ')';
+  }
+}
+
+function limpiarMasEditSeleccion(){
+  _masEditSelected.clear();
+  const hdr = document.getElementById('masEditCheckAllHeader');
+  if(hdr){ hdr.checked=false; hdr.indeterminate=false; }
+  renderMasEditTable();
+  updateMasEditBulkBar();
+}
+
+// Campos editables en bloque desde esta pestaña + su catálogo correspondiente
+const _MASEDIT_CAMPOS = [
+  { campo:'cliente',      selId:'masedit-cliente',      catKey:'clientes',      label:'Cliente / Entidad' },
+  { campo:'cargo',        selId:'masedit-cargo',        catKey:'cargos',        label:'Cargo' },
+  { campo:'eps',          selId:'masedit-eps',          catKey:'eps',           label:'EPS' },
+  { campo:'afp',          selId:'masedit-afp',          catKey:'afp',           label:'AFP' },
+  { campo:'arl',          selId:'masedit-arl',          catKey:'arl',           label:'ARL' },
+  { campo:'municipio',    selId:'masedit-municipio',    catKey:'municipios',    label:'Municipio' },
+  { campo:'departamento', selId:'masedit-departamento', catKey:'departamentos', label:'Departamento' },
+  { campo:'escolaridad',  selId:'masedit-escolaridad',  catKey:'escolaridad',   label:'Escolaridad' },
+  { campo:'motivo',       selId:'masedit-motivo',       catKey:'motivosRetiro', label:'Motivo de retiro' },
+];
+
+function abrirModalMasEdit(){
+  if(_masEditSelected.size === 0) return;
+  const n = _masEditSelected.size;
+  document.getElementById('masedit-resumen').textContent = n + ' empleado' + (n!==1?'s':'');
+  _MASEDIT_CAMPOS.forEach(({selId, catKey})=>{
+    const sel = document.getElementById(selId);
+    if(!sel) return;
+    sel.innerHTML = '<option value="">— No cambiar —</option>' + (CATALOGS[catKey]||[]).map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+    sel.value = '';
+  });
+  document.getElementById('modal-masedit-bulk').style.display = 'flex';
+}
+
+function cerrarModalMasEdit(){
+  document.getElementById('modal-masedit-bulk').style.display = 'none';
+}
+
+async function ejecutarMasEdit(){
+  const cambios = {};
+  const descPartes = [];
+  _MASEDIT_CAMPOS.forEach(({campo, selId, label})=>{
+    const val = document.getElementById(selId)?.value;
+    if(val){ cambios[campo] = val; descPartes.push(label + ' → "' + val + '"'); }
+  });
+
+  if(!Object.keys(cambios).length){
+    showToast('Elige al menos un campo para cambiar');
+    return;
+  }
+
+  const ids = [..._masEditSelected];
+  if(!confirm(
+    'Se aplicará a ' + ids.length.toLocaleString('es-CO') + ' empleado(s):\n\n' + descPartes.join('\n') + '\n\n¿Confirmar? Esta acción no se puede deshacer.'
+  )) return;
+
+  cerrarModalMasEdit();
+  showBlockingOverlay('Actualizando ' + ids.length.toLocaleString('es-CO') + ' empleado(s)...');
+
+  cambios.updated_at = new Date().toISOString();
+  let errores = 0;
+  const LOTE = 400;
+  try {
+    for(let i=0; i<ids.length; i+=LOTE){
+      const lote = ids.slice(i, i+LOTE);
+      const { error } = await sb.from('empleados').update(cambios).in('id', lote);
+      if(error){ errores++; continue; }
+      lote.forEach(id=>{
+        const e = EMPLEADOS.find(x=>x.id===id);
+        if(e) Object.assign(e, cambios);
+      });
+    }
+  } finally {
+    hideBlockingOverlay();
+  }
+
+  await logAudit('update', 'empleados', '',
+    'Edición masiva (Corrección de Datos) de ' + ids.length + ' empleado(s): ' + descPartes.join('; '));
+
+  limpiarMasEditSeleccion();
+  filteredData = [...EMPLEADOS];
+  initFilters(); filterTable();          // refresca Empleados
+  initMasEditFilters(); filterMasEdit(); // refresca esta misma pestaña con los valores nuevos
+  try { renderAlerts(); } catch(e) {}
+  try { refreshDashboard(); } catch(e) {}
+  try { buildDuplicados(); } catch(e) {}
+
+  showToast(errores
+    ? '&#9888; Aplicado con ' + errores + ' lote(s) con error — revisa e intenta de nuevo'
+    : '&#10003; ' + ids.length.toLocaleString('es-CO') + ' empleado(s) actualizados');
 }
 
 // ── ACCIONES REALES DEL MÓDULO CORRECCIÓN DE DATOS ────────────────────────
@@ -8895,7 +9319,8 @@ async function unificarVarianteNombre(idx) {
   }
 
   filteredData = [...EMPLEADOS];
-  filterTable(); refreshDashboard();
+  // Mismo patrón que resolverDupExacto/adoptarCedula: refresca desplegables, tabla, alertas y dashboard
+  initFilters(); filterTable(); renderAlerts(); refreshDashboard();
   await logAudit('update','catalogos','', 'Unific\xf3 ' + ok + ' variantes de ' + campoLabel + ' a: ' + targetName);
   showToast('&#10003; ' + ok + ' variante' + (ok!==1?'s':'') + ' de ' + campoLabel + ' unificada' + (ok!==1?'s':'') + ' a "' + escapeHTML(targetName) + '"');
   setTimeout(() => buildDuplicados(), 300);
@@ -9101,6 +9526,36 @@ function buildDuplicados() {
       campoMaps[type][k]=(campoMaps[type][k]||0)+1;
     });
   });
+
+  // ── Resumen "fuera de catálogo" — qué tan limpia está la base, de un vistazo ──
+  // Reutiliza campoMaps (ya calculado arriba) para no volver a recorrer EMPLEADOS.
+  (function renderResumenFueraCatalogo(){
+    const el = document.getElementById('dup-resumen-fuera-catalogo');
+    if (!el) return;
+    let totalRegistros = 0;
+    const porCampo = [];
+    Object.entries(_SIM_TYPE_CONFIG).forEach(([type, cfg]) => {
+      const catalogo = CATALOGS[cfg.catKey] || [];
+      let regsCampo = 0, valoresCampo = 0;
+      Object.entries(campoMaps[type]).forEach(([valor, count]) => {
+        const enCatalogo = catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === removeAccents(valor.toUpperCase()));
+        if (!enCatalogo) { regsCampo += count; valoresCampo++; }
+      });
+      totalRegistros += regsCampo;
+      if (regsCampo) porCampo.push({ label: cfg.campoLabel, regs: regsCampo, valores: valoresCampo });
+    });
+    porCampo.sort((a,b) => b.regs - a.regs);
+
+    if (!totalRegistros) {
+      el.innerHTML = '<div style="background:var(--green-light);border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;font-size:12px;color:var(--green);font-weight:600">&#10003; Ningún registro tiene valores fuera del catálogo — base 100% catalogada.</div>';
+      return;
+    }
+    const detalle = porCampo.map(p => p.label + ' (' + p.regs.toLocaleString('es-CO') + ')').join(' &middot; ');
+    el.innerHTML = '<div style="background:var(--orange-light);border:1px solid #fde68a;border-radius:8px;padding:12px 16px">'
+      + '<div style="font-size:13px;font-weight:700;color:#92400e">&#9888; ' + totalRegistros.toLocaleString('es-CO') + ' registros con valores fuera del catálogo</div>'
+      + '<div style="font-size:11px;color:#92400e;margin-top:3px">' + detalle + '</div>'
+      + '</div>';
+  })();
 
   // Función que busca la mejor coincidencia en el catálogo para un grupo de variantes
   function findCatMatch(groupVariants, type) {
