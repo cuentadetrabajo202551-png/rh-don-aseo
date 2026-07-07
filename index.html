@@ -741,6 +741,7 @@ tr.bg-selected td{background:#eff6ff!important}
   <div id="sb-nav-certificados" class="sb-item" onclick="showSection('certificados',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15h6"/><path d="M9 11h6"/></svg>
     Certificados
+    <span class="sb-badge" id="sb-certificados-badge" style="display:none">0</span>
   </div>
   <div id="sb-nav-fechas" class="sb-item" onclick="showSection('fechas',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
@@ -4390,6 +4391,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     await loadFromSupabase();
     _startRealtimeSync();
     _startCertBadgeAutoRefresh();
+    _startCertSolRealtimeSync();
   }
   // Si no hay sesion, la pantalla de login ya esta visible por defecto
 });
@@ -7905,6 +7907,7 @@ async function doLogin() {
   await loadFromSupabase();
   _startRealtimeSync();  // tiempo real vía Supabase Realtime
   _startCertBadgeAutoRefresh();
+  _startCertSolRealtimeSync();
   btn.disabled = false;
   btn.textContent = 'Iniciar sesion';
 }
@@ -10132,6 +10135,9 @@ async function refreshCertSolBadge() {
   const n = count || 0;
   const b1 = document.getElementById('cert-sol-badge');
   if (b1) { b1.textContent = n; b1.style.display = n > 0 ? '' : 'none'; }
+  // Burbuja en el sidebar, junto al nombre "Certificados" — visible sin entrar a la sección
+  const b2 = document.getElementById('sb-certificados-badge');
+  if (b2) { b2.textContent = n; b2.style.display = n > 0 ? '' : 'none'; }
 }
 
 // Refresco automático del contador de solicitudes (las nuevas llegan desde el Google Form,
@@ -10149,6 +10155,34 @@ function _startCertBadgeAutoRefresh() {
       _certRenderSolicitudesTabla();
     }
   }, 45000);
+}
+
+// ── Tiempo real: solicitudes de certificado (llegan desde el Google Form) ──────────────
+// Requiere que la tabla esté agregada a la publicación de Supabase Realtime (una sola vez):
+//   ALTER PUBLICATION supabase_realtime ADD TABLE certificados_solicitudes;
+// Si no se ejecuta ese SQL, esta suscripción simplemente no recibe eventos y el sistema
+// sigue funcionando igual gracias al respaldo de _startCertBadgeAutoRefresh() (cada 45s).
+let _certSolChannel = null;
+function _startCertSolRealtimeSync() {
+  if (_certSolChannel) { sb.removeChannel(_certSolChannel); _certSolChannel = null; }
+  _certSolChannel = sb.channel('rt-certificados-solicitudes')
+    .on('postgres_changes',
+      { event: '*', schema: 'public', table: 'certificados_solicitudes' },
+      async (payload) => {
+        refreshCertSolBadge();
+        // Si la pestaña "Solicitudes pendientes" está abierta, refrescar la tabla también
+        const cont = document.getElementById('cert-content-solicitudes');
+        const secActiva = document.getElementById('section-certificados')?.classList.contains('active');
+        if (cont && cont.style.display !== 'none' && secActiva) {
+          await loadCertSolicitudes();
+          _certRenderSolicitudesTabla();
+        }
+        if (payload.eventType === 'INSERT') {
+          showToast('&#128233; Nueva solicitud de certificado recibida');
+        }
+      }
+    )
+    .subscribe();
 }
 
 function buildCertSolicitudes() {
