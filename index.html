@@ -2875,30 +2875,34 @@ async function ejecutarBulkEdit() {
     'Se aplicará a ' + ids.length + ' empleado(s):\n\n' + desc + '\n\n¿Confirmar?'
   )) return;
 
-  showToast('Aplicando cambios a ' + ids.length + ' empleado(s)...');
+  showBlockingOverlay('Aplicando cambios a ' + ids.length + ' empleado(s)...');
   cambios.updated_at = new Date().toISOString();
 
-  // Actualizar en Supabase en un solo update (todos los ids comparten los mismos valores)
-  const { error } = await sb.from('empleados').update(cambios).in('id', ids);
-  if (error) { showToast('Error: ' + error.message); return; }
+  try {
+    // Actualizar en Supabase en un solo update (todos los ids comparten los mismos valores)
+    const { error } = await sb.from('empleados').update(cambios).in('id', ids);
+    if (error) { showToast('Error: ' + error.message); return; }
 
-  // Actualizar array local
-  ids.forEach(id => {
-    const e = EMPLEADOS.find(x => x.id === id);
-    if (e) { if (nuevoCliente) e.cliente = nuevoCliente; if (nuevoCargo) e.cargo = nuevoCargo; }
-  });
+    // Actualizar array local
+    ids.forEach(id => {
+      const e = EMPLEADOS.find(x => x.id === id);
+      if (e) { if (nuevoCliente) e.cliente = nuevoCliente; if (nuevoCargo) e.cargo = nuevoCargo; }
+    });
 
-  await logAudit('update', 'empleados', '',
-    'Edición masiva de ' + ids.length + ' empleado(s): ' + desc.replace(/\n/g, '; '));
+    await logAudit('update', 'empleados', '',
+      'Edición masiva de ' + ids.length + ' empleado(s): ' + desc.replace(/\n/g, '; '));
 
-  cerrarModalBulkEdit();
-  limpiarSeleccion();
-  filteredData = [...EMPLEADOS];
-  initFilters(); filterTable();
-  try { renderAlerts(); } catch(e) {}
-  try { refreshDashboard(); } catch(e) {}
-  try { buildDuplicados(); } catch(e) {}
-  showToast('✓ ' + ids.length + ' empleado(s) actualizados');
+    cerrarModalBulkEdit();
+    limpiarSeleccion();
+    filteredData = [...EMPLEADOS];
+    initFilters(); filterTable();
+    try { renderAlerts(); } catch(e) {}
+    try { refreshDashboard(); } catch(e) {}
+    try { buildDuplicados(); } catch(e) {}
+    showToast('✓ ' + ids.length + ' empleado(s) actualizados');
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 // ────────────────────────────────────────────────────────────────────────────
 
@@ -2951,25 +2955,30 @@ async function ejecutarTrasladar() {
     return { id, clienteAnterior: emp?.cliente || '—', nombre: emp?.nombre || '—' };
   });
 
-  const { error } = await sb.from('empleados')
-    .update({ cliente: nuevoCliente, updated_at: new Date().toISOString() })
-    .in('id', ids);
-  if (error) { showToast('Error: ' + error.message); return; }
+  showBlockingOverlay('Trasladando ' + ids.length + ' empleado(s)...');
+  try {
+    const { error } = await sb.from('empleados')
+      .update({ cliente: nuevoCliente, updated_at: new Date().toISOString() })
+      .in('id', ids);
+    if (error) { showToast('Error: ' + error.message); return; }
 
-  // Actualizar array local + loguear cada empleado individualmente
-  for (const { id, clienteAnterior, nombre } of snapshots) {
-    const emp = EMPLEADOS.find(e => e.id === id);
-    if (emp) emp.cliente = nuevoCliente;
-    await logAudit('traslado', 'empleados', String(id),
-      'Traslado de "' + clienteAnterior + '" → "' + nuevoCliente + '" (efectivo ' + fecha + ')',
-      { campo: 'cliente', anterior: clienteAnterior, nuevo: nuevoCliente, fecha });
+    // Actualizar array local + loguear cada empleado individualmente
+    for (const { id, clienteAnterior, nombre } of snapshots) {
+      const emp = EMPLEADOS.find(e => e.id === id);
+      if (emp) emp.cliente = nuevoCliente;
+      await logAudit('traslado', 'empleados', String(id),
+        'Traslado de "' + clienteAnterior + '" → "' + nuevoCliente + '" (efectivo ' + fecha + ')',
+        { campo: 'cliente', anterior: clienteAnterior, nuevo: nuevoCliente, fecha });
+    }
+
+    cerrarModalTrasladar();
+    limpiarSeleccion();
+    filterTable();
+    refreshDashboard();
+    showToast('✓ ' + ids.length + ' empleado' + (ids.length!==1?'s':'') + ' trasladado' + (ids.length!==1?'s':'') + ' a ' + nuevoCliente);
+  } finally {
+    hideBlockingOverlay();
   }
-
-  cerrarModalTrasladar();
-  limpiarSeleccion();
-  filterTable();
-  refreshDashboard();
-  showToast('✓ ' + ids.length + ' empleado' + (ids.length!==1?'s':'') + ' trasladado' + (ids.length!==1?'s':'') + ' a ' + nuevoCliente);
 }
 
 // ── MODAL BAJA MASIVA ─────────────────────────────────────────────────────
@@ -2998,24 +3007,29 @@ async function ejecutarDesactivar() {
   const ids   = [..._selectedEmps];
   const fecha = _fromInputDate(fechaRaw);
 
-  const { error } = await sb.from('empleados')
-    .update({ estado: 'INACTIVO', retiro: fecha, motivo, updated_at: new Date().toISOString() })
-    .in('id', ids);
-  if (error) { showToast('Error: ' + error.message); return; }
+  showBlockingOverlay('Dando de baja a ' + ids.length + ' empleado(s)...');
+  try {
+    const { error } = await sb.from('empleados')
+      .update({ estado: 'INACTIVO', retiro: fecha, motivo, updated_at: new Date().toISOString() })
+      .in('id', ids);
+    if (error) { showToast('Error: ' + error.message); return; }
 
-  // Actualizar array local
-  ids.forEach(id => {
-    const emp = EMPLEADOS.find(e => e.id === id);
-    if (emp) { emp.estado = 'INACTIVO'; emp.retiro = fecha; emp.motivo = motivo; }
-  });
+    // Actualizar array local
+    ids.forEach(id => {
+      const emp = EMPLEADOS.find(e => e.id === id);
+      if (emp) { emp.estado = 'INACTIVO'; emp.retiro = fecha; emp.motivo = motivo; }
+    });
 
-  await logAudit('update', 'empleados', '', 'Baja masiva de ' + ids.length + ' empleados - ' + motivo + ' (' + fecha + ')');
-  cerrarModalDesactivar();
-  limpiarSeleccion();
-  filterTable();
-  renderAlerts();
-  refreshDashboard();
-  showToast('✓ ' + ids.length + ' empleado' + (ids.length!==1?'s':'') + ' dado' + (ids.length!==1?'s':'') + ' de baja');
+    await logAudit('update', 'empleados', '', 'Baja masiva de ' + ids.length + ' empleados - ' + motivo + ' (' + fecha + ')');
+    cerrarModalDesactivar();
+    limpiarSeleccion();
+    filterTable();
+    renderAlerts();
+    refreshDashboard();
+    showToast('✓ ' + ids.length + ' empleado' + (ids.length!==1?'s':'') + ' dado' + (ids.length!==1?'s':'') + ' de baja');
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 function sortTable(field){
@@ -3297,6 +3311,7 @@ async function eliminarEmpleado() {
     )) return;
   }
 
+  showBlockingOverlay('Eliminando empleado...');
   try {
     // 1. Eliminar documentos adjuntos de Storage
     const { data: docs } = await sb.from('documentos_empleados')
@@ -3329,6 +3344,8 @@ async function eliminarEmpleado() {
   } catch(e) {
     showToast('Error inesperado: ' + e.message);
     console.error('eliminarEmpleado error:', e);
+  } finally {
+    hideBlockingOverlay();
   }
 }
 
@@ -3460,32 +3477,37 @@ async function saveEdit(){
   datosNuevos.arl       = _snapToCatalog(datosNuevos.arl,       'arl');
   datosNuevos.municipio = _snapToCatalog(datosNuevos.municipio, 'municipios');
 
-  if (_editingEmpId) {
-    // Editar en Supabase
-    const supUpdate = await sb.from('empleados').update(datosNuevos).eq('id', _editingEmpId);
-    if (supUpdate.error) { showToast('Error al guardar: ' + supUpdate.error.message); console.error(supUpdate.error); return; }
-    const idx = EMPLEADOS.findIndex(e => e.id === _editingEmpId);
-    if (idx !== -1) Object.assign(EMPLEADOS[idx], datosNuevos);
-    await logAudit('update', 'empleados', _editingEmpId, 'Actualizo datos de: ' + (datosNuevos.nombre||'empleado'));
-    showToast('Empleado actualizado en Supabase');
-  } else {
-    // Crear en Supabase
-    const nuevoRow = Object.assign({departamento:'',incapacitado:'',tiene_errores:false}, datosNuevos);
-    const supInsert = await sb.from('empleados').insert([nuevoRow]).select();
-    if (supInsert.error) { showToast('Error al crear: ' + supInsert.error.message); console.error(supInsert.error); return; }
-    if (supInsert.data) EMPLEADOS.push(...supInsert.data);
-    await logAudit('create', 'empleados', supInsert.data?.[0]?.id||'', 'Creo nuevo empleado: ' + (datosNuevos.nombre||'—'));
-    showToast('Empleado creado en Supabase');
+  showBlockingOverlay(_editingEmpId ? 'Guardando cambios...' : 'Creando empleado...');
+  try {
+    if (_editingEmpId) {
+      // Editar en Supabase
+      const supUpdate = await sb.from('empleados').update(datosNuevos).eq('id', _editingEmpId);
+      if (supUpdate.error) { showToast('Error al guardar: ' + supUpdate.error.message); console.error(supUpdate.error); return; }
+      const idx = EMPLEADOS.findIndex(e => e.id === _editingEmpId);
+      if (idx !== -1) Object.assign(EMPLEADOS[idx], datosNuevos);
+      await logAudit('update', 'empleados', _editingEmpId, 'Actualizo datos de: ' + (datosNuevos.nombre||'empleado'));
+      showToast('Empleado actualizado en Supabase');
+    } else {
+      // Crear en Supabase
+      const nuevoRow = Object.assign({departamento:'',incapacitado:'',tiene_errores:false}, datosNuevos);
+      const supInsert = await sb.from('empleados').insert([nuevoRow]).select();
+      if (supInsert.error) { showToast('Error al crear: ' + supInsert.error.message); console.error(supInsert.error); return; }
+      if (supInsert.data) EMPLEADOS.push(...supInsert.data);
+      await logAudit('create', 'empleados', supInsert.data?.[0]?.id||'', 'Creo nuevo empleado: ' + (datosNuevos.nombre||'—'));
+      showToast('Empleado creado en Supabase');
+    }
+
+    // Re-renderizar todos los componentes que dependen de EMPLEADOS
+    filteredData = [...EMPLEADOS];
+    filterTable();
+    renderAlerts();
+    refreshDashboard();
+    buildDuplicados();
+
+    closeEditModal();
+  } finally {
+    hideBlockingOverlay();
   }
-
-  // Re-renderizar todos los componentes que dependen de EMPLEADOS
-  filteredData = [...EMPLEADOS];
-  filterTable();
-  renderAlerts();
-  refreshDashboard();
-  buildDuplicados();
-
-  closeEditModal();
 }
 
 // ══════════════════════════════════════════════════════════════════════════
@@ -3627,20 +3649,24 @@ async function subirDocumento(input, tipo) {
   const file = input.files[0];
   if (!file || !_docsEmpId) return;
   if (file.size > 10*1024*1024) { showToast('Maximo 10MB por archivo'); return; }
-  showToast('Subiendo ' + file.name + '...');
-  const path = _docsEmpId + '/' + tipo + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
-  if (upErr) { showToast('Error: ' + upErr.message); return; }
-  const { error: dbErr } = await sb.from('documentos_empleados').insert([{
-    empleado_id: String(_docsEmpId), tipo, nombre: file.name,
-    storage_path: path, tamanio: file.size,
-    subido_por: _currentUser?.display_name || _currentUser?.email || 'Usuario'
-  }]);
-  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
-  await logAudit('create', 'documentos', String(_docsEmpId), 'Subio documento ' + tipo + ': ' + file.name);
-  showToast('Documento subido correctamente');
-  input.value = '';
-  loadDocumentos();
+  showBlockingOverlay('Subiendo ' + file.name + '...');
+  try {
+    const path = _docsEmpId + '/' + tipo + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+    const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
+    if (upErr) { showToast('Error: ' + upErr.message); return; }
+    const { error: dbErr } = await sb.from('documentos_empleados').insert([{
+      empleado_id: String(_docsEmpId), tipo, nombre: file.name,
+      storage_path: path, tamanio: file.size,
+      subido_por: _currentUser?.display_name || _currentUser?.email || 'Usuario'
+    }]);
+    if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
+    await logAudit('create', 'documentos', String(_docsEmpId), 'Subio documento ' + tipo + ': ' + file.name);
+    showToast('Documento subido correctamente');
+    input.value = '';
+    loadDocumentos();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 function subirDocDesdeBoton(input) {
@@ -3660,17 +3686,22 @@ async function descargarDocumento(id, storagePath) {
 
 async function eliminarDocumento(id, storagePath) {
   if (!confirm('Eliminar este documento? Esta accion no se puede deshacer.')) return;
-  const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
-  if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
-  const { error: dbErr } = await sb.from('documentos_empleados').delete().eq('id', id);
-  if (dbErr) { showToast('Archivo eliminado del storage pero error en base de datos: ' + dbErr.message); return; }
-  if (_docsEmpId && _docsCounts[_docsEmpId]) {
-    _docsCounts[_docsEmpId] = Math.max(0, _docsCounts[_docsEmpId] - 1);
-    renderTable();
+  showBlockingOverlay('Eliminando documento...');
+  try {
+    const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
+    if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
+    const { error: dbErr } = await sb.from('documentos_empleados').delete().eq('id', id);
+    if (dbErr) { showToast('Archivo eliminado del storage pero error en base de datos: ' + dbErr.message); return; }
+    if (_docsEmpId && _docsCounts[_docsEmpId]) {
+      _docsCounts[_docsEmpId] = Math.max(0, _docsCounts[_docsEmpId] - 1);
+      renderTable();
+    }
+    await logAudit('delete', 'documentos', String(_docsEmpId), 'Elimino documento');
+    showToast('Documento eliminado');
+    loadDocumentos();
+  } finally {
+    hideBlockingOverlay();
   }
-  await logAudit('delete', 'documentos', String(_docsEmpId), 'Elimino documento');
-  showToast('Documento eliminado');
-  loadDocumentos();
 }
 let _fechasTabActiva = 'cumple';
 
@@ -5433,15 +5464,20 @@ async function guardarEdicionNovedad(id) {
     updated_por_nombre: _currentUser.display_name || _currentUser.email
   };
 
-  const { error } = await sb.from('novedades').update(cambios).eq('id', id);
-  if (error) { showToast('Error: ' + error.message); return; }
+  showBlockingOverlay('Guardando cambios...');
+  try {
+    const { error } = await sb.from('novedades').update(cambios).eq('id', id);
+    if (error) { showToast('Error: ' + error.message); return; }
 
-  Object.assign(nov, cambios);
-  _updateNovedadesBadge();
-  await logAudit('update', 'novedades', id, 'Editó novedad ' + tipo + ' de ' + nov.empleado_nombre);
-  showToast('✓ Novedad actualizada');
-  _cerrarModalEditarNovedad();
-  if (_novedadesTabActiva === 'historial') buildNovedadesHistorial();
+    Object.assign(nov, cambios);
+    _updateNovedadesBadge();
+    await logAudit('update', 'novedades', id, 'Editó novedad ' + tipo + ' de ' + nov.empleado_nombre);
+    showToast('✓ Novedad actualizada');
+    _cerrarModalEditarNovedad();
+    if (_novedadesTabActiva === 'historial') buildNovedadesHistorial();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 async function eliminarNovedad(id) {
@@ -5449,18 +5485,23 @@ async function eliminarNovedad(id) {
   if (!canDeleteNovedad(nov)) { showToast('No tienes permiso para eliminar esta novedad'); return; }
   if (!confirm('¿Eliminar esta novedad y todos sus soportes adjuntos? Esta acción no se puede deshacer.')) return;
 
-  const { data: soportes } = await sb.from('novedades_soportes').select('storage_path').eq('novedad_id', id);
-  if (soportes && soportes.length) {
-    await sb.storage.from('documentos').remove(soportes.map(s => s.storage_path));
-  }
-  const { error } = await sb.from('novedades').delete().eq('id', id);
-  if (error) { showToast('Error: ' + error.message); return; }
+  showBlockingOverlay('Eliminando novedad...');
+  try {
+    const { data: soportes } = await sb.from('novedades_soportes').select('storage_path').eq('novedad_id', id);
+    if (soportes && soportes.length) {
+      await sb.storage.from('documentos').remove(soportes.map(s => s.storage_path));
+    }
+    const { error } = await sb.from('novedades').delete().eq('id', id);
+    if (error) { showToast('Error: ' + error.message); return; }
 
-  NOVEDADES = NOVEDADES.filter(n => n.id !== id);
-  _updateNovedadesBadge();
-  await logAudit('delete', 'novedades', id, 'Eliminó novedad ' + (nov?.tipo||'') + ' de ' + (nov?.empleado_nombre||''));
-  showToast('Novedad eliminada');
-  if (_novedadesTabActiva === 'historial') buildNovedadesHistorial();
+    NOVEDADES = NOVEDADES.filter(n => n.id !== id);
+    _updateNovedadesBadge();
+    await logAudit('delete', 'novedades', id, 'Eliminó novedad ' + (nov?.tipo||'') + ' de ' + (nov?.empleado_nombre||''));
+    showToast('Novedad eliminada');
+    if (_novedadesTabActiva === 'historial') buildNovedadesHistorial();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // ── Soportes adjuntos (mismo patrón que subirDocumentoConTitulo/descargarDocumento/eliminarDocumento) ──
@@ -5488,11 +5529,15 @@ async function subirSoporteNovedad(input, novedadId) {
   const nov = NOVEDADES.find(n => n.id === novedadId);
   if (!canEditNovedad(nov)) { showToast('No tienes permiso'); input.value=''; return; }
 
-  showToast('Subiendo ' + file.name + '...');
-  const ok = await _subirArchivoDirecto(file, novedadId);
-  if (ok) showToast('✓ Soporte adjuntado');
-  input.value = '';
-  if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
+  showBlockingOverlay('Subiendo ' + file.name + '...');
+  try {
+    const ok = await _subirArchivoDirecto(file, novedadId);
+    if (ok) showToast('✓ Soporte adjuntado');
+    input.value = '';
+    if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 async function descargarSoporteNovedad(storagePath) {
@@ -5506,14 +5551,19 @@ async function eliminarSoporteNovedad(id, storagePath, novedadId) {
   if (!canEditNovedad(nov)) { showToast('No tienes permiso'); return; }
   if (!confirm('¿Eliminar este soporte?')) return;
 
-  const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
-  if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
-  const { error: dbErr } = await sb.from('novedades_soportes').delete().eq('id', id);
-  if (dbErr) { showToast('Error en base de datos: ' + dbErr.message); return; }
+  showBlockingOverlay('Eliminando soporte...');
+  try {
+    const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
+    if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
+    const { error: dbErr } = await sb.from('novedades_soportes').delete().eq('id', id);
+    if (dbErr) { showToast('Error en base de datos: ' + dbErr.message); return; }
 
-  await logAudit('delete', 'novedades_soportes', novedadId, 'Eliminó soporte adjunto');
-  showToast('Soporte eliminado');
-  if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
+    await logAudit('delete', 'novedades_soportes', novedadId, 'Eliminó soporte adjunto');
+    showToast('Soporte eliminado');
+    if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // ── Router de sub-tabs de la sección Novedades ────────────────────────────
@@ -7594,12 +7644,17 @@ async function limpiarAuditoria() {
     : 'Eliminar TODO el historial de auditoria? Esta accion no se puede deshacer.';
   if (!confirm(msg)) return;
 
-  let query = sb.from('audit_log').delete().neq('id', 0);  // delete all matching filter
-  if (filter) query = sb.from('audit_log').delete().eq('action', filter);
-  const { error } = await query;
-  if (error) { showToast('Error: ' + error.message); return; }
-  showToast('✓ Historial limpiado');
-  loadAuditLog();
+  showBlockingOverlay('Limpiando historial...');
+  try {
+    let query = sb.from('audit_log').delete().neq('id', 0);  // delete all matching filter
+    if (filter) query = sb.from('audit_log').delete().eq('action', filter);
+    const { error } = await query;
+    if (error) { showToast('Error: ' + error.message); return; }
+    showToast('✓ Historial limpiado');
+    loadAuditLog();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // ── PANEL DE PERFIL USUARIO ────────────────────────────────────────────────
@@ -7647,14 +7702,19 @@ async function guardarPerfil() {
   const nombre = document.getElementById('ppu-input-nombre').value.trim();
   const cargo  = document.getElementById('ppu-input-cargo').value.trim();
   if (!nombre) { showToast('El nombre no puede estar vacío'); return; }
-  const { error } = await sb.from('profiles').update({ display_name: nombre, cargo, updated_at: new Date().toISOString() }).eq('id', _currentUser.id);
-  if (error) { showToast('Error: ' + error.message); return; }
-  _currentUser.display_name = nombre;
-  _currentUser.cargo        = cargo;
-  applyRoleVisibility();
-  await logAudit('update', 'perfil', _currentUser.id, 'Actualizo nombre/cargo');
-  showToast('✓ Perfil actualizado');
-  cerrarPerfilUsuario();
+  showBlockingOverlay('Guardando perfil...');
+  try {
+    const { error } = await sb.from('profiles').update({ display_name: nombre, cargo, updated_at: new Date().toISOString() }).eq('id', _currentUser.id);
+    if (error) { showToast('Error: ' + error.message); return; }
+    _currentUser.display_name = nombre;
+    _currentUser.cargo        = cargo;
+    applyRoleVisibility();
+    await logAudit('update', 'perfil', _currentUser.id, 'Actualizo nombre/cargo');
+    showToast('✓ Perfil actualizado');
+    cerrarPerfilUsuario();
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 function triggerAvatarUpload() {
@@ -7665,20 +7725,24 @@ async function subirFotoPerfil(input) {
   const file = input.files[0];
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) { showToast('La imagen no debe superar 2MB'); return; }
-  showToast('Subiendo foto...');
-  const ext  = file.name.split('.').pop();
-  const path = _currentUser.id + '/avatar.' + ext;
-  const { error: upErr } = await sb.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: true });
-  if (upErr) { showToast('Error subiendo foto: ' + upErr.message); return; }
-  const { data: { publicUrl } } = sb.storage.from('avatars').getPublicUrl(path);
-  const url = publicUrl + '?t=' + Date.now();  // busto caché
-  const { error: profErr } = await sb.from('profiles').update({ avatar_url: url }).eq('id', _currentUser.id);
-  if (profErr) { showToast('Foto subida pero error guardando en perfil: ' + profErr.message); return; }
-  _currentUser.avatar_url = url;
-  applyRoleVisibility();
-  abrirPerfilUsuario();  // refrescar panel
-  await logAudit('update', 'perfil', _currentUser.id, 'Actualizo foto de perfil');
-  showToast('✓ Foto actualizada');
+  showBlockingOverlay('Subiendo foto...');
+  try {
+    const ext  = file.name.split('.').pop();
+    const path = _currentUser.id + '/avatar.' + ext;
+    const { error: upErr } = await sb.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: true });
+    if (upErr) { showToast('Error subiendo foto: ' + upErr.message); return; }
+    const { data: { publicUrl } } = sb.storage.from('avatars').getPublicUrl(path);
+    const url = publicUrl + '?t=' + Date.now();  // busto caché
+    const { error: profErr } = await sb.from('profiles').update({ avatar_url: url }).eq('id', _currentUser.id);
+    if (profErr) { showToast('Foto subida pero error guardando en perfil: ' + profErr.message); return; }
+    _currentUser.avatar_url = url;
+    applyRoleVisibility();
+    abrirPerfilUsuario();  // refrescar panel
+    await logAudit('update', 'perfil', _currentUser.id, 'Actualizo foto de perfil');
+    showToast('✓ Foto actualizada');
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // ── GESTIÓN DE USUARIOS (solo admin) ──────────────────────────────────────
@@ -7695,19 +7759,24 @@ async function crearNuevoUsuario() {
   if (!nombre || !email || !pass) { showToast('Nombre, correo y contrasena son obligatorios'); return; }
   if (pass.length < 8) { showToast('La contrasena debe tener minimo 8 caracteres'); return; }
 
-  const { data: signUpData, error } = await sb.auth.signUp({ email, password: pass });
-  if (error) { showToast('Error: ' + error.message); return; }
+  showBlockingOverlay('Creando usuario...');
+  try {
+    const { data: signUpData, error } = await sb.auth.signUp({ email, password: pass });
+    if (error) { showToast('Error: ' + error.message); return; }
 
-  if (signUpData.user) {
-    const { error: profErr } = await sb.from('profiles').upsert({ id: signUpData.user.id, display_name: nombre, cargo, role, email });
-    if (profErr) showToast('Usuario creado en auth pero error guardando perfil: ' + profErr.message);
-    await logAudit('create', 'usuario', signUpData.user.id, 'Creo usuario ' + nombre + ' (' + email + ') con rol ' + role);
+    if (signUpData.user) {
+      const { error: profErr } = await sb.from('profiles').upsert({ id: signUpData.user.id, display_name: nombre, cargo, role, email });
+      if (profErr) showToast('Usuario creado en auth pero error guardando perfil: ' + profErr.message);
+      await logAudit('create', 'usuario', signUpData.user.id, 'Creo usuario ' + nombre + ' (' + email + ') con rol ' + role);
+    }
+
+    document.getElementById('form-nuevo-usuario').style.display = 'none';
+    ['nu-nombre','nu-cargo','nu-email','nu-pass'].forEach(id => { document.getElementById(id).value = ''; });
+    showToast('✓ Usuario creado. Se envio email de confirmacion a ' + email);
+    cargarListaUsuarios();
+  } finally {
+    hideBlockingOverlay();
   }
-
-  document.getElementById('form-nuevo-usuario').style.display = 'none';
-  ['nu-nombre','nu-cargo','nu-email','nu-pass'].forEach(id => { document.getElementById(id).value = ''; });
-  showToast('✓ Usuario creado. Se envio email de confirmacion a ' + email);
-  cargarListaUsuarios();
 }
 
 async function cargarListaUsuarios() {
@@ -7811,40 +7880,50 @@ async function guardarPerfilUsuario() {
   const cargo  = document.getElementById('meu-cargo').value.trim();
   if (!nombre) { showToast('El nombre no puede estar vacío'); return; }
 
-  let avatarUrl = null;
+  showBlockingOverlay('Guardando perfil...');
+  try {
+    let avatarUrl = null;
 
-  // Subir nueva foto si la seleccionaron
-  if (_editingUserNewPhoto) {
-    const ext  = _editingUserNewPhoto.name.split('.').pop();
-    const path = _editingUserId + '/avatar.' + ext;
-    const { error: upErr } = await sb.storage.from('avatars')
-      .upload(path, _editingUserNewPhoto, { contentType: _editingUserNewPhoto.type, upsert: true });
-    if (upErr) { showToast('Error subiendo foto: ' + upErr.message); return; }
-    const { data: { publicUrl } } = sb.storage.from('avatars').getPublicUrl(path);
-    avatarUrl = publicUrl + '?t=' + Date.now();
+    // Subir nueva foto si la seleccionaron
+    if (_editingUserNewPhoto) {
+      const ext  = _editingUserNewPhoto.name.split('.').pop();
+      const path = _editingUserId + '/avatar.' + ext;
+      const { error: upErr } = await sb.storage.from('avatars')
+        .upload(path, _editingUserNewPhoto, { contentType: _editingUserNewPhoto.type, upsert: true });
+      if (upErr) { showToast('Error subiendo foto: ' + upErr.message); return; }
+      const { data: { publicUrl } } = sb.storage.from('avatars').getPublicUrl(path);
+      avatarUrl = publicUrl + '?t=' + Date.now();
+    }
+
+    const updateData = { display_name: nombre, cargo, updated_at: new Date().toISOString() };
+    if (avatarUrl) updateData.avatar_url = avatarUrl;
+
+    const { error } = await sb.from('profiles').update(updateData).eq('id', _editingUserId);
+    if (error) { showToast('Error: ' + error.message); return; }
+
+    await logAudit('update', 'usuario', _editingUserId, 'Admin actualizo perfil de ' + nombre);
+    showToast('✓ Perfil de ' + nombre + ' actualizado');
+    cerrarEditarUsuario();
+    cargarListaUsuarios();  // refrescar la lista
+  } finally {
+    hideBlockingOverlay();
   }
-
-  const updateData = { display_name: nombre, cargo, updated_at: new Date().toISOString() };
-  if (avatarUrl) updateData.avatar_url = avatarUrl;
-
-  const { error } = await sb.from('profiles').update(updateData).eq('id', _editingUserId);
-  if (error) { showToast('Error: ' + error.message); return; }
-
-  await logAudit('update', 'usuario', _editingUserId, 'Admin actualizo perfil de ' + nombre);
-  showToast('✓ Perfil de ' + nombre + ' actualizado');
-  cerrarEditarUsuario();
-  cargarListaUsuarios();  // refrescar la lista
 }
 
 async function resetearPassword(email, nombre) {
   if (!isAdmin()) { showToast('Solo el administrador puede hacer esto'); return; }
   if (!confirm('Enviar email de recuperacion de contrasena a ' + nombre + ' (' + email + ')?')) return;
-  const { error } = await sb.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname
-  });
-  if (error) { showToast('Error: ' + error.message); return; }
-  await logAudit('update', 'usuario', '', 'Envio reset de contrasena a ' + email);
-  showToast('✓ Email de recuperacion enviado a ' + email);
+  showBlockingOverlay('Enviando email...');
+  try {
+    const { error } = await sb.auth.resetPasswordForEmail(email, {
+      redirectTo: window.location.origin + window.location.pathname
+    });
+    if (error) { showToast('Error: ' + error.message); return; }
+    await logAudit('update', 'usuario', '', 'Envio reset de contrasena a ' + email);
+    showToast('✓ Email de recuperacion enviado a ' + email);
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 async function cambiarRol(userId, select) {
@@ -7855,11 +7934,16 @@ async function cambiarRol(userId, select) {
     return;
   }
   const newRole = select.value;
-  const { error } = await sb.from('profiles').update({ role: newRole }).eq('id', userId);
-  if (error) { showToast('Error: ' + error.message); select.value = select.dataset.prev || 'viewer'; return; }
-  select.className = 'role-select ' + newRole;
-  await logAudit('update', 'usuario', userId, 'Cambio rol a ' + newRole);
-  showToast('✓ Rol actualizado');
+  showBlockingOverlay('Actualizando rol...');
+  try {
+    const { error } = await sb.from('profiles').update({ role: newRole }).eq('id', userId);
+    if (error) { showToast('Error: ' + error.message); select.value = select.dataset.prev || 'viewer'; return; }
+    select.className = 'role-select ' + newRole;
+    await logAudit('update', 'usuario', userId, 'Cambio rol a ' + newRole);
+    showToast('✓ Rol actualizado');
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // ── AUTENTICACIÓN — Login / Logout ─────────────────────────────────────────
@@ -7935,7 +8019,7 @@ async function vaciarBaseDeDatos() {
     return;
   }
 
-  showToast('Eliminando datos...');
+  showBlockingOverlay('Eliminando datos...');
 
   try {
     // 1. Documentos adjuntos (Storage + tabla)
@@ -7968,6 +8052,8 @@ async function vaciarBaseDeDatos() {
   } catch(e) {
     showToast('Error inesperado: ' + e.message);
     console.error('vaciarBaseDeDatos error:', e);
+  } finally {
+    hideBlockingOverlay();
   }
 }
 // ──────────────────────────────────────────────────────────────────────────
@@ -9266,15 +9352,18 @@ async function resolverDupExacto(cedula, accion) {
 
   if (accion === 'traslado') {
     if (!confirm('Marcar como INACTIVO el registro anterior de ' + (antiguo.nombre||cedula) + ' en ' + (antiguo.cliente||'—') + '?')) return;
-    const { error } = await sb.from('empleados').update({
-      estado: 'INACTIVO', retiro: fechaHoy, motivo: 'TERMINACION DE CONTRATO',
-      updated_at: new Date().toISOString()
-    }).eq('id', antiguo.id);
-    if (error) { showToast('Error: ' + error.message); return; }
-    const emp = EMPLEADOS.find(e => e.id === antiguo.id);
-    if (emp) { emp.estado='INACTIVO'; emp.retiro=fechaHoy; emp.motivo='TERMINACION DE CONTRATO'; }
-    await logAudit('update','empleados',cedula,'Traslado: cerro registro anterior de ' + (antiguo.cliente||'—'));
-    showToast('&#10003; Traslado aplicado — registro anterior cerrado');
+    showBlockingOverlay('Procesando...');
+    try {
+      const { error } = await sb.from('empleados').update({
+        estado: 'INACTIVO', retiro: fechaHoy, motivo: 'TERMINACION DE CONTRATO',
+        updated_at: new Date().toISOString()
+      }).eq('id', antiguo.id);
+      if (error) { showToast('Error: ' + error.message); return; }
+      const emp = EMPLEADOS.find(e => e.id === antiguo.id);
+      if (emp) { emp.estado='INACTIVO'; emp.retiro=fechaHoy; emp.motivo='TERMINACION DE CONTRATO'; }
+      await logAudit('update','empleados',cedula,'Traslado: cerro registro anterior de ' + (antiguo.cliente||'—'));
+      showToast('&#10003; Traslado aplicado — registro anterior cerrado');
+    } finally { hideBlockingOverlay(); }
 
   } else if (accion === 'historial') {
     _dupDismissed.add(cedula);
@@ -9284,24 +9373,30 @@ async function resolverDupExacto(cedula, accion) {
 
   } else if (accion === 'reingreso') {
     if (!confirm('Marcar como INACTIVO el registro anterior de ' + (antiguo.nombre||cedula) + '?')) return;
-    const { error } = await sb.from('empleados').update({
-      estado: 'INACTIVO', retiro: fechaHoy, motivo: 'RENUNCIA',
-      updated_at: new Date().toISOString()
-    }).eq('id', antiguo.id);
-    if (error) { showToast('Error: ' + error.message); return; }
-    const emp2 = EMPLEADOS.find(e => e.id === antiguo.id);
-    if (emp2) { emp2.estado='INACTIVO'; emp2.retiro=fechaHoy; emp2.motivo='RENUNCIA'; }
-    await logAudit('update','empleados',cedula,'Reingreso: registro anterior marcado como inactivo');
-    showToast('&#10003; Reingreso registrado — historial anterior cerrado');
+    showBlockingOverlay('Procesando...');
+    try {
+      const { error } = await sb.from('empleados').update({
+        estado: 'INACTIVO', retiro: fechaHoy, motivo: 'RENUNCIA',
+        updated_at: new Date().toISOString()
+      }).eq('id', antiguo.id);
+      if (error) { showToast('Error: ' + error.message); return; }
+      const emp2 = EMPLEADOS.find(e => e.id === antiguo.id);
+      if (emp2) { emp2.estado='INACTIVO'; emp2.retiro=fechaHoy; emp2.motivo='RENUNCIA'; }
+      await logAudit('update','empleados',cedula,'Reingreso: registro anterior marcado como inactivo');
+      showToast('&#10003; Reingreso registrado — historial anterior cerrado');
+    } finally { hideBlockingOverlay(); }
 
   } else if (accion === 'eliminar') {
     if (!confirm('ELIMINAR permanentemente el registro m\xe1s antiguo de ' + (antiguo.nombre||cedula) + '?\n\nEsto NO se puede deshacer.')) return;
-    const { error } = await sb.from('empleados').delete().eq('id', antiguo.id);
-    if (error) { showToast('Error: ' + error.message); return; }
-    const idx = EMPLEADOS.findIndex(e => e.id === antiguo.id);
-    if (idx !== -1) EMPLEADOS.splice(idx, 1);
-    await logAudit('delete','empleados',cedula,'Elimino registro duplicado (id=' + antiguo.id + ')');
-    showToast('&#10003; Registro duplicado eliminado');
+    showBlockingOverlay('Eliminando...');
+    try {
+      const { error } = await sb.from('empleados').delete().eq('id', antiguo.id);
+      if (error) { showToast('Error: ' + error.message); return; }
+      const idx = EMPLEADOS.findIndex(e => e.id === antiguo.id);
+      if (idx !== -1) EMPLEADOS.splice(idx, 1);
+      await logAudit('delete','empleados',cedula,'Elimino registro duplicado (id=' + antiguo.id + ')');
+      showToast('&#10003; Registro duplicado eliminado');
+    } finally { hideBlockingOverlay(); }
   }
 
   filteredData = [...EMPLEADOS];
@@ -9329,30 +9424,35 @@ async function unificarPosiblesDup(idMantener, nameKey) {
   const hoy = new Date();
   const fechaHoy = String(hoy.getDate()).padStart(2,'0') + '/' + String(hoy.getMonth()+1).padStart(2,'0') + '/' + hoy.getFullYear();
 
-  let errCount = 0;
-  for (const otro of otros) {
-    const { error } = await sb.from('empleados').update({
-      estado: 'INACTIVO', retiro: fechaHoy,
-      motivo: 'TERMINACION DE CONTRATO',
-      notas: ((otro.notas||'') + ' | Unificado: se mantiene registro CC ' + (mantener.cedula||'—')).trim(),
-      updated_at: new Date().toISOString()
-    }).eq('id', otro.id);
-    if (error) { errCount++; }
-    else {
-      const e = EMPLEADOS.find(x => x.id === otro.id);
-      if (e) { e.estado='INACTIVO'; e.retiro=fechaHoy; e.motivo='TERMINACION DE CONTRATO'; }
+  showBlockingOverlay('Unificando registros...');
+  try {
+    let errCount = 0;
+    for (const otro of otros) {
+      const { error } = await sb.from('empleados').update({
+        estado: 'INACTIVO', retiro: fechaHoy,
+        motivo: 'TERMINACION DE CONTRATO',
+        notas: ((otro.notas||'') + ' | Unificado: se mantiene registro CC ' + (mantener.cedula||'—')).trim(),
+        updated_at: new Date().toISOString()
+      }).eq('id', otro.id);
+      if (error) { errCount++; }
+      else {
+        const e = EMPLEADOS.find(x => x.id === otro.id);
+        if (e) { e.estado='INACTIVO'; e.retiro=fechaHoy; e.motivo='TERMINACION DE CONTRATO'; }
+      }
     }
+    if (errCount > 0) { showToast('Advertencia: ' + errCount + ' registro(s) no se pudieron actualizar en Supabase'); }
+
+    _posDismissed.add(nombre.toUpperCase());
+    await logAudit('update','empleados',String(idMantener),
+      'Unific\xf3 duplicado: mantuvo CC '+(mantener.cedula||'—')+', cerr\xf3 '+otros.length+' registro(s)');
+
+    filteredData = [...EMPLEADOS];
+    filterTable(); renderAlerts(); refreshDashboard();
+    showToast('&#10003; Unificaci\xf3n aplicada &mdash; registro de CC ' + (mantener.cedula||'—') + ' es el principal');
+    setTimeout(() => buildDuplicados(), 300);
+  } finally {
+    hideBlockingOverlay();
   }
-  if (errCount > 0) { showToast('Advertencia: ' + errCount + ' registro(s) no se pudieron actualizar en Supabase'); }
-
-  _posDismissed.add(nombre.toUpperCase());
-  await logAudit('update','empleados',String(idMantener),
-    'Unific\xf3 duplicado: mantuvo CC '+(mantener.cedula||'—')+', cerr\xf3 '+otros.length+' registro(s)');
-
-  filteredData = [...EMPLEADOS];
-  filterTable(); renderAlerts(); refreshDashboard();
-  showToast('&#10003; Unificaci\xf3n aplicada &mdash; registro de CC ' + (mantener.cedula||'—') + ' es el principal');
-  setTimeout(() => buildDuplicados(), 300);
 }
 
 // ── ACCIÓN: Descartar posible duplicado (mismos nombres, distintas cédulas) ─
@@ -9391,33 +9491,38 @@ async function adoptarCedula(idReferencia, nameKey) {
     '¿Confirmar? Esta acci\xf3n no se puede deshacer.'
   )) return;
 
-  let errCount = 0;
-  for (const otro of otros) {
-    const { error } = await sb.from('empleados').update({
-      cedula: ref.cedula,
-      updated_at: new Date().toISOString()
-    }).eq('id', otro.id);
-    if (error) { errCount++; }
-    else {
-      const e = EMPLEADOS.find(x => x.id === otro.id);
-      if (e) e.cedula = ref.cedula;
+  showBlockingOverlay('Corrigiendo cédula...');
+  try {
+    let errCount = 0;
+    for (const otro of otros) {
+      const { error } = await sb.from('empleados').update({
+        cedula: ref.cedula,
+        updated_at: new Date().toISOString()
+      }).eq('id', otro.id);
+      if (error) { errCount++; }
+      else {
+        const e = EMPLEADOS.find(x => x.id === otro.id);
+        if (e) e.cedula = ref.cedula;
+      }
     }
+
+    if (errCount > 0) {
+      showToast('Advertencia: ' + errCount + ' registro(s) no se pudieron actualizar en Supabase');
+    }
+
+    await logAudit('update', 'empleados', ref.cedula,
+      'Correcci\xf3n de c\xe9dula: ' + otros.length + ' registro(s) actualizados a CC ' + ref.cedula +
+      (cedulasOtras ? ' (antes: ' + cedulasOtras + ')' : '')
+    );
+
+    _posDismissed.add(nombre.toUpperCase());
+    filteredData = [...EMPLEADOS];
+    filterTable(); renderAlerts(); refreshDashboard();
+    showToast('✓ C\xe9dula corregida — ' + otros.length + ' registro(s) actualizados a CC ' + ref.cedula);
+    setTimeout(() => buildDuplicados(), 300);
+  } finally {
+    hideBlockingOverlay();
   }
-
-  if (errCount > 0) {
-    showToast('Advertencia: ' + errCount + ' registro(s) no se pudieron actualizar en Supabase');
-  }
-
-  await logAudit('update', 'empleados', ref.cedula,
-    'Correcci\xf3n de c\xe9dula: ' + otros.length + ' registro(s) actualizados a CC ' + ref.cedula +
-    (cedulasOtras ? ' (antes: ' + cedulasOtras + ')' : '')
-  );
-
-  _posDismissed.add(nombre.toUpperCase());
-  filteredData = [...EMPLEADOS];
-  filterTable(); renderAlerts(); refreshDashboard();
-  showToast('✓ C\xe9dula corregida — ' + otros.length + ' registro(s) actualizados a CC ' + ref.cedula);
-  setTimeout(() => buildDuplicados(), 300);
 }
 
 // Campos tipo catálogo que "Nombres similares" analiza en busca de variantes
@@ -9473,38 +9578,43 @@ async function unificarVarianteNombre(idx) {
     'Variantes que se cambiar\xe1n:\n' + variants.join('\n')
   )) return;
 
-  let ok = 0;
-  for (const v of variants) {
-    // Buscar los empleados de esta variante por comparación normalizada (mayúsculas/tildes/espacios),
-    // y actualizarlos por su ID — así el cambio SÍ pega en la ficha aunque el valor guardado tenga otra grafía.
-    const vNorm = removeAccents((v||'').trim().toUpperCase());
-    const ids = EMPLEADOS.filter(e => removeAccents((e[campo]||'').trim().toUpperCase()) === vNorm).map(e => e.id);
-    if (!ids.length) continue;
-    let variantOk = true;
-    for (let i = 0; i < ids.length; i += 500) {
-      const lote = ids.slice(i, i+500);
-      const { error } = await sb.from('empleados').update({ [campo]: targetName, updated_at: new Date().toISOString() }).in('id', lote);
-      if (error) { variantOk = false; break; }
-      lote.forEach(id => { const e = EMPLEADOS.find(x => x.id === id); if (e) e[campo] = targetName; });
+  showBlockingOverlay('Unificando ' + totalReg.toLocaleString('es-CO') + ' registro(s)...');
+  try {
+    let ok = 0;
+    for (const v of variants) {
+      // Buscar los empleados de esta variante por comparación normalizada (mayúsculas/tildes/espacios),
+      // y actualizarlos por su ID — así el cambio SÍ pega en la ficha aunque el valor guardado tenga otra grafía.
+      const vNorm = removeAccents((v||'').trim().toUpperCase());
+      const ids = EMPLEADOS.filter(e => removeAccents((e[campo]||'').trim().toUpperCase()) === vNorm).map(e => e.id);
+      if (!ids.length) continue;
+      let variantOk = true;
+      for (let i = 0; i < ids.length; i += 500) {
+        const lote = ids.slice(i, i+500);
+        const { error } = await sb.from('empleados').update({ [campo]: targetName, updated_at: new Date().toISOString() }).in('id', lote);
+        if (error) { variantOk = false; break; }
+        lote.forEach(id => { const e = EMPLEADOS.find(x => x.id === id); if (e) e[campo] = targetName; });
+      }
+      if (variantOk) ok++;
     }
-    if (variantOk) ok++;
-  }
 
-  // Si el nombre nuevo no está en el catálogo, agregarlo
-  if (!CATALOGS[catKey].some(c => c.toUpperCase() === targetName.toUpperCase())) {
-    CATALOGS[catKey].push(targetName);
-    CATALOGS[catKey].sort();
-    persistCatalog(catKey);
-    initCatalogs();
-    showToast('&#10003; "' + escapeHTML(targetName) + '" agregado al cat\xe1logo de ' + campoLabelPlural);
-  }
+    // Si el nombre nuevo no está en el catálogo, agregarlo
+    if (!CATALOGS[catKey].some(c => c.toUpperCase() === targetName.toUpperCase())) {
+      CATALOGS[catKey].push(targetName);
+      CATALOGS[catKey].sort();
+      persistCatalog(catKey);
+      initCatalogs();
+      showToast('&#10003; "' + escapeHTML(targetName) + '" agregado al cat\xe1logo de ' + campoLabelPlural);
+    }
 
-  filteredData = [...EMPLEADOS];
-  // Mismo patrón que resolverDupExacto/adoptarCedula: refresca desplegables, tabla, alertas y dashboard
-  initFilters(); filterTable(); renderAlerts(); refreshDashboard();
-  await logAudit('update','catalogos','', 'Unific\xf3 ' + ok + ' variantes de ' + campoLabel + ' a: ' + targetName);
-  showToast('&#10003; ' + ok + ' variante' + (ok!==1?'s':'') + ' de ' + campoLabel + ' unificada' + (ok!==1?'s':'') + ' a "' + escapeHTML(targetName) + '"');
-  setTimeout(() => buildDuplicados(), 300);
+    filteredData = [...EMPLEADOS];
+    // Mismo patrón que resolverDupExacto/adoptarCedula: refresca desplegables, tabla, alertas y dashboard
+    initFilters(); filterTable(); renderAlerts(); refreshDashboard();
+    await logAudit('update','catalogos','', 'Unific\xf3 ' + ok + ' variantes de ' + campoLabel + ' a: ' + targetName);
+    showToast('&#10003; ' + ok + ' variante' + (ok!==1?'s':'') + ' de ' + campoLabel + ' unificada' + (ok!==1?'s':'') + ' a "' + escapeHTML(targetName) + '"');
+    setTimeout(() => buildDuplicados(), 300);
+  } finally {
+    hideBlockingOverlay();
+  }
 }
 
 // ── ACCIÓN: Ignorar sugerencia de normalización ───────────────────────────
@@ -9905,6 +10015,7 @@ async function eliminarEmpleadoDirecto(id) {
   const emp = EMPLEADOS.find(e => e.id === id);
   if (!emp) { showToast('Registro no encontrado'); return; }
   if (!confirm('¿Eliminar permanentemente a:\n\n' + (emp.nombre||'Sin nombre') + '\nCC: ' + (emp.cedula||'—') + '\n\nEsta acción no se puede deshacer.')) return;
+  showBlockingOverlay('Eliminando empleado...');
   try {
     const { data: docs } = await sb.from('documentos_empleados').select('storage_path').eq('empleado_id', String(id));
     if (docs?.length) {
@@ -9922,6 +10033,7 @@ async function eliminarEmpleadoDirecto(id) {
     showToast('&#10003; Registro de ' + escapeHTML(emp.nombre||'empleado') + ' eliminado');
     setTimeout(() => buildDuplicados(), 300);
   } catch(e) { showToast('Error: ' + e.message); }
+  finally { hideBlockingOverlay(); }
 }
 // ───────────────────────────────────────────────────────────────────────────
 
