@@ -7372,18 +7372,33 @@ function showAddCatalogForm(){
   if(f.style.display!=='none') document.getElementById('catNewValue').focus();
 }
 
+// initCatalogs() siempre termina cargando el catálogo "clientes" (es su comportamiento
+// de inicio de sección) — por eso hay que llamarlo ANTES de volver a mostrar el catálogo
+// correcto, y buscar de nuevo su elemento del sidebar para dejarlo resaltado.
+function _catalogSidebarEl(key){
+  return [...document.querySelectorAll('.catalog-list-item')].find(item => item.getAttribute('onclick')?.includes(`loadCatalog('${key}'`));
+}
+// Refresca en tiempo real las demás pantallas que dependen de los catálogos, para no
+// tener que recargar la página (mismo patrón que ya usa "Nombres similares").
+function _refrescarTrasCambioCatalogo(){
+  buildDuplicados();
+  initMasEditFilters();
+  filterMasEdit();
+}
+
 function saveCatalogItem(){
+  const catalogKey = activeCatalog;
   const val = toSentenceCase(document.getElementById('catNewValue').value.trim());
   if(!val){ showToast('Escribe un nombre para el elemento'); return; }
-  if(CATALOGS[activeCatalog].some(c => removeAccents(c.toUpperCase())===removeAccents(val.toUpperCase()))){ showToast('Este elemento ya existe en el catálogo'); return; }
-  CATALOGS[activeCatalog].push(val);
+  if(CATALOGS[catalogKey].some(c => removeAccents(c.toUpperCase())===removeAccents(val.toUpperCase()))){ showToast('Este elemento ya existe en el catálogo'); return; }
+  CATALOGS[catalogKey].push(val);
   document.getElementById('catAddForm').style.display='none';
   document.getElementById('catNewValue').value='';
-  loadCatalog(activeCatalog, null);
   initCatalogs();
-  persistCatalog(activeCatalog);
-  showToast(`"${val}" agregado al catálogo de ${CATALOG_TITLES[activeCatalog]}`);
-  setTimeout(() => buildDuplicados(), 300); // refresca Corrección de Datos con el catálogo actualizado
+  loadCatalog(catalogKey, _catalogSidebarEl(catalogKey));
+  persistCatalog(catalogKey);
+  showToast(`"${val}" agregado al catálogo de ${CATALOG_TITLES[catalogKey]}`);
+  setTimeout(_refrescarTrasCambioCatalogo, 300); // refresca Corrección de Datos y Edición Masiva con el catálogo actualizado
 }
 
 function editCatalogInline(idx, key){
@@ -7394,22 +7409,22 @@ function editCatalogInline(idx, key){
   const norm = toSentenceCase(newVal.trim());
   if(norm === old) { showToast('El elemento ya estaba así, sin cambios'); return; }
   items[idx] = norm;
-  loadCatalog(activeCatalog, null);
   initCatalogs();
+  loadCatalog(key, _catalogSidebarEl(key));
   persistCatalog(key);
   showToast(`Catálogo actualizado: "${old}" → "${norm}"`);
-  setTimeout(() => buildDuplicados(), 300);
+  setTimeout(_refrescarTrasCambioCatalogo, 300);
 }
 
 function deleteCatalogItem(key, idx){
   const item = CATALOGS[key][idx];
   if(!confirm(`¿Eliminar "${item}" del catálogo?\n\nNota: esto no afecta registros existentes.`)) return;
   CATALOGS[key].splice(idx,1);
-  loadCatalog(activeCatalog, null);
   initCatalogs();
+  loadCatalog(key, _catalogSidebarEl(key));
   persistCatalog(key);
   showToast(`"${item}" eliminado del catálogo`);
-  setTimeout(() => buildDuplicados(), 300);
+  setTimeout(_refrescarTrasCambioCatalogo, 300);
 }
 
 function addCatalogItem(catKey, targetSelectId){
