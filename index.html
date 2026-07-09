@@ -188,7 +188,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 /* RIGHT PANEL (PROFILE) */
 #panel-overlay{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:100;display:none;backdrop-filter:blur(2px)}
 #panel-overlay.open{display:block}
-#panel-perfil{position:fixed;right:-660px;top:0;width:660px;height:100vh;background:var(--card);z-index:101;box-shadow:-4px 0 32px rgba(0,0,0,.15);transition:right .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
+#panel-perfil{position:fixed;right:-820px;top:0;width:820px;height:100vh;background:var(--card);z-index:101;box-shadow:-4px 0 32px rgba(0,0,0,.15);transition:right .25s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;overflow:hidden}
 #panel-perfil.open{right:0}
 .panel-header{padding:20px 24px;border-bottom:1px solid var(--border);display:flex;align-items:flex-start;justify-content:space-between;flex-shrink:0}
 .panel-emp-info{display:flex;align-items:center;gap:14px}
@@ -1438,6 +1438,9 @@ tr.bg-selected td{background:#eff6ff!important}
           <select class="filter-select" id="masEditFilterMotivo" onchange="filterMasEdit()">
             <option value="">Todo motivo de retiro</option>
           </select>
+          <select class="filter-select" id="masEditFilterAdjunto" onchange="filterMasEdit()">
+            <option value="">Todo tipo de adjunto</option>
+          </select>
           <select class="filter-select" id="masEditFilterGenero" onchange="filterMasEdit()">
             <option value="">Todos los géneros</option>
             <option value="FEMENINO">Femenino</option>
@@ -1519,6 +1522,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <div class="catalog-list-item" onclick="loadCatalog('nivelesRiesgo',this)">Niveles de riesgo <span class="catalog-count" id="cc-nivelesRiesgo">—</span></div>
           <div class="catalog-list-item" onclick="loadCatalog('novedades_tipos',this)">Tipos de Novedad <span class="catalog-count" id="cc-novedades_tipos">—</span></div>
           <div class="catalog-list-item" onclick="loadCatalog('fondosCesantias',this)">Fondos de cesant&iacute;as <span class="catalog-count" id="cc-fondosCesantias">—</span></div>
+          <div class="catalog-list-item" onclick="loadCatalog('tiposAdjunto',this)">Adjuntos <span class="catalog-count" id="cc-tiposAdjunto">—</span></div>
         </div>
         <div class="catalog-panel">
           <div class="catalog-panel-header">
@@ -2563,11 +2567,17 @@ async function loadFromSupabase() {
 
   initFilters();
   // Cargar conteo de documentos en paralelo (no bloquea la UI)
-  sb.from('documentos_empleados').select('empleado_id').then(({ data }) => {
+  sb.from('documentos_empleados').select('empleado_id,tipo').then(({ data }) => {
     _docsCounts = {};
+    _empAdjuntoTipos = {};
     (data || []).forEach(r => {
       const id = Number(r.empleado_id);
       _docsCounts[id] = (_docsCounts[id] || 0) + 1;
+      const t = (r.tipo||'').trim();
+      if (t) {
+        if (!_empAdjuntoTipos[id]) _empAdjuntoTipos[id] = [];
+        _empAdjuntoTipos[id].push(t);
+      }
     });
     renderTable(); // refrescar tabla con indicadores
   });
@@ -2727,6 +2737,28 @@ function _matchFiltroCatalogo(valorEmpleado, filtroSeleccionado, catalogo){
     return !catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === v);
   }
   return v === removeAccents(filtroSeleccionado.trim().toUpperCase());
+}
+
+// Igual que _valoresFueraCatalogo, pero para tipos de adjunto: estos no son un campo
+// directo de EMPLEADOS sino que viven en documentos_empleados (varios por empleado),
+// así que se recorre _empAdjuntoTipos en vez de EMPLEADOS.
+function _valoresFueraCatalogoAdjuntos(){
+  const catalogo = CATALOGS.tiposAdjunto || [];
+  const conteo = {};
+  Object.values(_empAdjuntoTipos).forEach(tipos => {
+    tipos.forEach(v => {
+      const enCatalogo = catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === removeAccents(v.toUpperCase()));
+      if(!enCatalogo) conteo[v] = (conteo[v]||0)+1;
+    });
+  });
+  return Object.entries(conteo).sort((a,b)=>b[1]-a[1]);
+}
+
+// Un empleado puede tener varios adjuntos con distintos tipos — coincide si AL MENOS
+// uno de ellos coincide con el filtro seleccionado (catálogo, valor puntual o "fuera de catálogo").
+function _empleadoTieneAdjuntoQueCoincide(empId, filtroSeleccionado){
+  const tipos = _empAdjuntoTipos[Number(empId)] || [];
+  return tipos.some(t => _matchFiltroCatalogo(t, filtroSeleccionado, CATALOGS.tiposAdjunto||[]));
 }
 
 // Búsqueda amplia (nombre/cédula/cliente/cargo): ignora tildes y mayúsculas/minúsculas.
@@ -3528,6 +3560,8 @@ const DOC_TIPOS = [
 ];
 let _docsEmpId = null;
 let _docsCounts = {};  // { empId: count } — empleados con documentos adjuntos
+let _empAdjuntoTipos = {};  // { empId: [tipo1, tipo2, ...] } — tipos de adjunto por empleado (para filtro en Edición Masiva)
+let _docsActuales = [];  // documentos del empleado actualmente abierto en el panel (para editar el tipo sin re-consultar)
 
 async function loadDocumentos() {
   const empId = currentEmpId;
@@ -3542,6 +3576,7 @@ async function loadDocumentos() {
   if (error) { grid.innerHTML = '<div style="color:var(--red);font-size:12px">Error: ' + escapeHTML(error.message) + '</div>'; return; }
 
   const docs = data || [];
+  _docsActuales = docs;  // referencia para poder editar el tipo sin volver a consultar Supabase
   const badge = document.getElementById('docs-badge');
   if (badge) { badge.textContent = docs.length; badge.style.display = docs.length > 0 ? '' : 'none'; }
 
@@ -3549,9 +3584,12 @@ async function loadDocumentos() {
   const formHtml = isEditor() ? `
     <div id="doc-adjuntar-form" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
       <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">Adjuntar documento</div>
-      <input type="text" id="doc-titulo-input" placeholder="Título del documento (ej: Contrato 2025, Paz y salvo...)"
-        style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;box-sizing:border-box;margin-bottom:8px;outline:none"
+      <select id="doc-titulo-input"
+        style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;box-sizing:border-box;margin-bottom:8px;outline:none;background:#fff"
         onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
+        <option value="">— Selecciona el tipo de documento —</option>
+        ${CATALOGS.tiposAdjunto.map(t=>`<option value="${t}">${t}</option>`).join('')}
+      </select>
       <div style="display:flex;gap:8px;align-items:center">
         <label class="btn btn-primary btn-sm" style="cursor:pointer;margin:0">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -3587,10 +3625,11 @@ async function loadDocumentos() {
         const titulo = d.tipo || d.nombre;  // título personalizado guardado en 'tipo'
         return '<div class="doc-item">'
           + '<div class="doc-icon '+ico+'">'+emo+'</div>'
-          + '<div style="flex:1;min-width:0">'
+          + '<div style="flex:1;min-width:0" id="doc-name-wrap-'+d.id+'">'
           + '<div class="doc-name">'+escapeHTML(titulo)+'</div>'
           + '<div class="doc-meta">'+escapeHTML(d.nombre)+' &middot; '+fecha+(d.subido_por?' &middot; '+escapeHTML(d.subido_por):'')+(tam?' &middot; '+tam:'')+'</div>'
           + '</div>'
+          + (isEditor() ? '<button class="btn-icon" title="Editar tipo" onclick="editarTipoDocumento('+d.id+')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
           + '<button class="btn-icon" title="Ver/Descargar" onclick="descargarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>'
           + (isEditor() ? '<button class="btn-icon red" title="Eliminar" onclick="eliminarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>' : '')
           + '</div>';
@@ -3608,7 +3647,7 @@ async function subirDocumentoConTitulo(input) {
   const tituloEl = document.getElementById('doc-titulo-input');
   const titulo   = tituloEl?.value?.trim();
   if (!titulo) {
-    showToast('Escribe un t\xedtulo para el documento antes de adjuntarlo');
+    showToast('Selecciona el tipo de documento antes de adjuntarlo');
     input.value = '';
     return;
   }
@@ -3703,6 +3742,55 @@ async function eliminarDocumento(id, storagePath) {
     hideBlockingOverlay();
   }
 }
+
+// Reemplaza el nombre del documento por un <select> del catálogo de Adjuntos, para
+// corregir el tipo sin tener que borrar y volver a subir el archivo.
+function editarTipoDocumento(id) {
+  const wrap = document.getElementById('doc-name-wrap-' + id);
+  const doc  = _docsActuales.find(d => d.id === id);
+  if (!wrap || !doc) return;
+  const catalogo   = CATALOGS.tiposAdjunto || [];
+  const tipoActual = (doc.tipo || '').trim();
+  const enCatalogo = catalogo.some(c => c === tipoActual);
+  wrap.innerHTML = `
+    <select id="doc-tipo-edit-${id}" style="width:100%;padding:6px 8px;border:1.5px solid var(--blue);border-radius:6px;font-size:12px;outline:none;background:#fff">
+      ${(!enCatalogo && tipoActual) ? `<option value="${escapeHTML(tipoActual)}" selected>${escapeHTML(tipoActual)} (actual — fuera de catálogo)</option>` : ''}
+      ${catalogo.map(c=>`<option value="${escapeHTML(c)}" ${c===tipoActual?'selected':''}>${escapeHTML(c)}</option>`).join('')}
+    </select>
+    <div style="display:flex;gap:6px;margin-top:6px">
+      <button class="btn btn-primary btn-sm" style="padding:3px 10px;font-size:11px" onclick="guardarTipoDocumento(${id})">Guardar</button>
+      <button class="btn btn-ghost btn-sm" style="padding:3px 10px;font-size:11px" onclick="loadDocumentos()">Cancelar</button>
+    </div>`;
+}
+
+async function guardarTipoDocumento(id) {
+  const sel = document.getElementById('doc-tipo-edit-' + id);
+  const nuevoTipo = sel?.value;
+  if (!nuevoTipo) { showToast('Selecciona un tipo'); return; }
+  const doc = _docsActuales.find(d => d.id === id);
+  const tipoAnterior = doc?.tipo || '';
+  if (nuevoTipo === tipoAnterior) { loadDocumentos(); return; }
+
+  showBlockingOverlay('Actualizando tipo...');
+  try {
+    const { error } = await sb.from('documentos_empleados').update({ tipo: nuevoTipo }).eq('id', id);
+    if (error) { showToast('Error: ' + error.message); return; }
+
+    // Mantener sincronizado el caché en memoria que usa el filtro de Edición Masiva
+    const lista = _empAdjuntoTipos[_docsEmpId];
+    if (lista) {
+      const idx = lista.indexOf(tipoAnterior);
+      if (idx !== -1) lista.splice(idx, 1, nuevoTipo); else lista.push(nuevoTipo);
+    }
+
+    await logAudit('update', 'documentos', String(_docsEmpId), 'Cambió el tipo de documento de "' + tipoAnterior + '" a "' + nuevoTipo + '"');
+    showToast('✓ Tipo de documento actualizado');
+    loadDocumentos();
+  } finally {
+    hideBlockingOverlay();
+  }
+}
+
 let _fechasTabActiva = 'cumple';
 
 // Obtiene dia/mes/año de fecha DD/MM/AAAA
@@ -5081,6 +5169,9 @@ const CATALOGS = {
     'Licencia de paternidad', 'Otro', 'Permiso no remunerado',
     'Permiso remunerado', 'Suspension', 'Vacaciones'
   ],
+  tiposAdjunto:[
+    'Cédula', 'Contrato', 'Hoja de vida', 'Examen médico', 'Paz y salvo', 'Otro'
+  ],
 };
 const CATALOG_TITLES = {
   clientes:'Clientes / Entidades', cargos:'Cargos', eps:'EPS',
@@ -5088,7 +5179,7 @@ const CATALOG_TITLES = {
   departamentos:'Departamentos', motivosRetiro:'Motivos de retiro',
   escolaridad:'Nivel de Escolaridad', tiposDocumento:'Tipos de documento',
   nivelesRiesgo:'Niveles de riesgo', novedades_tipos:'Tipos de Novedad',
-  fondosCesantias:'Fondos de cesantías'
+  fondosCesantias:'Fondos de cesantías', tiposAdjunto:'Adjuntos'
 };
 const CATALOG_USAGE = {
   clientes:{max:500},cargos:{max:2000},eps:{max:500},afp:{max:500},
@@ -5131,14 +5222,27 @@ function initCatalogs(){
   loadCatalog('clientes', document.querySelector('.catalog-list-item'));
 }
 
-function loadCatalog(key, el){
+async function loadCatalog(key, el){
   activeCatalog = key;
   _catPage = 1;  // reiniciar paginación al cambiar de catálogo
   document.querySelectorAll('.catalog-list-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
   document.getElementById('catalogPanelTitle').textContent = CATALOG_TITLES[key]||key;
   document.getElementById('catalogSearch').value = '';
+  if (key === 'tiposAdjunto') await _cargarUsoAdjuntos();
   renderCatalogItems(key, '', 1);
+}
+
+// Cuenta cuántos documentos hay de cada tipo (para el catálogo "Adjuntos")
+let _adjuntoUsage = {};
+async function _cargarUsoAdjuntos() {
+  const { data, error } = await sb.from('documentos_empleados').select('tipo');
+  if (error || !data) return;
+  _adjuntoUsage = {};
+  data.forEach(d => {
+    const v = (d.tipo||'').toString().trim();
+    if (v) _adjuntoUsage[v] = (_adjuntoUsage[v]||0) + 1;
+  });
 }
 
 function filterCatalog(){
@@ -5163,6 +5267,8 @@ const CATALOG_FIELD_MAP = {
 };
 
 function getCatalogUsage(key) {
+  // Caso especial: tipos de adjunto se usan en documentos_empleados, no en empleados
+  if (key === 'tiposAdjunto') return _adjuntoUsage;
   // Caso especial: tipos de novedad se usan en la tabla novedades, no en empleados
   if (key === 'novedades_tipos') {
     if (!NOVEDADES.length) return {};
@@ -5223,16 +5329,18 @@ function renderCatalogItems(key, q, page) {
   // ocultando que la mayoría de los registros en realidad NO coinciden con el catálogo.
   // Tipos de novedad se cuentan desde NOVEDADES, el resto desde EMPLEADOS.
   const esNovedades = key === 'novedades_tipos';
+  const esAdjuntos  = key === 'tiposAdjunto';
+  const unidad      = esNovedades ? 'novedades' : esAdjuntos ? 'documentos' : 'empleados';
   const usageMap = getCatalogUsage(key);
-  const hasData  = esNovedades ? NOVEDADES.length > 0 : EMPLEADOS.length > 0;
+  const hasData  = esNovedades ? NOVEDADES.length > 0 : esAdjuntos ? Object.keys(_adjuntoUsage).length > 0 : EMPLEADOS.length > 0;
 
   // Filas de items
   const rows = pageItems.map((item, i) => {
     const itemStr  = String(item);
     const usage    = usageMap[itemStr.trim()] || 0;
-    const usageTxt = hasData
-      ? (usage > 0 ? `${usage} uso${usage!==1?'s':''} en ${esNovedades?'novedades':'empleados'}` : 'Sin usos registrados')
-      : (esNovedades ? '&#8212; sin novedades registradas a\xfan' : '&#8212; sin datos importados a\xfan');
+    const usageTxt = usage > 0
+      ? `${usage} uso${usage!==1?'s':''} en ${unidad}`
+      : (hasData ? 'Sin usos registrados' : (esAdjuntos ? '&#8212; sin documentos adjuntados a\xfan' : esNovedades ? '&#8212; sin novedades registradas a\xfan' : '&#8212; sin datos importados a\xfan'));
     const realIdx  = items.indexOf(item);
 
     return `<div class="catalog-item-row" id="cat-row-${i}">
@@ -8938,6 +9046,20 @@ function initMasEditFilters(){
           + '</optgroup>' : '');
     if(prev === FILTRO_FUERA_CATALOGO || catalogo.includes(prev) || fuera.some(([v])=>v===prev)) el.value = prev;
   });
+  // Filtro de tipo de adjunto (caso especial: viene de documentos_empleados, no de un campo de EMPLEADOS)
+  const elAdj = document.getElementById('masEditFilterAdjunto');
+  if(elAdj){
+    const catalogoAdj = [...(CATALOGS.tiposAdjunto||[])].sort();
+    const prevAdj = elAdj.value;
+    const fueraAdj = _valoresFueraCatalogoAdjuntos();
+    elAdj.innerHTML = `<option value="">Todo tipo de adjunto</option>`
+      + `<option value="${FILTRO_FUERA_CATALOGO}">⚠ Fuera del catálogo (todos)</option>`
+      + catalogoAdj.map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('')
+      + (fueraAdj.length ? '<optgroup label="⚠ Fuera del catálogo — por valor">'
+          + fueraAdj.map(([v,n])=>`<option value="${escapeHTML(v)}">${escapeHTML(v)} (${n})</option>`).join('')
+          + '</optgroup>' : '');
+    if(prevAdj === FILTRO_FUERA_CATALOGO || catalogoAdj.includes(prevAdj) || fueraAdj.some(([v])=>v===prevAdj)) elAdj.value = prevAdj;
+  }
 }
 
 function filterMasEdit(){
@@ -8945,6 +9067,7 @@ function filterMasEdit(){
   const estado = document.getElementById('masEditFilterEstado')?.value||'';
   const genero = document.getElementById('masEditFilterGenero')?.value||'';
   const criticos = document.getElementById('masEditFilterCriticos')?.value||'';
+  const adjunto = document.getElementById('masEditFilterAdjunto')?.value||'';
   const filtrosCampo = _MASEDIT_FILTRO_CAMPOS.map(({type,selId})=>{
     const cfg = _SIM_TYPE_CONFIG[type];
     return { campo: cfg.campo, catKey: cfg.catKey, valor: document.getElementById(selId)?.value||'' };
@@ -8955,6 +9078,7 @@ function filterMasEdit(){
     if(criticos === 'sin_nombre'  && e.nombre  && e.nombre.trim())  return false;
     if(criticos === 'sin_cliente' && e.cliente && e.cliente.trim()) return false;
     if(criticos === 'sin_cedula'  && e.cedula  && e.cedula.trim())  return false;
+    if(adjunto && !_empleadoTieneAdjuntoQueCoincide(e.id, adjunto)) return false;
     for(const f of filtrosCampo){
       if(f.valor && !_matchFiltroCatalogo(e[f.campo], f.valor, CATALOGS[f.catKey]||[])) return false;
     }
@@ -8972,7 +9096,7 @@ function filterMasEdit(){
 
 function clearMasEditFilters(){
   const s = document.getElementById('masEditSearchInput'); if(s) s.value='';
-  ['masEditFilterEstado','masEditFilterGenero','masEditFilterCriticos', ..._MASEDIT_FILTRO_CAMPOS.map(f=>f.selId)]
+  ['masEditFilterEstado','masEditFilterGenero','masEditFilterCriticos','masEditFilterAdjunto', ..._MASEDIT_FILTRO_CAMPOS.map(f=>f.selId)]
     .forEach(id=>{ const el=document.getElementById(id); if(el) el.value=''; });
   _masEditSelected.clear();
   filterMasEdit();
@@ -8991,6 +9115,8 @@ function renderMasEditActiveFilters(){
     const v = document.getElementById(selId)?.value;
     if(v) tags.push(`${cfg.campoLabel}: ${etiquetaFiltro(v)}`);
   });
+  const adjunto = document.getElementById('masEditFilterAdjunto')?.value;
+  if(adjunto) tags.push(`Tipo de adjunto: ${etiquetaFiltro(adjunto)}`);
   if(genero) tags.push(`Género: ${genero}`);
   cont.innerHTML = tags.map(t=>`<span class="filter-tag">${escapeHTML(t)} <span onclick="clearMasEditFilters()">✕</span></span>`).join('');
 }
