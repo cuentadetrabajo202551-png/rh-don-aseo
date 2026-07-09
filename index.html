@@ -4453,7 +4453,7 @@ async function asignarCampoAlerta(empId, campo, valor, selectEl) {
     const catKey = campo === 'cargo' ? 'cargos' : 'clientes';
     const nuevo = prompt('Escribe el nuevo ' + campo + ' para agregar al cat\xe1logo:');
     if (!nuevo || !nuevo.trim()) { if(selectEl) selectEl.value=''; return; }
-    const norm = nuevo.trim();
+    const norm = toSentenceCase(nuevo.trim());
     if (!CATALOGS[catKey].includes(norm)) {
       CATALOGS[catKey].push(norm);
       CATALOGS[catKey].sort();
@@ -5482,7 +5482,7 @@ async function crearNovedad() {
   const descripcion = (document.getElementById('nov-descripcion')?.value || '').trim();
 
   let fechaIni, fechaFin, dias, valorPagado = 0;
-  const vacacionesPagadas = tipo === 'VACACIONES' && !!document.getElementById('nov-vacaciones-pagas')?.checked;
+  const vacacionesPagadas = tipo.toUpperCase() === 'VACACIONES' && !!document.getElementById('nov-vacaciones-pagas')?.checked;
 
   if (vacacionesPagadas) {
     fechaIni = fechaFin = document.getElementById('nov-fecha-pago')?.value || '';
@@ -5499,7 +5499,7 @@ async function crearNovedad() {
   }
 
   let eps = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
-  if (tipo === 'INCAPACIDAD') {
+  if (tipo.toUpperCase() === 'INCAPACIDAD') {
     eps = document.getElementById('nov-eps')?.value || '';
     diagCodigo = (document.getElementById('nov-diagnostico-codigo')?.value || '').trim().toUpperCase();
     if (diagCodigo) {
@@ -5547,7 +5547,7 @@ async function guardarEdicionNovedad(id) {
   const descripcion = (document.getElementById('eno-descripcion')?.value || '').trim();
 
   let fechaIni, fechaFin, dias, valorPagado = 0;
-  const vacacionesPagadas = tipo === 'VACACIONES' && !!document.getElementById('eno-vacaciones-pagas')?.checked;
+  const vacacionesPagadas = tipo.toUpperCase() === 'VACACIONES' && !!document.getElementById('eno-vacaciones-pagas')?.checked;
 
   if (vacacionesPagadas) {
     fechaIni = fechaFin = document.getElementById('eno-fecha-pago')?.value || '';
@@ -5564,7 +5564,7 @@ async function guardarEdicionNovedad(id) {
   }
 
   let eps = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
-  if (tipo === 'INCAPACIDAD') {
+  if (tipo.toUpperCase() === 'INCAPACIDAD') {
     eps = document.getElementById('eno-eps')?.value || '';
     diagCodigo = (document.getElementById('eno-diagnostico-codigo')?.value || '').trim().toUpperCase();
     if (diagCodigo) {
@@ -5704,7 +5704,7 @@ function buildNovedades(tab) {
 function refreshNovPorVencerBadge() {
   const hoy    = new Date().toISOString().slice(0,10);
   const limite = new Date(Date.now()+5*86400000).toISOString().slice(0,10);
-  const n = NOVEDADES.filter(x => x.tipo === 'INCAPACIDAD' && x.fecha_fin >= hoy && x.fecha_fin <= limite).length;
+  const n = NOVEDADES.filter(x => (x.tipo||'').toUpperCase() === 'INCAPACIDAD' && x.fecha_fin >= hoy && x.fecha_fin <= limite).length;
   const b = document.getElementById('nov-porvencer-badge');
   if (b) { b.textContent = n; b.style.display = n > 0 ? '' : 'none'; }
 }
@@ -5715,7 +5715,7 @@ function buildNovedadesPorVencer() {
   const hoy    = new Date().toISOString().slice(0,10);
   const limite = new Date(Date.now()+5*86400000).toISOString().slice(0,10);
   const lista = NOVEDADES
-    .filter(n => n.tipo === 'INCAPACIDAD' && n.fecha_fin >= hoy && n.fecha_fin <= limite)
+    .filter(n => (n.tipo||'').toUpperCase() === 'INCAPACIDAD' && n.fecha_fin >= hoy && n.fecha_fin <= limite)
     .sort((a,b) => a.fecha_fin.localeCompare(b.fecha_fin));
 
   refreshNovPorVencerBadge();
@@ -5956,8 +5956,9 @@ function _novParseMiles(str) {
 // prefix = 'nov' (formulario de registro) o 'eno' (modal de edición)
 function _novAplicarVisibilidadPorTipo(prefix, tipo, vacacionesPagadas) {
   const $ = id => document.getElementById(prefix + '-' + id);
-  const esVac = tipo === 'VACACIONES';
-  const esInc = tipo === 'INCAPACIDAD';
+  const tipoUp = (tipo||'').toUpperCase();
+  const esVac = tipoUp === 'VACACIONES';
+  const esInc = tipoUp === 'INCAPACIDAD';
   if ($('vacaciones-pagas-wrap')) $('vacaciones-pagas-wrap').style.display = esVac ? '' : 'none';
   if ($('eps-wrap'))              $('eps-wrap').style.display = esInc ? '' : 'none';
   if ($('diagnostico-wrap'))      $('diagnostico-wrap').style.display = esInc ? '' : 'none';
@@ -5973,7 +5974,7 @@ function _novAplicarVisibilidadPorTipo(prefix, tipo, vacacionesPagadas) {
 function _novOnTipoChange() {
   const tipo = document.getElementById('nov-tipo')?.value;
   const chk = document.getElementById('nov-vacaciones-pagas');
-  if (tipo !== 'VACACIONES' && chk) chk.checked = false;
+  if ((tipo||'').toUpperCase() !== 'VACACIONES' && chk) chk.checked = false;
   _novAplicarVisibilidadPorTipo('nov', tipo, chk?.checked);
 }
 
@@ -6143,7 +6144,7 @@ function novLimpiarFiltrosHistorial() {
 
 function _novFiltrarLista() {
   return NOVEDADES.filter(n => {
-    if (_novFiltro.tipo && n.tipo !== _novFiltro.tipo) return false;
+    if (_novFiltro.tipo && (n.tipo||'').toUpperCase() !== _novFiltro.tipo.toUpperCase()) return false;
     if (_novFiltro.cliente && n.empleado_cliente !== _novFiltro.cliente) return false;
     if (_novFiltro.desde && n.fecha_fin < _novFiltro.desde) return false;
     if (_novFiltro.hasta && n.fecha_inicio > _novFiltro.hasta) return false;
@@ -6221,7 +6222,7 @@ function _novHistGoPage(p) {
 function _enoOnTipoChange() {
   const tipo = document.getElementById('eno-tipo')?.value;
   const chk = document.getElementById('eno-vacaciones-pagas');
-  if (tipo !== 'VACACIONES' && chk) chk.checked = false;
+  if ((tipo||'').toUpperCase() !== 'VACACIONES' && chk) chk.checked = false;
   _novAplicarVisibilidadPorTipo('eno', tipo, chk?.checked);
 }
 
@@ -9569,12 +9570,12 @@ async function resolverDupExacto(cedula, accion) {
     showBlockingOverlay('Procesando...');
     try {
       const { error } = await sb.from('empleados').update({
-        estado: 'INACTIVO', retiro: fechaHoy, motivo: 'TERMINACION DE CONTRATO',
+        estado: 'INACTIVO', retiro: fechaHoy, motivo: 'Terminación de contrato',
         updated_at: new Date().toISOString()
       }).eq('id', antiguo.id);
       if (error) { showToast('Error: ' + error.message); return; }
       const emp = EMPLEADOS.find(e => e.id === antiguo.id);
-      if (emp) { emp.estado='INACTIVO'; emp.retiro=fechaHoy; emp.motivo='TERMINACION DE CONTRATO'; }
+      if (emp) { emp.estado='INACTIVO'; emp.retiro=fechaHoy; emp.motivo='Terminación de contrato'; }
       await logAudit('update','empleados',cedula,'Traslado: cerro registro anterior de ' + (antiguo.cliente||'—'));
       showToast('&#10003; Traslado aplicado — registro anterior cerrado');
     } finally { hideBlockingOverlay(); }
@@ -9590,12 +9591,12 @@ async function resolverDupExacto(cedula, accion) {
     showBlockingOverlay('Procesando...');
     try {
       const { error } = await sb.from('empleados').update({
-        estado: 'INACTIVO', retiro: fechaHoy, motivo: 'RENUNCIA',
+        estado: 'INACTIVO', retiro: fechaHoy, motivo: 'Renuncia',
         updated_at: new Date().toISOString()
       }).eq('id', antiguo.id);
       if (error) { showToast('Error: ' + error.message); return; }
       const emp2 = EMPLEADOS.find(e => e.id === antiguo.id);
-      if (emp2) { emp2.estado='INACTIVO'; emp2.retiro=fechaHoy; emp2.motivo='RENUNCIA'; }
+      if (emp2) { emp2.estado='INACTIVO'; emp2.retiro=fechaHoy; emp2.motivo='Renuncia'; }
       await logAudit('update','empleados',cedula,'Reingreso: registro anterior marcado como inactivo');
       showToast('&#10003; Reingreso registrado — historial anterior cerrado');
     } finally { hideBlockingOverlay(); }
@@ -9644,14 +9645,14 @@ async function unificarPosiblesDup(idMantener, nameKey) {
     for (const otro of otros) {
       const { error } = await sb.from('empleados').update({
         estado: 'INACTIVO', retiro: fechaHoy,
-        motivo: 'TERMINACION DE CONTRATO',
+        motivo: 'Terminación de contrato',
         notas: ((otro.notas||'') + ' | Unificado: se mantiene registro CC ' + (mantener.cedula||'—')).trim(),
         updated_at: new Date().toISOString()
       }).eq('id', otro.id);
       if (error) { errCount++; }
       else {
         const e = EMPLEADOS.find(x => x.id === otro.id);
-        if (e) { e.estado='INACTIVO'; e.retiro=fechaHoy; e.motivo='TERMINACION DE CONTRATO'; }
+        if (e) { e.estado='INACTIVO'; e.retiro=fechaHoy; e.motivo='Terminación de contrato'; }
       }
     }
     if (errCount > 0) { showToast('Advertencia: ' + errCount + ' registro(s) no se pudieron actualizar en Supabase'); }
