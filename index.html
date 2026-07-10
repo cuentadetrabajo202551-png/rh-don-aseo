@@ -2641,6 +2641,15 @@ async function loadFromSupabase() {
     });
     renderTable(); // refrescar tabla con indicadores
   });
+  // Cargar conteo de soportes adjuntos a novedades (en paralelo, no bloquea la UI)
+  sb.from('novedades_soportes').select('novedad_id,novedades(empleado_id)').then(({ data }) => {
+    _novSoportesCounts = {};
+    (data || []).forEach(r => {
+      const empId = Number(r.novedades?.empleado_id);
+      if (empId) _novSoportesCounts[empId] = (_novSoportesCounts[empId] || 0) + 1;
+    });
+    renderTable(); // refrescar tabla con indicadores
+  });
   filterTable();
   try { renderAlerts(); } catch(e) { console.error('renderAlerts error:', e); }
   try { refreshDashboard(); } catch(e) { console.error('refreshDashboard error:', e); }
@@ -2921,6 +2930,8 @@ function updateBulkBar() {
       ? '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Deseleccionar todos'
       : '<svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg> Seleccionar todos (' + filteredData.length + ')';
   }
+
+  updateExportButton();  // el botón de exportar debe reflejar la selección actual
 }
 
 function limpiarSeleccion() {
@@ -3194,7 +3205,8 @@ function renderTable(){
             <div class="td-sub" style="display:flex;gap:5px;align-items:center">
               ${emp.genero==='FEMENINO'?'<span class="badge badge-f" style="padding:1px 6px;font-size:10px">&#9792; F</span>':'<span class="badge badge-m" style="padding:1px 6px;font-size:10px">&#9794; M</span>'}
               ${hist?'<span class="badge badge-hist">Historial</span>':''}
-              ${_docsCounts[emp.id]>0?`<span title="${_docsCounts[emp.id]} documento${_docsCounts[emp.id]!==1?'s':''} adjunto${_docsCounts[emp.id]!==1?'s':''}" style="display:inline-flex;align-items:center;gap:2px;background:#eff6ff;color:#2563eb;border:1px solid #bfdbfe;border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:default"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${_docsCounts[emp.id]}</span>`:''}
+              ${_docsCounts[emp.id]>0?`<span title="${_docsCounts[emp.id]} documento${_docsCounts[emp.id]!==1?'s':''} adjunto${_docsCounts[emp.id]!==1?'s':''}" style="display:inline-flex;align-items:center;gap:2px;background:var(--blue-light);color:var(--blue-dark);border:1px solid var(--blue-light);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:default"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${_docsCounts[emp.id]}</span>`:''}
+              ${_novSoportesCounts[emp.id]>0?`<span title="${_novSoportesCounts[emp.id]} soporte${_novSoportesCounts[emp.id]!==1?'s':''} adjunto${_novSoportesCounts[emp.id]!==1?'s':''} en novedades" style="display:inline-flex;align-items:center;gap:2px;background:var(--purple-light);color:var(--purple);border:1px solid var(--purple-light);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:default"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>${_novSoportesCounts[emp.id]}</span>`:''}
             </div>
           </div>
         </div>
@@ -3631,6 +3643,7 @@ const DOC_TIPOS = [
 ];
 let _docsEmpId = null;
 let _docsCounts = {};  // { empId: count } — empleados con documentos adjuntos
+let _novSoportesCounts = {};  // { empId: count } — empleados con soportes adjuntos en sus novedades
 let _empAdjuntoTipos = {};  // { empId: [tipo1, tipo2, ...] } — tipos de adjunto por empleado (para filtro en Edición Masiva)
 let _docsActuales = [];  // documentos del empleado actualmente abierto en el panel (para editar el tipo sin re-consultar)
 
@@ -4312,9 +4325,12 @@ function _construirWorkbookEmpleados(source, esFiltrado) {
 }
 
 function exportEmployees() {
-  const source = (filteredData.length > 0 && filteredData.length < EMPLEADOS.length)
-    ? filteredData   // hay filtro activo → exportar solo esos
-    : EMPLEADOS;     // sin filtro → exportar todos
+  const esSeleccion = _selectedEmps.size > 0;
+  const source = esSeleccion
+    ? EMPLEADOS.filter(e => _selectedEmps.has(e.id))   // hay selección → exportar solo esos
+    : (filteredData.length > 0 && filteredData.length < EMPLEADOS.length)
+      ? filteredData   // hay filtro activo → exportar solo esos
+      : EMPLEADOS;     // sin filtro ni selección → exportar todos
 
   if (!source.length) { showToast('No hay empleados para exportar'); return; }
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
@@ -4324,20 +4340,23 @@ function exportEmployees() {
 
   const now   = new Date();
   const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
-  const sufijo = esFiltrado ? `_filtro_${source.length}` : '';
+  const sufijo = esSeleccion ? `_seleccion_${source.length}` : (esFiltrado ? `_filtro_${source.length}` : '');
   const fname  = `empleados${sufijo}_${fecha}.xlsx`;
 
   XLSX.writeFile(wb, fname);
-  showToast(`✓ ${source.length} empleados exportados${esFiltrado?' (filtro activo)':''} → ${fname}`);
+  showToast(`✓ ${source.length} empleados exportados${esSeleccion?' (selección)':(esFiltrado?' (filtro activo)':'')} → ${fname}`);
 }
 
-// Actualizar el label del botón de exportar con el conteo actual del filtro
+// Actualizar el label del botón de exportar según selección/filtro/total actual
 function updateExportButton() {
   const btn = document.getElementById('btn-exportar-excel');
   if (!btn) return;
+  const nSel = _selectedEmps.size;
   const n = filteredData.length;
   const total = EMPLEADOS.length;
-  if (n > 0 && n < total) {
+  if (nSel > 0) {
+    btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar selección (' + nSel + ')';
+  } else if (n > 0 && n < total) {
     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar filtro (' + n + ')';
   } else {
     btn.innerHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg> Exportar Excel' + (total > 0 ? ' (' + total + ')' : '');
@@ -5744,6 +5763,12 @@ async function _subirArchivoDirecto(file, novedadId) {
   }]);
   if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando soporte: ' + dbErr.message); return false; }
 
+  const nov = NOVEDADES.find(n => n.id === novedadId);
+  if (nov) {
+    const empId = Number(nov.empleado_id);
+    _novSoportesCounts[empId] = (_novSoportesCounts[empId] || 0) + 1;
+  }
+
   await logAudit('create', 'novedades_soportes', novedadId, 'Adjuntó soporte: ' + file.name);
   return true;
 }
@@ -5782,6 +5807,12 @@ async function eliminarSoporteNovedad(id, storagePath, novedadId) {
     if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
     const { error: dbErr } = await sb.from('novedades_soportes').delete().eq('id', id);
     if (dbErr) { showToast('Error en base de datos: ' + dbErr.message); return; }
+
+    const nov = NOVEDADES.find(n => n.id === novedadId);
+    if (nov) {
+      const empId = Number(nov.empleado_id);
+      if (_novSoportesCounts[empId]) _novSoportesCounts[empId] = Math.max(0, _novSoportesCounts[empId] - 1);
+    }
 
     await logAudit('delete', 'novedades_soportes', novedadId, 'Eliminó soporte adjunto');
     showToast('Soporte eliminado');
