@@ -30,6 +30,7 @@
   --purple:#7c3aed;--purple-light:#f5f3ff;
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
   --shadow-lg:0 4px 16px rgba(0,0,0,.1);
+  color-scheme:light;
 }
 html[data-theme="dark"]{
   --sidebar:#0a1229;--sidebar-hover:rgba(255,255,255,.06);--sidebar-active:#f5d400;
@@ -37,11 +38,12 @@ html[data-theme="dark"]{
   --text:#f1f5f9;--text2:#cbd5e1;--text3:#7c8aa5;
   --blue:#60a5fa;--blue-light:rgba(96,165,250,.15);--blue-dark:#93c5fd;
   --green:#4ade80;--green-light:rgba(74,222,128,.15);
-  --red:#f87171;--red-light:rgba(248,113,113,.15);
-  --orange:#fbbf24;--orange-light:rgba(251,191,36,.15);
+  --red:#e08585;--red-light:rgba(248,113,113,.15);
+  --orange:#dba556;--orange-light:rgba(251,191,36,.15);
   --purple:#c4b5fd;--purple-light:rgba(196,181,253,.15);
   --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
   --shadow-lg:0 4px 20px rgba(0,0,0,.5);
+  color-scheme:dark;
 }
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:14px;transition:background .2s,color .2s}
 
@@ -501,6 +503,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .emp-check{width:16px;height:16px;cursor:pointer;accent-color:#003c9d;flex-shrink:0}
 thead .emp-check{accent-color:#f5d400}
 tr.bg-selected td{background:#eff6ff!important}
+html[data-theme="dark"] tr.bg-selected td{background:var(--blue-light)!important}
 
 /* Parpadeo breve cuando otro usuario cambia este registro en vivo (sincronización en tiempo real) */
 @keyframes rtFlash{0%{background:var(--blue-light)}70%{background:var(--blue-light)}100%{background:transparent}}
@@ -627,6 +630,8 @@ html[data-theme="dark"] .event-card.hoy{background:rgba(245,212,0,.1)}
 .catalog-list-item.active{background:var(--blue-light);color:var(--blue-dark);font-weight:700}
 .catalog-count{background:#e2e8f0;color:var(--text2);font-size:10px;font-weight:700;padding:1px 7px;border-radius:10px}
 .catalog-list-item.active .catalog-count{background:#bfdbfe;color:var(--blue-dark)}
+html[data-theme="dark"] .catalog-count{background:rgba(255,255,255,.1)}
+html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba(96,165,250,.25)}
 .catalog-panel{background:var(--card);border:1px solid var(--border);border-radius:10px;box-shadow:var(--shadow);overflow:hidden}
 .catalog-panel-header{padding:16px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
 .catalog-panel-title{font-size:14px;font-weight:700;color:var(--text)}
