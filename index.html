@@ -2698,7 +2698,7 @@ function _valoresFueraCatalogo(campo, catalogo){
   EMPLEADOS.forEach(e=>{
     const v = (e[campo]||'').trim();
     if(!v) return;
-    const enCatalogo = catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === removeAccents(v.toUpperCase()));
+    const enCatalogo = catalogo.some(c => _stripAccentsCached(String(c).trim()).toUpperCase() === _stripAccentsCached(v).toUpperCase());
     if(!enCatalogo) conteo[v] = (conteo[v]||0)+1;
   });
   return Object.entries(conteo).sort((a,b)=>b[1]-a[1]);
@@ -2740,12 +2740,12 @@ function initFilters(){
 // Coincidencia de filtro cliente/cargo: ignora mayúsculas y tildes contra la grafía del catálogo,
 // y soporta el valor especial "fuera del catálogo".
 function _matchFiltroCatalogo(valorEmpleado, filtroSeleccionado, catalogo){
-  const v = removeAccents((valorEmpleado||'').trim().toUpperCase());
+  const v = _stripAccentsCached((valorEmpleado||'').trim()).toUpperCase();
   if(filtroSeleccionado === FILTRO_FUERA_CATALOGO){
     if(!v) return false; // sin valor no cuenta como "fuera de catálogo"
-    return !catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === v);
+    return !catalogo.some(c => _stripAccentsCached(String(c).trim()).toUpperCase() === v);
   }
-  return v === removeAccents(filtroSeleccionado.trim().toUpperCase());
+  return v === _stripAccentsCached(filtroSeleccionado.trim()).toUpperCase();
 }
 
 // Igual que _valoresFueraCatalogo, pero para tipos de adjunto: estos no son un campo
@@ -2756,7 +2756,7 @@ function _valoresFueraCatalogoAdjuntos(){
   const conteo = {};
   Object.values(_empAdjuntoTipos).forEach(tipos => {
     tipos.forEach(v => {
-      const enCatalogo = catalogo.some(c => removeAccents(String(c).trim().toUpperCase()) === removeAccents(v.toUpperCase()));
+      const enCatalogo = catalogo.some(c => _stripAccentsCached(String(c).trim()).toUpperCase() === _stripAccentsCached(v).toUpperCase());
       if(!enCatalogo) conteo[v] = (conteo[v]||0)+1;
     });
   });
@@ -2771,7 +2771,7 @@ function _empleadoTieneAdjuntoQueCoincide(empId, filtroSeleccionado){
 }
 
 // Búsqueda amplia (nombre/cédula/cliente/cargo): ignora tildes y mayúsculas/minúsculas.
-function _normTexto(s){ return removeAccents(String(s||'')).toLowerCase(); }
+function _normTexto(s){ return _stripAccentsCached(String(s||'')).toLowerCase(); }
 
 function filterTable(){
   const q = _normTexto(document.getElementById('searchInput').value).trim();
@@ -2939,7 +2939,7 @@ async function ejecutarBulkEdit() {
     initFilters(); filterTable();
     try { renderAlerts(); } catch(e) {}
     try { refreshDashboard(); } catch(e) {}
-    try { buildDuplicados(); } catch(e) {}
+    _refrescarDuplicadosSiVisible();
     showToast('✓ ' + ids.length + ' empleado(s) actualizados');
   } finally {
     hideBlockingOverlay();
@@ -3270,10 +3270,12 @@ function openPanel(id){
   document.getElementById('panel-overlay').classList.add('open');
   document.getElementById('panel-perfil').classList.add('open');
 
-  // Reset tabs
-  document.querySelectorAll('.panel-tab').forEach(t=>t.classList.remove('active'));
+  // Reset tabs (acotado a este panel — ".panel-tab" también se usa en Novedades, Duplicados
+  // y Certificados, así que sin acotar podía resaltar la pestaña equivocada)
+  const panelTabs = document.getElementById('panel-perfil').querySelectorAll('.panel-tab');
+  panelTabs.forEach(t=>t.classList.remove('active'));
   document.querySelectorAll('.panel-tab-content').forEach(t=>t.classList.remove('active'));
-  document.querySelector('.panel-tab').classList.add('active');
+  panelTabs[0].classList.add('active');
   document.getElementById('tab-personal').classList.add('active');
 }
 
@@ -3543,7 +3545,7 @@ async function saveEdit(){
     filterTable();
     renderAlerts();
     refreshDashboard();
-    buildDuplicados();
+    _refrescarDuplicadosSiVisible();
 
     closeEditModal();
   } finally {
@@ -4572,7 +4574,7 @@ function refreshDashboard() {
   updateDashGreeting();
   buildDashAlerts();
   buildCharts();
-  buildDuplicados();
+  _refrescarDuplicadosSiVisible();
 
   // Actualizar chips del topbar
   const ca=document.getElementById('chip-activos'), cl=document.getElementById('chip-alertas');
@@ -7382,9 +7384,8 @@ function _catalogSidebarEl(key){
 // Refresca en tiempo real las demás pantallas que dependen de los catálogos, para no
 // tener que recargar la página (mismo patrón que ya usa "Nombres similares").
 function _refrescarTrasCambioCatalogo(){
-  buildDuplicados();
-  initMasEditFilters();
-  filterMasEdit();
+  _refrescarDuplicadosSiVisible();
+  _refrescarMasEditSiVisible();
 }
 
 function saveCatalogItem(){
@@ -7566,6 +7567,21 @@ const IMPORT_MOCK = [
 function removeAccents(str) {
   if (!str) return '';
   return String(str).normalize('NFD').replace(/[̀-ͯ]/g, '');
+}
+
+// removeAccents() hace una normalización Unicode (NFD) + regex — no es gratis, y los
+// filtros (Empleados, Edición Masiva) la llaman miles de veces por cada tecla/cambio con
+// las MISMAS cadenas repetidas (nombres de catálogo, valores de empleados). Cachearla evita
+// recalcular lo mismo una y otra vez.
+const _accentCache = new Map();
+function _stripAccentsCached(str) {
+  if (!str) return '';
+  let cached = _accentCache.get(str);
+  if (cached === undefined) {
+    cached = removeAccents(str);
+    _accentCache.set(str, cached);
+  }
+  return cached;
 }
 
 // Convención de grafía para catálogos y datos: solo la primera letra de TODO el texto en
@@ -8178,7 +8194,7 @@ async function vaciarBaseDeDatos() {
     filterTable();
     renderAlerts();
     refreshDashboard();
-    buildDuplicados();
+    _refrescarDuplicadosSiVisible();
 
     await logAudit('delete', 'sistema', _currentUser?.id || '', 'Vaciado completo de la base de datos de empleados');
     showToast('✓ Base de datos vaciada correctamente — ' + total.toLocaleString('es-CO') + ' registros eliminados');
@@ -8205,17 +8221,8 @@ function _rtFlushUI() {
   filteredData = [...EMPLEADOS];
   filterTable();
   try { renderAlerts(); }     catch(e) {}
-  try { refreshDashboard(); } catch(e) {}
-  // buildDuplicados es pesado — solo si la sección está visible
-  const dupSection = document.getElementById('section-duplicados');
-  if (dupSection?.classList.contains('active')) {
-    try { buildDuplicados(); } catch(e) {}
-    // Si la pestaña "Edición Masiva" está abierta, refrescarla también con lo que cambió el otro usuario
-    const masivaTab = document.getElementById('dup-content-masiva');
-    if (masivaTab && masivaTab.style.display !== 'none') {
-      try { filterMasEdit(); } catch(e) {}
-    }
-  }
+  try { refreshDashboard(); } catch(e) {}  // ya refresca "Nombres similares" internamente si está visible
+  try { _refrescarMasEditSiVisible(); } catch(e) {}  // por si otro usuario cambió algo mientras esta pestaña está abierta
   try { refreshCatalogIfVisible(); } catch(e) {}
   const dot = document.getElementById('sb-sync-dot');
   if (dot) dot.style.opacity = '0.4';
@@ -9413,8 +9420,7 @@ async function ejecutarMasEdit(){
   initFilters(); filterTable();          // refresca Empleados
   initMasEditFilters(); filterMasEdit(); // refresca esta misma pestaña con los valores nuevos
   try { renderAlerts(); } catch(e) {}
-  try { refreshDashboard(); } catch(e) {}
-  try { buildDuplicados(); } catch(e) {}
+  try { refreshDashboard(); } catch(e) {}  // ya refresca "Nombres similares" internamente si está visible
 
   showToast(errores
     ? '&#9888; Aplicado con ' + errores + ' lote(s) con error — revisa e intenta de nuevo'
@@ -9514,8 +9520,7 @@ async function deshacerMasEdit(){
   initFilters(); filterTable();
   initMasEditFilters(); filterMasEdit();
   try { renderAlerts(); } catch(e) {}
-  try { refreshDashboard(); } catch(e) {}
-  try { buildDuplicados(); } catch(e) {}
+  try { refreshDashboard(); } catch(e) {}  // ya refresca "Nombres similares" internamente si está visible
 
   showToast(errores
     ? '&#9888; Deshecho con ' + errores + ' lote(s) con error — revisa'
@@ -9616,7 +9621,6 @@ async function resolverDupExacto(cedula, accion) {
 
   filteredData = [...EMPLEADOS];
   filterTable(); renderAlerts(); refreshDashboard();
-  setTimeout(() => buildDuplicados(), 300);
 }
 
 // ── ACCIÓN: Unificar posibles duplicados — mantener el elegido, inactivar el otro ──
@@ -9664,7 +9668,6 @@ async function unificarPosiblesDup(idMantener, nameKey) {
     filteredData = [...EMPLEADOS];
     filterTable(); renderAlerts(); refreshDashboard();
     showToast('&#10003; Unificaci\xf3n aplicada &mdash; registro de CC ' + (mantener.cedula||'—') + ' es el principal');
-    setTimeout(() => buildDuplicados(), 300);
   } finally {
     hideBlockingOverlay();
   }
@@ -9675,13 +9678,13 @@ async function unificarPosiblesDup(idMantener, nameKey) {
 function descartarPosibleDup(nameKey) {
   _posDismissed.add(nameKey);
   _persistirIgnorar('possible', nameKey);
-  buildDuplicados();
+  _refrescarDuplicadosSiVisible();
   showToast('&#10003; Par ignorado — no volver\xe1 a aparecer');
 }
 
 function togglePosHistorico() {
   _posShowHistorico = !_posShowHistorico;
-  buildDuplicados();
+  _refrescarDuplicadosSiVisible();
 }
 
 // ── ACCIÓN: Corregir cédula — actualiza todos los demás registros del grupo
@@ -9734,7 +9737,6 @@ async function adoptarCedula(idReferencia, nameKey) {
     filteredData = [...EMPLEADOS];
     filterTable(); renderAlerts(); refreshDashboard();
     showToast('✓ C\xe9dula corregida — ' + otros.length + ' registro(s) actualizados a CC ' + ref.cedula);
-    setTimeout(() => buildDuplicados(), 300);
   } finally {
     hideBlockingOverlay();
   }
@@ -9826,7 +9828,6 @@ async function unificarVarianteNombre(idx) {
     initFilters(); filterTable(); renderAlerts(); refreshDashboard();
     await logAudit('update','catalogos','', 'Unific\xf3 ' + ok + ' variantes de ' + campoLabel + ' a: ' + targetName);
     showToast('&#10003; ' + ok + ' variante' + (ok!==1?'s':'') + ' de ' + campoLabel + ' unificada' + (ok!==1?'s':'') + ' a "' + escapeHTML(targetName) + '"');
-    setTimeout(() => buildDuplicados(), 300);
   } finally {
     hideBlockingOverlay();
   }
@@ -9840,11 +9841,33 @@ function descartarSimilar(idx) {
   const key = item.type + '_' + item.group[0].name;
   _simDismissed.add(key);
   _persistirIgnorar('similar', key);
-  buildDuplicados();
+  _refrescarDuplicadosSiVisible();
   showToast('Sugerencia ignorada — no volver\xe1 a aparecer');
 }
 
 // ─── DUPLICADOS DINAMICOS ─────────────────────────────────────────────────
+// buildDuplicados() es pesado (compara miles de empleados entre sí para "Nombres
+// similares"). Antes se recalculaba después de CUALQUIER edición en cualquier parte de
+// la app, aunque el usuario no estuviera viendo esta pantalla. Ahora solo se recalcula
+// de verdad si la sección "Corrección de Datos" está visible en este momento — si no,
+// se salta el trabajo (se recalculará solo, completo, la próxima vez que se entre a la
+// sección — ver showSection()).
+function _refrescarDuplicadosSiVisible() {
+  const sec = document.getElementById('section-duplicados');
+  if (sec && sec.classList.contains('active')) {
+    try { buildDuplicados(); } catch(e) { console.error('buildDuplicados error:', e); }
+  }
+}
+
+// Edición Masiva también es pesada (recorre miles de empleados por cada uno de sus
+// filtros) — solo refrescarla si esa pestaña puntual está abierta ahora mismo.
+function _refrescarMasEditSiVisible() {
+  const masivaTab = document.getElementById('dup-content-masiva');
+  if (masivaTab && masivaTab.style.display !== 'none') {
+    try { initMasEditFilters(); filterMasEdit(); } catch(e) { console.error('masEdit refresh error:', e); }
+  }
+}
+
 function buildDuplicados() {
   const EMPTY_STATE = '<div class="empty-state" style="padding:40px 24px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 12px;display:block;opacity:.3"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><p style="font-size:13px;color:var(--text2)">Sin datos importados a\xfan</p><small>Importa empleados para detectar duplicados autom\xe1ticamente</small></div>';
 
@@ -10246,7 +10269,6 @@ async function eliminarEmpleadoDirecto(id) {
     filteredData = [...EMPLEADOS];
     filterTable(); renderAlerts(); refreshDashboard();
     showToast('&#10003; Registro de ' + escapeHTML(emp.nombre||'empleado') + ' eliminado');
-    setTimeout(() => buildDuplicados(), 300);
   } catch(e) { showToast('Error: ' + e.message); }
   finally { hideBlockingOverlay(); }
 }
