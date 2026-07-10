@@ -5,6 +5,13 @@
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>RH — Módulo de Empleados</title>
+<script>
+  // Aplicar el tema guardado ANTES de pintar la página, para que no haya un parpadeo
+  // de tema claro y luego oscuro al cargar.
+  try {
+    if (localStorage.getItem('tema') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
+  } catch(e) {}
+</script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
@@ -24,7 +31,19 @@
   --shadow:0 1px 3px rgba(0,0,0,.08),0 1px 2px rgba(0,0,0,.04);
   --shadow-lg:0 4px 16px rgba(0,0,0,.1);
 }
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:14px}
+html[data-theme="dark"]{
+  --sidebar:#0a1229;--sidebar-hover:rgba(255,255,255,.06);--sidebar-active:#f5d400;
+  --bg:#0f172a;--card:#1e293b;--border:#334155;
+  --text:#f1f5f9;--text2:#cbd5e1;--text3:#7c8aa5;
+  --blue:#60a5fa;--blue-light:rgba(96,165,250,.15);--blue-dark:#93c5fd;
+  --green:#4ade80;--green-light:rgba(74,222,128,.15);
+  --red:#f87171;--red-light:rgba(248,113,113,.15);
+  --orange:#fbbf24;--orange-light:rgba(251,191,36,.15);
+  --purple:#c4b5fd;--purple-light:rgba(196,181,253,.15);
+  --shadow:0 1px 3px rgba(0,0,0,.4),0 1px 2px rgba(0,0,0,.3);
+  --shadow-lg:0 4px 20px rgba(0,0,0,.5);
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;background:var(--bg);color:var(--text);display:flex;height:100vh;overflow:hidden;font-size:14px;transition:background .2s,color .2s}
 
 /* SIDEBAR */
 #sidebar{width:248px;min-width:248px;background:#002d80;display:flex;flex-direction:column;height:100vh;overflow-y:auto;border-right:none;box-shadow:2px 0 12px rgba(0,0,0,.18)}
@@ -43,6 +62,13 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .sb-item:hover svg{opacity:.85}
 .sb-item.active svg{opacity:1;color:#fff}
 .sb-badge{margin-left:auto;background:var(--red);color:#fff;font-size:10px;padding:1px 6px;border-radius:10px;font-weight:700}
+.sb-theme-toggle{display:flex;align-items:center;gap:10px;padding:9px 12px;margin:1px 8px 6px;cursor:pointer;color:rgba(255,255,255,.65);border-radius:8px;font-size:13px;font-weight:500;transition:all .15s}
+.sb-theme-toggle:hover{background:rgba(255,255,255,.1);color:#fff}
+.sb-theme-toggle span{flex:1}
+.sb-theme-switch{width:34px;height:18px;border-radius:10px;background:rgba(255,255,255,.15);position:relative;transition:background .2s;flex-shrink:0}
+.sb-theme-switch-knob{width:14px;height:14px;border-radius:50%;background:#fff;position:absolute;top:2px;left:2px;transition:left .2s}
+html[data-theme="dark"] .sb-theme-switch{background:#f5d400}
+html[data-theme="dark"] .sb-theme-switch-knob{left:18px;background:#001a4d}
 .sb-footer{margin-top:auto;padding:14px 18px;border-top:1px solid rgba(255,255,255,.1)}
 .sb-user{display:flex;align-items:center;gap:10px;cursor:pointer}
 .sb-avatar{width:36px;height:36px;border-radius:50%;background:rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;color:#fff;font-size:13px;font-weight:800;flex-shrink:0;overflow:hidden}
@@ -62,7 +88,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .dash-welcome{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-wrap:wrap;gap:12px}
 .dash-greeting{font-size:21px;font-weight:800;color:#1e293b;line-height:1.2}
 .dash-greeting-sub{font-size:13px;color:#64748b;margin-top:4px}
-.dash-date-pill{display:inline-flex;align-items:center;gap:7px;background:#fff;border:1px solid #e8ecf0;border-radius:10px;padding:8px 16px;font-size:12px;color:#64748b;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.dash-date-pill{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid #e8ecf0;border-radius:10px;padding:8px 16px;font-size:12px;color:#64748b;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 
 /* SECTIONS */
 .section{display:none}
@@ -70,7 +96,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 
 /* STATS CARDS */
 .stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:24px}
-.stat-card{background:#fff;border:1px solid #edf2f7;border-radius:14px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.04);transition:box-shadow .18s,transform .18s;display:flex;align-items:center;gap:16px}
+.stat-card{background:var(--card);border:1px solid #edf2f7;border-radius:14px;padding:16px 20px;box-shadow:0 1px 3px rgba(0,0,0,.05),0 4px 14px rgba(0,0,0,.04);transition:box-shadow .18s,transform .18s;display:flex;align-items:center;gap:16px}
 .stat-card:hover{box-shadow:0 4px 20px rgba(0,0,0,.1);transform:translateY(-1px)}
 .stat-card-top{display:none} /* ya no se usa — layout directo */
 .stat-info{flex:1;min-width:0}
@@ -138,7 +164,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-seri
 .search-bar{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:16px;display:flex;align-items:center;gap:12px;flex-wrap:wrap;box-shadow:var(--shadow)}
 .search-input-wrap{position:relative;flex:1;min-width:220px}
 .search-input{width:100%;padding:8px 12px 8px 36px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;background:#f8fafc}
-.search-input:focus{border-color:var(--blue);background:#fff}
+.search-input:focus{border-color:var(--blue);background:var(--card)}
 .search-icon{position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3);pointer-events:none}
 .search-icon svg{width:15px;height:15px}
 .filter-select{padding:8px 28px 8px 10px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text2);outline:none;cursor:pointer;background:#f8fafc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;appearance:none}
@@ -212,7 +238,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .info-row{display:contents}
 .info-cell{padding:11px 14px;border-bottom:1px solid var(--border)}
 .info-cell:nth-child(odd){border-right:1px solid var(--border);background:#fafbfc}
-.info-cell:nth-child(even){background:#fff}
+.info-cell:nth-child(even){background:var(--card)}
 .info-row:last-child .info-cell{border-bottom:none}
 .info-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;margin-bottom:3px}
 .info-value{font-size:13px;color:var(--text);font-weight:500}
@@ -260,7 +286,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .form-group.full{grid-column:span 2}
 .form-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.4px}
 .form-input{padding:9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;background:#fafbfc;width:100%}
-.form-input:focus{border-color:var(--blue);background:#fff}
+.form-input:focus{border-color:var(--blue);background:var(--card)}
 .form-select{padding:9px 28px 9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);outline:none;cursor:pointer;background:#fafbfc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 8px center;appearance:none;width:100%}
 .form-section{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.5px;grid-column:span 2;padding-top:8px;border-top:1px solid var(--border);margin-top:4px}
 .form-hint{font-size:11px;color:var(--text3);margin-top:3px}
@@ -303,7 +329,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .pagination{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-top:1px solid var(--border);background:#fafbfc}
 .pagination-info{font-size:12px;color:var(--text3)}
 .pagination-btns{display:flex;gap:4px}
-.page-btn{min-width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:#fff;font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);transition:all .15s;display:flex;align-items:center;justify-content:center;padding:0 8px}
+.page-btn{min-width:30px;height:30px;border:1px solid var(--border);border-radius:6px;background:var(--card);font-size:12px;font-weight:600;cursor:pointer;color:var(--text2);transition:all .15s;display:flex;align-items:center;justify-content:center;padding:0 8px}
 .page-btn:hover{border-color:var(--blue);color:var(--blue)}
 .page-btn.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .page-btn:disabled{opacity:.4;cursor:not-allowed}
@@ -318,7 +344,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .combobox-wrap{position:relative;flex:1}
 .combobox-input{width:100%;padding:9px 32px 9px 12px;border:1px solid var(--border);border-radius:7px;font-size:13px;color:var(--text);outline:none;transition:border-color .15s;background:#fafbfc url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%2394a3b8' stroke-width='2'%3E%3Cpath d='m6 9 6 6 6-6'/%3E%3C/svg%3E") no-repeat right 10px center}
 .combobox-input:focus{border-color:var(--blue);background-color:#fff}
-.combobox-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:9999;max-height:230px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.combobox-dropdown{display:none;position:absolute;top:calc(100% + 3px);left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;z-index:9999;max-height:230px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12)}
 .combobox-item{padding:8px 12px;font-size:13px;cursor:pointer;transition:background .08s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .combobox-item:hover,.combobox-item.cb-hl{background:var(--blue-light);color:var(--blue-dark)}
 .combobox-item.cb-selected{background:#f0fdf4;color:var(--green);font-weight:600}
@@ -330,7 +356,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .cert-form-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px 24px;margin-bottom:20px;box-shadow:var(--shadow)}
 .cert-section-label{font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px}
 .cert-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
-.cert-preview{background:#fff;border:1px solid var(--border);border-radius:10px;margin-bottom:20px;box-shadow:var(--shadow-lg);overflow:hidden}
+.cert-preview{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;box-shadow:var(--shadow-lg);overflow:hidden}
 .cert-preview-header{background:#1e2a45;color:#fff;padding:14px 20px;font-size:12px;font-weight:600;letter-spacing:.3px;display:flex;align-items:center;justify-content:space-between}
 .cert-doc{padding:0 0 40px 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#1a1a1a;min-height:400px}
 .cert-doc-header{text-align:center;margin-bottom:32px;padding-bottom:18px;border-bottom:2px solid #1e2a45}
@@ -468,7 +494,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .bulk-btn.trasladar{background:rgba(245,212,0,.15);color:#f5d400;border:1px solid rgba(245,212,0,.3)}
 .bulk-btn.trasladar:hover{background:#f5d400;color:#001a4d}
 .bulk-btn.editar{background:rgba(255,255,255,.15);color:#fff;border:1px solid rgba(255,255,255,.3)}
-.bulk-btn.editar:hover{background:#fff;color:#001a4d}
+.bulk-btn.editar:hover{background:var(--card);color:#001a4d}
 .bulk-btn.cancel{background:rgba(255,255,255,.1);color:rgba(255,255,255,.7)}
 .bulk-btn.cancel:hover{background:rgba(255,255,255,.2);color:#fff}
 /* Checkbox en tabla */
@@ -476,9 +502,19 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 thead .emp-check{accent-color:#f5d400}
 tr.bg-selected td{background:#eff6ff!important}
 
+/* Parpadeo breve cuando otro usuario cambia este registro en vivo (sincronización en tiempo real) */
+@keyframes rtFlash{0%{background:var(--blue-light)}70%{background:var(--blue-light)}100%{background:transparent}}
+tr.rt-flash td{animation:rtFlash 1.8s ease-out}
+
+/* Pantallas de carga tipo "esqueleto" — dan la forma de lo que va a llegar, en vez de
+   solo una ruedita girando, mientras se calculan las secciones más pesadas. */
+.skeleton{background:linear-gradient(90deg,var(--border) 25%,var(--bg) 37%,var(--border) 63%);background-size:400% 100%;animation:skeletonPulse 1.4s ease infinite;border-radius:6px}
+@keyframes skeletonPulse{0%{background-position:100% 50%}100%{background-position:0 50%}}
+.skeleton-card{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:12px}
+
 /* ── MODALES ACCIONES MASIVAS ── */
 .bulk-modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:400;display:flex;align-items:center;justify-content:center;padding:24px;backdrop-filter:blur(2px)}
-.bulk-modal{background:#fff;border-radius:14px;width:100%;max-width:460px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden}
+.bulk-modal{background:var(--card);border-radius:14px;width:100%;max-width:460px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden}
 .bulk-modal-header{padding:18px 22px;font-size:15px;font-weight:700;color:var(--text);border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
 .bulk-modal-body{padding:20px 22px}
 .bulk-modal-footer{padding:14px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px}
@@ -511,7 +547,7 @@ tr.bg-selected td{background:#eff6ff!important}
 .doc-tipo-card{background:#fafbfc;border:1px solid var(--border);border-radius:10px;padding:14px 16px;margin-bottom:10px}
 .doc-tipo-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .doc-tipo-title{font-size:12px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:6px}
-.doc-item{background:#fff;border:1px solid var(--border);border-radius:7px;padding:9px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.doc-item{background:var(--card);border:1px solid var(--border);border-radius:7px;padding:9px 12px;display:flex;align-items:center;gap:10px;margin-bottom:6px}
 .doc-item:hover{background:#f8fafc}
 .doc-icon{width:32px;height:32px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:16px;flex-shrink:0}
 .doc-icon.pdf{background:#fee2e2}
@@ -564,7 +600,7 @@ tr.bg-selected td{background:#eff6ff!important}
 .import-stat-label{font-size:11px;font-weight:600;color:var(--text2)}
 
 .import-filter-tabs{display:flex;gap:4px;margin-bottom:16px;flex-wrap:wrap}
-.import-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text2);transition:all .15s}
+.import-tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text2);transition:all .15s}
 .import-tab.active{background:var(--blue);color:#fff;border-color:var(--blue)}
 .import-tab.t-valid.active{background:var(--green)}
 .import-tab.t-warn.active{background:var(--orange)}
@@ -620,7 +656,7 @@ tr.bg-selected td{background:#eff6ff!important}
 .dup-field-val{font-weight:600;color:var(--text)}
 .dup-field-val.diff{color:var(--orange)}
 .dup-actions{padding:12px 18px;display:flex;gap:8px;flex-wrap:wrap;background:#fafbfc;border-top:1px solid var(--border)}
-.dup-btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:#fff;color:var(--text2);transition:all .15s}
+.dup-btn{padding:6px 12px;border-radius:6px;font-size:12px;font-weight:600;cursor:pointer;border:1px solid var(--border);background:var(--card);color:var(--text2);transition:all .15s}
 .dup-btn:hover{border-color:var(--blue);color:var(--blue)}
 .dup-btn.primary{background:var(--blue);color:#fff;border-color:var(--blue)}
 .dup-btn.danger{background:var(--red-light);color:var(--red);border-color:#fecaca}
@@ -760,6 +796,11 @@ tr.bg-selected td{background:#eff6ff!important}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
     Gesti&#243;n de Usuarios
     <span class="sb-badge" style="background:#f5d400;color:#001a4d;font-size:9px">Admin</span>
+  </div>
+  <div class="sb-theme-toggle" onclick="toggleDarkMode()" title="Cambiar entre modo claro y oscuro">
+    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+    <span id="sb-theme-label">Modo oscuro</span>
+    <div class="sb-theme-switch"><div class="sb-theme-switch-knob"></div></div>
   </div>
   <div class="sb-footer">
     <div class="sb-user" style="cursor:pointer" onclick="abrirPerfilUsuario()" title="Mi perfil y configuración">
@@ -1585,7 +1626,7 @@ tr.bg-selected td{background:#eff6ff!important}
                 style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3)">
                 <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
               </svg>
-              <div id="certSearchResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:3px"></div>
+              <div id="certSearchResults" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:3px"></div>
             </div>
             <button class="btn btn-ghost btn-sm" onclick="certClearEmployee()">Limpiar</button>
           </div>
@@ -1807,7 +1848,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
           <span style="font-size:13px;font-weight:700;color:#059669">Copia de Seguridad</span>
         </div>
-        <div style="padding:20px;background:#fff">
+        <div style="padding:20px;background:var(--card)">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
             <div>
               <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:4px">Respaldo completo del sistema</div>
@@ -1827,7 +1868,7 @@ tr.bg-selected td{background:#eff6ff!important}
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#dc2626" stroke-width="2"><path d="M10.29 3.86 1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
           <span style="font-size:13px;font-weight:700;color:#dc2626">Zona de Peligro</span>
         </div>
-        <div style="padding:20px;background:#fff">
+        <div style="padding:20px;background:var(--card)">
           <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px">
             <div>
               <div style="font-size:14px;font-weight:700;color:#1e293b;margin-bottom:4px">Vaciar base de datos de empleados</div>
@@ -2189,7 +2230,7 @@ tr.bg-selected td{background:#eff6ff!important}
 <!-- MODAL EDITAR PERFIL DE USUARIO (admin edita a otros) -->
 <div id="modal-overlay-usuario" onclick="if(event.target===this)cerrarEditarUsuario()"
   style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:center;justify-content:center;padding:24px">
-  <div style="background:#fff;border-radius:14px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden">
+  <div style="background:var(--card);border-radius:14px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden">
     <div style="background:linear-gradient(135deg,#001a4d,#003c9d);padding:20px 24px;display:flex;align-items:center;gap:14px">
       <div id="meu-avatar" style="width:52px;height:52px;border-radius:50%;background:#003c9d;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden">?</div>
       <div style="flex:1">
@@ -2449,7 +2490,7 @@ tr.bg-selected td{background:#eff6ff!important}
 
 <!-- OVERLAY DE BLOQUEO — cubre toda la pantalla mientras una operación crítica está en curso -->
 <div id="blocking-overlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10000;align-items:center;justify-content:center;backdrop-filter:blur(2px)">
-  <div style="background:#fff;border-radius:14px;padding:32px 40px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:240px">
+  <div style="background:var(--card);border-radius:14px;padding:32px 40px;text-align:center;box-shadow:0 12px 40px rgba(0,0,0,.25);min-width:240px">
     <div style="width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 16px"></div>
     <div id="blocking-overlay-text" style="font-size:14px;font-weight:700;color:var(--text)">Procesando...</div>
   </div>
@@ -2457,7 +2498,7 @@ tr.bg-selected td{background:#eff6ff!important}
 
 <!-- MODAL: Derivar solicitud (responder por correo a otra área) -->
 <div id="derivar-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:20px">
-  <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);width:100%;max-width:560px;overflow:hidden">
+  <div style="background:var(--card);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);width:100%;max-width:560px;overflow:hidden">
     <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
       <div style="font-size:15px;font-weight:800;color:var(--text)">Derivar solicitud a otra área</div>
       <button onclick="cerrarDerivarModal()" style="background:none;border:none;font-size:20px;line-height:1;color:var(--text3);cursor:pointer">&times;</button>
@@ -2476,7 +2517,7 @@ tr.bg-selected td{background:#eff6ff!important}
 
 <!-- MODAL: Enviar certificado/documento por correo -->
 <div id="enviar-correo-modal" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.55);z-index:10001;align-items:center;justify-content:center;backdrop-filter:blur(2px);padding:20px">
-  <div style="background:#fff;border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);width:100%;max-width:440px;overflow:hidden">
+  <div style="background:var(--card);border-radius:14px;box-shadow:0 12px 40px rgba(0,0,0,.25);width:100%;max-width:440px;overflow:hidden">
     <div style="padding:18px 22px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between">
       <div style="display:flex;align-items:center;gap:9px">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
@@ -2533,10 +2574,14 @@ async function loadFromSupabase() {
   if (dashEmpty) {
     dashEmpty.style.display = 'block';
     dashEmpty.innerHTML =
-      '<div style="text-align:center;padding:60px 24px">' +
-      '<div style="width:36px;height:36px;border:3px solid var(--border);border-top-color:var(--blue);' +
-      'border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px"></div>' +
-      '<p style="font-size:14px;color:var(--text2)">Conectando con Supabase...</p></div>';
+      '<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:16px;padding:20px 0 4px">'
+      + Array.from({length:4}).map(() =>
+          '<div class="skeleton-card" style="display:flex;align-items:center;gap:16px">'
+          + '<div class="skeleton" style="width:44px;height:44px;border-radius:50%;flex-shrink:0"></div>'
+          + '<div style="flex:1"><div class="skeleton" style="height:10px;width:70%;margin-bottom:9px"></div>'
+          + '<div class="skeleton" style="height:18px;width:40%"></div></div></div>'
+        ).join('')
+      + '</div><p style="text-align:center;font-size:12px;color:var(--text3);margin-top:10px">Cargando empleados desde Supabase...</p>';
   }
   if (dashData) dashData.style.display = 'none';
 
@@ -2634,6 +2679,17 @@ let sortDir = 1;
 const _selectedEmps = new Set();  // IDs de empleados seleccionados para acciones masivas
 let currentEmpId = null;
 
+// Genera N tarjetas "esqueleto" (gris pulsante, con la forma de una tarjeta de resultado)
+// para mostrar mientras se calcula algo pesado, en vez de solo una ruedita girando.
+function _skeletonCards(n) {
+  return Array.from({length:n}).map(() => `
+    <div class="skeleton-card">
+      <div class="skeleton" style="height:14px;width:${35+Math.random()*20}%;margin-bottom:12px"></div>
+      <div class="skeleton" style="height:10px;width:${60+Math.random()*25}%;margin-bottom:8px"></div>
+      <div class="skeleton" style="height:10px;width:${40+Math.random()*30}%"></div>
+    </div>`).join('');
+}
+
 // ───────────────────── NAVIGATION ─────────────────────
 function showSection(id, el) {
   // Verificar acceso según rol
@@ -2665,12 +2721,10 @@ function showSection(id, el) {
   // navegador alcance a pintarlo — si no, la pantalla se siente "trabada" mientras procesa.
   if (id === 'duplicados') {
     try { renderAlerts(); } catch(e) {} // barato — se refresca de una vez, sin spinner
-    const spinnerHTML = '<div style="padding:60px 20px;text-align:center;color:var(--text3)">'
-      + '<div style="width:34px;height:34px;border:3px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin 1s linear infinite;margin:0 auto 14px"></div>'
-      + '<div style="font-size:13px">Analizando datos...</div></div>';
+    const skeletonHTML = _skeletonCards(3);
     ['dup-content-exact','dup-content-possible','dup-content-names'].forEach(elId=>{
       const el = document.getElementById(elId);
-      if(el) el.innerHTML = spinnerHTML;
+      if(el) el.innerHTML = skeletonHTML;
     });
     setTimeout(() => buildDuplicados(), 50);
   }
@@ -3122,7 +3176,7 @@ function renderTable(){
     const hist=hasHistory(emp.cedula);
     const retiroInfo=emp.estado==='INACTIVO'&&emp.retiro?`<div class="td-sub">Retiro: ${escapeHTML(emp.retiro)}</div>`:'';
     const isSelected = _selectedEmps.has(emp.id);
-    return `<tr class="${isSelected?'bg-selected':''}">
+    return `<tr class="${isSelected?'bg-selected':''}" data-emp-id="${emp.id}">
       <td style="text-align:center;width:36px">
         ${isEditor() ? `<input type="checkbox" class="emp-check" ${isSelected?'checked':''} onchange="toggleEmpSelection(${emp.id},this.checked)">` : ''}
       </td>
@@ -3593,10 +3647,13 @@ async function loadDocumentos() {
 
   // ── Formulario inline para adjuntar ────────────────────────────────────
   const formHtml = isEditor() ? `
-    <div id="doc-adjuntar-form" style="display:none;background:#f8fafc;border:1px solid var(--border);border-radius:10px;padding:14px;margin-bottom:12px">
+    <div id="doc-adjuntar-form" style="display:none;background:#f8fafc;border:2px dashed var(--border);border-radius:10px;padding:14px;margin-bottom:12px;transition:border-color .15s,background .15s"
+      ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor='var(--blue)';this.style.background='var(--blue-light)'"
+      ondragleave="event.preventDefault();event.stopPropagation();this.style.borderColor='var(--border)';this.style.background='#f8fafc'"
+      ondrop="event.preventDefault();event.stopPropagation();this.style.borderColor='var(--border)';this.style.background='#f8fafc';subirDocumentosMultiples(event.dataTransfer.files)">
       <div style="font-size:12px;font-weight:700;color:var(--text);margin-bottom:10px">Adjuntar documento</div>
       <select id="doc-titulo-input"
-        style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;box-sizing:border-box;margin-bottom:8px;outline:none;background:#fff"
+        style="width:100%;padding:8px 10px;border:1.5px solid var(--border);border-radius:7px;font-size:13px;box-sizing:border-box;margin-bottom:8px;outline:none;background:var(--card)"
         onfocus="this.style.borderColor='var(--blue)'" onblur="this.style.borderColor='var(--border)'">
         <option value="">— Selecciona el tipo de documento —</option>
         ${CATALOGS.tiposAdjunto.map(t=>`<option value="${t}">${t}</option>`).join('')}
@@ -3604,12 +3661,12 @@ async function loadDocumentos() {
       <div style="display:flex;gap:8px;align-items:center">
         <label class="btn btn-primary btn-sm" style="cursor:pointer;margin:0">
           <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-          Seleccionar archivo
-          <input type="file" style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirDocumentoConTitulo(this)">
+          Seleccionar archivo(s)
+          <input type="file" multiple style="display:none" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" onchange="subirDocumentosMultiples(this.files);this.value=''">
         </label>
         <button class="btn btn-ghost btn-sm" onclick="document.getElementById('doc-adjuntar-form').style.display='none'">Cancelar</button>
       </div>
-      <div style="font-size:11px;color:var(--text3);margin-top:6px">PDF, JPG, PNG, DOC, DOCX &middot; M&aacute;x. 10MB</div>
+      <div style="font-size:11px;color:var(--text3);margin-top:6px">PDF, JPG, PNG, DOC, DOCX &middot; M&aacute;x. 10MB cada uno &middot; puedes elegir o arrastrar varios a la vez</div>
     </div>` : '';
 
   // ── Botón adjuntar ──────────────────────────────────────────────────────
@@ -3650,41 +3707,39 @@ async function loadDocumentos() {
   grid.innerHTML = formHtml + btnHtml + listHtml;
 }
 
-// Nueva función: adjuntar con título personalizado
-async function subirDocumentoConTitulo(input) {
-  const file = input.files[0];
-  if (!file || !_docsEmpId) return;
+// Sube uno o varios archivos a la vez (botón "Seleccionar archivo(s)" o arrastrar y
+// soltar sobre el formulario), todos bajo el mismo tipo elegido en el desplegable.
+async function subirDocumentosMultiples(fileList) {
+  const files = Array.from(fileList || []);
+  if (!files.length || !_docsEmpId) return;
 
   const tituloEl = document.getElementById('doc-titulo-input');
   const titulo   = tituloEl?.value?.trim();
-  if (!titulo) {
-    showToast('Selecciona el tipo de documento antes de adjuntarlo');
-    input.value = '';
-    return;
+  if (!titulo) { showToast('Selecciona el tipo de documento antes de adjuntarlo'); return; }
+
+  const validos = [];
+  for (const f of files) {
+    if (f.size > 10*1024*1024) showToast('"' + f.name + '" supera 10MB — se omitió');
+    else validos.push(f);
   }
-  if (file.size > 10*1024*1024) { showToast('M\xe1ximo 10MB por archivo'); input.value = ''; return; }
+  if (!validos.length) return;
 
-  showBlockingOverlay('Subiendo documento...');
+  showBlockingOverlay(validos.length > 1 ? `Subiendo 1 de ${validos.length}...` : 'Subiendo documento...');
+  let subidos = 0, errores = 0;
   try {
-    const path = _docsEmpId + '/adjuntos/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-    const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
-    if (upErr) { showToast('Error: ' + upErr.message); return; }
-
-    const { error: dbErr } = await sb.from('documentos_empleados').insert([{
-      empleado_id: String(_docsEmpId),
-      tipo:        titulo,   // título personalizado guardado en el campo 'tipo'
-      nombre:      file.name,
-      storage_path: path,
-      tamanio:     file.size,
-      subido_por:  _currentUser?.display_name || _currentUser?.email || 'Usuario'
-    }]);
-    if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
-
-    _docsCounts[_docsEmpId] = (_docsCounts[_docsEmpId] || 0) + 1;
-    renderTable(); // actualizar indicador en tabla
-    await logAudit('create', 'documentos', String(_docsEmpId), 'Adjunt\xf3 documento: ' + titulo + ' (' + file.name + ')');
-    showToast('&#10003; "' + escapeHTML(titulo) + '" adjuntado correctamente');
-    input.value = '';
+    for (let i = 0; i < validos.length; i++) {
+      if (validos.length > 1) showBlockingOverlay(`Subiendo ${i+1} de ${validos.length}...`);
+      const ok = await _subirUnDocumento(validos[i], titulo);
+      if (ok) subidos++; else errores++;
+    }
+    if (subidos) {
+      renderTable(); // actualizar indicador en tabla
+      await logAudit('create', 'documentos', String(_docsEmpId),
+        subidos === 1 ? 'Adjunt\xf3 documento: ' + titulo : 'Adjunt\xf3 ' + subidos + ' documentos de tipo: ' + titulo);
+    }
+    showToast(errores
+      ? `&#9888; ${subidos} adjuntado${subidos!==1?'s':''}, ${errores} con error`
+      : `&#10003; ${subidos > 1 ? subidos + ' documentos adjuntados' : '"' + escapeHTML(titulo) + '" adjuntado'} correctamente`);
     if (tituloEl) tituloEl.value = '';
     const form = document.getElementById('doc-adjuntar-form');
     if (form) form.style.display = 'none';
@@ -3692,6 +3747,26 @@ async function subirDocumentoConTitulo(input) {
   } finally {
     hideBlockingOverlay();
   }
+}
+
+// Sube UN archivo a Storage + registra su fila en documentos_empleados. Devuelve true/false.
+async function _subirUnDocumento(file, titulo) {
+  const path = _docsEmpId + '/adjuntos/' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
+  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
+  if (upErr) { showToast('Error subiendo "' + file.name + '": ' + upErr.message); return false; }
+
+  const { error: dbErr } = await sb.from('documentos_empleados').insert([{
+    empleado_id: String(_docsEmpId),
+    tipo:        titulo,   // título personalizado guardado en el campo 'tipo'
+    nombre:      file.name,
+    storage_path: path,
+    tamanio:     file.size,
+    subido_por:  _currentUser?.display_name || _currentUser?.email || 'Usuario'
+  }]);
+  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando "' + file.name + '": ' + dbErr.message); return false; }
+
+  _docsCounts[_docsEmpId] = (_docsCounts[_docsEmpId] || 0) + 1;
+  return true;
 }
 
 // Función legacy (usada en otros lugares del código)
@@ -3764,7 +3839,7 @@ function editarTipoDocumento(id) {
   const tipoActual = (doc.tipo || '').trim();
   const enCatalogo = catalogo.some(c => c === tipoActual);
   wrap.innerHTML = `
-    <select id="doc-tipo-edit-${id}" style="width:100%;padding:6px 8px;border:1.5px solid var(--blue);border-radius:6px;font-size:12px;outline:none;background:#fff">
+    <select id="doc-tipo-edit-${id}" style="width:100%;padding:6px 8px;border:1.5px solid var(--blue);border-radius:6px;font-size:12px;outline:none;background:var(--card)">
       ${(!enCatalogo && tipoActual) ? `<option value="${escapeHTML(tipoActual)}" selected>${escapeHTML(tipoActual)} (actual — fuera de catálogo)</option>` : ''}
       ${catalogo.map(c=>`<option value="${escapeHTML(c)}" ${c===tipoActual?'selected':''}>${escapeHTML(c)}</option>`).join('')}
     </select>
@@ -4495,8 +4570,26 @@ async function asignarCampoAlerta(empId, campo, valor, selectEl) {
 // ───────────────────── CHARTS ─────────────────────
 // initCharts() eliminado — reemplazado por buildCharts() dinamico en refreshDashboard()
 
+// ───────────────────── MODO OSCURO ─────────────────────
+function toggleDarkMode() {
+  const esOscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  if (esOscuro) document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', 'dark');
+  try { localStorage.setItem('tema', esOscuro ? 'light' : 'dark'); } catch(e) {}
+  _actualizarLabelTema();
+  // Los gráficos de Chart.js se dibujan en un <canvas> y no cambian solos de color —
+  // hay que reconstruirlos para que tomen la paleta del nuevo tema.
+  try { if (typeof Chart !== 'undefined') buildCharts(); } catch(e) {}
+}
+function _actualizarLabelTema() {
+  const esOscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  const label = document.getElementById('sb-theme-label');
+  if (label) label.textContent = esOscuro ? 'Modo claro' : 'Modo oscuro';
+}
+
 // ───────────────────── INIT ─────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
+  _actualizarLabelTema();
   initCatalogs();
 
   // Poner logo en login Y en sidebar
@@ -4636,6 +4729,12 @@ function buildCharts() {
   Object.values(_chartInstances).forEach(c=>{ try{c.destroy();}catch(e){} });
   _chartInstances = {};
 
+  // Chart.js dibuja en un <canvas> y no lee las variables CSS del tema — hay que
+  // indicarle los colores de texto/rejilla a mano según si el modo oscuro está activo.
+  const esOscuro = document.documentElement.getAttribute('data-theme') === 'dark';
+  Chart.defaults.color = esOscuro ? '#cbd5e1' : '#475569';
+  const gridColor = esOscuro ? '#334155' : '#f1f5f9';
+
   const activos  = EMPLEADOS.filter(e=>e.estado==='ACTIVO');
   const total    = EMPLEADOS.length;
   const inactivos= total - activos.length;
@@ -4674,7 +4773,7 @@ function buildCharts() {
         labels:topCli.map(([k])=>k.length>35?k.slice(0,35)+'…':k),
         datasets:[{data:topCli.map(([,v])=>v),backgroundColor:'#3b82f6',borderRadius:6,borderSkipped:false}]
       },
-      options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:'#f1f5f9'},ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}},maintainAspectRatio:false}
+      options:{indexAxis:'y',plugins:{legend:{display:false}},scales:{x:{grid:{color:gridColor},ticks:{font:{size:10}}},y:{ticks:{font:{size:10}}}},maintainAspectRatio:false}
     });
   }
 
@@ -5777,7 +5876,7 @@ function buildNovedadesRegistrar() {
             style="position:absolute;left:10px;top:50%;transform:translateY(-50%);color:var(--text3)">
             <circle cx="11" cy="11" r="8"/><path d="m21 21-4.35-4.35"/>
           </svg>
-          <div id="nov-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:3px"></div>
+          <div id="nov-search-results" style="display:none;position:absolute;top:100%;left:0;right:0;background:var(--card);border:1px solid var(--border);border-radius:8px;z-index:100;max-height:220px;overflow-y:auto;box-shadow:0 6px 20px rgba(0,0,0,.12);margin-top:3px"></div>
         </div>
         <button class="btn btn-ghost btn-sm" onclick="novClearEmployee()">Limpiar</button>
       </div>
@@ -8214,12 +8313,23 @@ let _rtChannel = null;
 // Debounce para no re-renderizar 50 veces si llegan eventos masivos
 let _rtFlushTimer = null;
 let _rtPendingRefresh = false;
+let _rtChangedIds = new Set();  // ids tocados por otro usuario desde el último refresco — para resaltar su fila
 
 function _rtFlushUI() {
   if (!_rtPendingRefresh) return;
   _rtPendingRefresh = false;
   filteredData = [...EMPLEADOS];
   filterTable();
+  // Resaltar brevemente las filas que acaban de cambiar (si están visibles en la página actual)
+  const idsAResaltar = [..._rtChangedIds];
+  _rtChangedIds.clear();
+  if (idsAResaltar.length) {
+    requestAnimationFrame(() => {
+      idsAResaltar.forEach(id => {
+        document.querySelector(`#empTableBody tr[data-emp-id="${id}"]`)?.classList.add('rt-flash');
+      });
+    });
+  }
   try { renderAlerts(); }     catch(e) {}
   try { refreshDashboard(); } catch(e) {}  // ya refresca "Nombres similares" internamente si está visible
   try { _refrescarMasEditSiVisible(); } catch(e) {}  // por si otro usuario cambió algo mientras esta pestaña está abierta
@@ -8242,11 +8352,13 @@ function _startRealtimeSync() {
 
         if (eventType === 'INSERT' && newRec?.id) {
           if (!EMPLEADOS.find(e => e.id === newRec.id)) EMPLEADOS.push(newRec);
+          _rtChangedIds.add(newRec.id);
 
         } else if (eventType === 'UPDATE' && newRec?.id) {
           const idx = EMPLEADOS.findIndex(e => e.id === newRec.id);
           if (idx !== -1) Object.assign(EMPLEADOS[idx], newRec);
           else EMPLEADOS.push(newRec);
+          _rtChangedIds.add(newRec.id);
           // Si el perfil de este empleado está abierto Y no se está editando, refrescarlo
           const modalOpen = document.getElementById('modal-overlay')?.classList.contains('open');
           if (!modalOpen && currentEmpId === newRec.id) openPanel(newRec.id);
