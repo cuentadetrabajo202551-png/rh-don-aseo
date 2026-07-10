@@ -182,10 +182,10 @@ table{width:100%;border-collapse:collapse}
 thead th{background:var(--bg);padding:10px 14px;text-align:left;font-size:11px;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;border-bottom:1px solid var(--border);white-space:nowrap;cursor:pointer;user-select:none}
 thead th:hover{color:var(--text)}
 thead th svg{display:inline;vertical-align:middle;margin-left:3px;opacity:.4}
-tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s}
-tbody tr:hover{background:var(--bg)}
-tbody tr:last-child{border-bottom:none}
-tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
+#empTable tbody tr{border-bottom:1px solid #f1f5f9;transition:background .1s}
+#empTable tbody tr:hover{background:var(--bg)}
+#empTable tbody tr:last-child{border-bottom:none}
+#empTable tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .td-name{font-weight:600;color:var(--text)}
 .td-cedula{font-family:monospace;color:var(--text2);font-size:12px}
 .td-sub{font-size:11px;color:var(--text3);margin-top:1px}
@@ -360,7 +360,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .cert-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .cert-preview{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;box-shadow:var(--shadow-lg);overflow:hidden}
 .cert-preview-header{background:#1e2a45;color:#fff;padding:14px 20px;font-size:12px;font-weight:600;letter-spacing:.3px;display:flex;align-items:center;justify-content:space-between}
-.cert-doc{background:#fff;padding:0 0 40px 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#1a1a1a;min-height:400px}
+.cert-doc{color-scheme:light;background:#fff;padding:0 0 40px 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#1a1a1a;min-height:400px}
 .cert-doc-header{text-align:center;margin-bottom:32px;padding-bottom:18px;border-bottom:2px solid #1e2a45}
 .cert-company{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1e2a45}
 .cert-company-sub{font-size:11px;color:#64748b;margin-top:3px}
@@ -11657,9 +11657,9 @@ function certUpdatePreview() {
   }
 
   // ── TABLA DE DATOS ────────────────────────────────────────────────────────
-  const tdL = 'style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top"';
-  const tdR = 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top"';
-  const tdRb= 'style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top;font-weight:700"';
+  const tdL = 'style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;width:35%;font-size:12px;vertical-align:top"';
+  const tdR = 'style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top"';
+  const tdRb= 'style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top;font-weight:700"';
   const hexRow = (emp.horas_extras && String(emp.horas_extras).trim())
     ? '<tr><td '+tdL+'>Valor Horas Extras:</td><td '+tdR+'>'+escapeHTML(formatCOP(emp.horas_extras))+'</td></tr>'
     : '';
@@ -11688,8 +11688,8 @@ function certUpdatePreview() {
           + '</div>';
       }).join('');
       filas +=
-        '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
-        +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
+        '<tr><td '+tdL+'>Historial de Vinculaci\xf3n:</td>'
+        +'<td style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
         +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '');
@@ -11720,8 +11720,8 @@ function certUpdatePreview() {
           + '</div>';
       }).join('');
       filas +=
-        '<tr><td '+tdL+' style="border:1px solid #000;padding:7px 10px;width:35%;font-size:12px;vertical-align:top">Historial de Vinculaci\xf3n:</td>'
-        +'<td style="border:1px solid #000;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
+        '<tr><td '+tdL+'>Historial de Vinculaci\xf3n:</td>'
+        +'<td style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
         +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
