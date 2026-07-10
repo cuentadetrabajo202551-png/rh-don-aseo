@@ -88,9 +88,9 @@ html[data-theme="dark"] .sb-theme-switch-knob{left:18px;background:#001a4d}
 #content{flex:1;overflow-y:auto;padding:24px}
 /* ── DASHBOARD WELCOME ── */
 .dash-welcome{display:flex;align-items:center;justify-content:space-between;margin-bottom:26px;flex-wrap:wrap;gap:12px}
-.dash-greeting{font-size:21px;font-weight:800;color:#1e293b;line-height:1.2}
-.dash-greeting-sub{font-size:13px;color:#64748b;margin-top:4px}
-.dash-date-pill{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid #e8ecf0;border-radius:10px;padding:8px 16px;font-size:12px;color:#64748b;font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.06)}
+.dash-greeting{font-size:21px;font-weight:800;color:var(--text);line-height:1.2}
+.dash-greeting-sub{font-size:13px;color:var(--text2);margin-top:4px}
+.dash-date-pill{display:inline-flex;align-items:center;gap:7px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:8px 16px;font-size:12px;color:var(--text2);font-weight:500;box-shadow:0 1px 4px rgba(0,0,0,.06)}
 
 /* SECTIONS */
 .section{display:none}
@@ -360,7 +360,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .cert-options-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:16px}
 .cert-preview{background:var(--card);border:1px solid var(--border);border-radius:10px;margin-bottom:20px;box-shadow:var(--shadow-lg);overflow:hidden}
 .cert-preview-header{background:#1e2a45;color:#fff;padding:14px 20px;font-size:12px;font-weight:600;letter-spacing:.3px;display:flex;align-items:center;justify-content:space-between}
-.cert-doc{padding:0 0 40px 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#1a1a1a;min-height:400px}
+.cert-doc{background:#fff;padding:0 0 40px 0;font-family:Georgia,'Times New Roman',serif;font-size:13px;line-height:1.75;color:#1a1a1a;min-height:400px}
 .cert-doc-header{text-align:center;margin-bottom:32px;padding-bottom:18px;border-bottom:2px solid #1e2a45}
 .cert-company{font-size:16px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:#1e2a45}
 .cert-company-sub{font-size:11px;color:#64748b;margin-top:3px}
@@ -371,7 +371,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .cert-sign-name{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.5px}
 .cert-sign-role{font-size:11px;color:#64748b}
 .cert-date-right{text-align:right;font-size:12px;color:#64748b;margin-bottom:18px}
-.cert-empty{text-align:center;padding:60px 24px;color:var(--text3)}
+.cert-empty{text-align:center;padding:60px 24px;color:#94a3b8}
 @media print{body>*{display:none!important}#cert-print-area{display:block!important;position:fixed;inset:0;background:#fff;padding:18mm 22mm;font-family:Georgia,serif;font-size:12pt;line-height:1.8;color:#000}}
 /* SPINNER */ @keyframes spin{to{transform:rotate(360deg)}}
 
@@ -871,9 +871,12 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
             <div class="dash-greeting" id="dash-greeting-text">¡Hola! 👋</div>
             <div class="dash-greeting-sub">Aqu&iacute; tienes un resumen actualizado de la gesti&oacute;n de empleados.</div>
           </div>
-          <div class="dash-date-pill" id="dash-date-pill">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span id="dash-date-text">Cargando...</span>
+          <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+            <div id="dash-salud-widget"></div>
+            <div class="dash-date-pill" id="dash-date-pill">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+              <span id="dash-date-text">Cargando...</span>
+            </div>
           </div>
         </div>
 
@@ -1075,7 +1078,17 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
           <tbody id="empTableBody"></tbody>
         </table>
         <div class="pagination" id="paginationBar">
-          <div class="pagination-info" id="paginationInfo"></div>
+          <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+            <div class="pagination-info" id="paginationInfo"></div>
+            <div style="display:flex;align-items:center;gap:4px" id="pageSizePicker">
+              <span style="font-size:11px;color:var(--text3);margin-right:2px">Mostrar:</span>
+              <button class="page-btn page-size-btn" data-size="10" onclick="cambiarPageSize(10)">10</button>
+              <button class="page-btn page-size-btn" data-size="20" onclick="cambiarPageSize(20)">20</button>
+              <button class="page-btn page-size-btn" data-size="50" onclick="cambiarPageSize(50)">50</button>
+              <button class="page-btn page-size-btn" data-size="100" onclick="cambiarPageSize(100)">100</button>
+              <button class="page-btn page-size-btn" data-size="150" onclick="cambiarPageSize(150)">150</button>
+            </div>
+          </div>
           <div class="pagination-btns" id="paginationBtns"></div>
         </div>
       </div>
@@ -1334,6 +1347,7 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
           <div class="section-title">Corrección de Datos</div>
           <div class="section-sub">Detecta duplicados, errores de digitación y sugiere correcciones y unificaciones</div>
         </div>
+        <div id="dup-salud-widget"></div>
       </div>
 
       <!-- Resumen "fuera de catálogo" — generado por buildDuplicados() -->
@@ -1766,7 +1780,7 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
               <div class="cert-doc" id="certDocBody">
                 <div class="cert-empty">
                   <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 10px;display:block;opacity:.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
-                  <p style="font-size:13px;color:var(--text2)">Selecciona un empleado para ver la vista previa</p>
+                  <p style="font-size:13px;color:#475569">Selecciona un empleado para ver la vista previa</p>
                 </div>
               </div>
             </div>
@@ -2688,7 +2702,18 @@ function _resetDashEmpty() {
 // State
 let filteredData = [...EMPLEADOS];
 let currentPage = 1;
-const PAGE_SIZE = 12;
+const PAGE_SIZE_OPCIONES = [10, 20, 50, 100, 150];
+let PAGE_SIZE = (function(){
+  const guardado = parseInt(localStorage.getItem('pageSize') || '10', 10);
+  return PAGE_SIZE_OPCIONES.includes(guardado) ? guardado : 10;
+})();
+function cambiarPageSize(n){
+  if (!PAGE_SIZE_OPCIONES.includes(n) || n === PAGE_SIZE) return;
+  PAGE_SIZE = n;
+  try { localStorage.setItem('pageSize', String(n)); } catch(e){}
+  currentPage = 1;
+  renderTable();
+}
 let sortField = '';
 let sortDir = 1;
 const _selectedEmps = new Set();  // IDs de empleados seleccionados para acciones masivas
@@ -3246,6 +3271,9 @@ function renderPagination(){
   }
   html+=`<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage>=total?'disabled':''}>›</button>`;
   btns.innerHTML=html;
+  document.querySelectorAll('.page-size-btn').forEach(b=>{
+    b.classList.toggle('active', parseInt(b.dataset.size,10)===PAGE_SIZE);
+  });
 }
 
 function goPage(p){
@@ -4494,27 +4522,21 @@ function renderAlerts(){
     : `<div style="padding:14px 18px;font-size:12px;color:var(--green)">&#10003; Todos los activos tienen cliente asignado</div>`;
 
   // ── Cargos inconsistentes (calculado din\xe1micamente) ───────────────────
+  // Usa groupSimilarNames/_esVarianteReal — la MISMA lógica estricta que "Nombres similares",
+  // así lo que aparece acá siempre es normalizable con el botón "Normalizar" (antes usaban
+  // umbrales distintos y a veces un grupo salía acá pero no aparecía del otro lado).
   const cargoCount = {};
   EMPLEADOS.forEach(e=>{ if(e.cargo){ const k=e.cargo.trim().toUpperCase(); cargoCount[k]=(cargoCount[k]||0)+1; }});
-  // Agrupar variantes similares
-  const entries = Object.entries(cargoCount).sort((a,b)=>b[1]-a[1]);
-  const groups=[]; const used=new Set();
-  entries.forEach(([name])=>{
-    if(used.has(name)) return;
-    const group=[name];
-    entries.forEach(([n2])=>{ if(n2!==name&&!used.has(n2)&&simScore(name,n2)>0.72){group.push(n2);used.add(n2);}});
-    used.add(name);
-    if(group.length>1) groups.push(group);
-  });
+  const groups = groupSimilarNames(cargoCount);
   const bCI = document.getElementById('badge-cargos-inc');
   if(bCI) bCI.textContent = groups.length ? `${groups.length} grupo${groups.length!==1?'s':''}` : '✓';
   document.getElementById('alertCargosInconsistentes').innerHTML = groups.length
     ? groups.slice(0,5).map(g=>`
         <div class="alert-emp-row">
           <div style="flex:1">
-            <div class="alert-emp-name">${escapeHTML(g[0])}</div>
+            <div class="alert-emp-name">${escapeHTML(g[0].name)}</div>
             <div class="alert-emp-detail" style="line-height:1.7">
-              ${g.length} variantes: ${g.map(v=>`<span style="background:#f1f5f9;padding:1px 6px;border-radius:4px;font-family:monospace;font-size:11px">${escapeHTML(v)}</span>`).join(' &middot; ')}
+              ${g.length} variantes: ${g.map(v=>`<span style="background:var(--bg);padding:1px 6px;border-radius:4px;font-family:monospace;font-size:11px">${escapeHTML(v.name)}</span>`).join(' &middot; ')}
               <br>Recomendaci\xf3n: unificar a un solo nombre.
             </div>
           </div>
@@ -4692,6 +4714,7 @@ function refreshDashboard() {
   updateDashGreeting();
   buildDashAlerts();
   buildCharts();
+  actualizarSaludWidgets();
   _refrescarDuplicadosSiVisible();
 
   // Actualizar chips del topbar
@@ -9906,6 +9929,52 @@ const _SIM_TYPE_CONFIG = {
   MOTIVO:       { campo:'motivo',       campoLabel:'motivo de retiro', campoLabelPlural:'motivos de retiro',    catKey:'motivosRetiro' },
 };
 
+// ── "Salud de la base de datos": % de valores (en los campos tipo catálogo de arriba)
+// que SÍ coinciden con el catálogo maestro, sobre el total de valores diligenciados.
+// Liviano y autónomo (no depende de buildDuplicados) para poder mostrarse también en el
+// Dashboard, que puede refrescarse sin haber abierto nunca Corrección de Datos.
+function calcularSaludBaseDatos() {
+  let totalRegistros = 0, totalValores = 0;
+  Object.values(_SIM_TYPE_CONFIG).forEach(cfg => {
+    const catalogo = (CATALOGS[cfg.catKey] || []).map(c => removeAccents(String(c).trim().toUpperCase()));
+    const map = {};
+    EMPLEADOS.forEach(e => {
+      const raw = (e[cfg.campo] || '').trim();
+      if (!raw) return;
+      map[raw] = (map[raw] || 0) + 1;
+    });
+    Object.entries(map).forEach(([valor, count]) => {
+      totalValores += count;
+      if (!catalogo.includes(removeAccents(valor.toUpperCase()))) totalRegistros += count;
+    });
+  });
+  return totalValores > 0 ? Math.round((1 - totalRegistros / totalValores) * 100) : 100;
+}
+
+// Genera el HTML de la barra de salud (usada en Dashboard y en el encabezado de Corrección de Datos).
+function _saludBaseDatosHTML() {
+  const pct = calcularSaludBaseDatos();
+  const color = pct >= 90 ? 'var(--green)' : pct >= 70 ? 'var(--orange)' : 'var(--red)';
+  const colorBg = pct >= 90 ? 'var(--green-light)' : pct >= 70 ? 'var(--orange-light)' : 'var(--red-light)';
+  return '<div title="Porcentaje de valores (cliente, cargo, EPS, AFP, ARL, municipio, etc.) que coinciden con el catálogo maestro" '
+    + 'style="display:flex;align-items:center;gap:10px;background:' + colorBg + ';border-radius:10px;padding:9px 16px">'
+    + '<div style="font-size:11px;font-weight:700;color:var(--text2);white-space:nowrap">Salud de la base de datos</div>'
+    + '<div style="width:90px;height:8px;background:var(--border);border-radius:4px;overflow:hidden;flex-shrink:0">'
+    + '<div style="width:' + pct + '%;height:100%;background:' + color + ';border-radius:4px;transition:width .3s"></div>'
+    + '</div>'
+    + '<div style="font-size:14px;font-weight:800;color:' + color + '">' + pct + '%</div>'
+    + '</div>';
+}
+
+// Refresca la barra de salud dondequiera que esté presente en el DOM (Dashboard y/o Corrección de Datos).
+function actualizarSaludWidgets() {
+  const html = _saludBaseDatosHTML();
+  const d = document.getElementById('dash-salud-widget');
+  if (d) d.innerHTML = html;
+  const c = document.getElementById('dup-salud-widget');
+  if (c) c.innerHTML = html;
+}
+
 // ── ACCIÓN: Unificar variantes de nombres similares (cualquier campo de catálogo) ──
 async function unificarVarianteNombre(idx) {
   const item = _simGroupsData[idx];
@@ -10017,8 +10086,47 @@ function _refrescarMasEditSiVisible() {
   }
 }
 
+// ── Detección de "misma variante" (typo/tilde/formato) usada por "Nombres similares" Y
+// por "Cargos con nombres inconsistentes" (Alertas de Datos) — top-level para que ambas
+// pantallas usen exactamente la misma lógica y lo que se detecte en una sea corregible en la otra.
+// Análisis PALABRA POR PALABRA, no por similitud del texto completo — comparar el texto completo
+// falla con nombres tipo plantilla que comparten un prefijo largo pero terminan en algo totalmente
+// distinto: "Edificio Coral" vs "Edificio Vitral" (dos edificios DISTINTOS) o "...seccional
+// Sincelejo" vs "...seccional Bolívar" (dos sedes DISTINTAS) sacan un puntaje global alto por el
+// prefijo compartido, aunque la palabra que en verdad cambia sea corta y no tenga nada que ver
+// con un error de tipeo.
+function _soloFormato(s){ return String(s||'').toUpperCase().replace(/[^A-ZÁÉÍÓÚÑÜ0-9]/g,''); }
+function _splitPalabras(s){ return String(s||'').toUpperCase().split(/[^A-ZÁÉÍÓÚÑÜ0-9]+/).filter(Boolean); }
+function _esVarianteReal(a, b) {
+  if (simScore(a, b) <= 0.75) return false;
+  // Si solo difieren en mayúsculas, espacios o puntuación (sin cambiar ninguna letra/número),
+  // es sin duda la misma entidad con otra grafía.
+  if (_soloFormato(a) === _soloFormato(b)) return true;
+  // Si no, deben tener la MISMA cantidad de palabras y solo UNA debe diferir — y esa única
+  // palabra debe parecerse mucho a sí misma (typo/tilde), no ser una palabra distinta.
+  const wa = _splitPalabras(a), wb = _splitPalabras(b);
+  if (wa.length !== wb.length) return false;
+  let difPos = -1, difCount = 0;
+  for (let i = 0; i < wa.length; i++) { if (wa[i] !== wb[i]) { difCount++; difPos = i; } }
+  if (difCount !== 1) return false;
+  return simScore(wa[difPos], wb[difPos]) > 0.6;
+}
+function groupSimilarNames(map){
+  const entries=Object.entries(map).sort((a,b)=>b[1]-a[1]);
+  const groups=[]; const used=new Set();
+  entries.forEach(([name,count])=>{
+    if(used.has(name)) return;
+    const group=[{name,count,isMain:true}];
+    entries.forEach(([n2,c2])=>{ if(n2!==name&&!used.has(n2)&&_esVarianteReal(name,n2)){group.push({name:n2,count:c2});used.add(n2);}});
+    used.add(name);
+    if(group.length>1) groups.push(group);
+  });
+  return groups;
+}
+
 function buildDuplicados() {
-  const EMPTY_STATE = '<div class="empty-state" style="padding:40px 24px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 12px;display:block;opacity:.3"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><p style="font-size:13px;color:var(--text2)">Sin datos importados a\xfan</p><small>Importa empleados para detectar duplicados autom\xe1ticamente</small></div>';
+  actualizarSaludWidgets();
+  const EMPTY_STATE ='<div class="empty-state" style="padding:40px 24px"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 12px;display:block;opacity:.3"><path d="M16 4h2a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V6a2 2 0 0 1 2-2h2"/><rect x="8" y="2" width="8" height="4" rx="1"/></svg><p style="font-size:13px;color:var(--text2)">Sin datos importados a\xfan</p><small>Importa empleados para detectar duplicados autom\xe1ticamente</small></div>';
 
   if (!EMPLEADOS.length) {
     ['exact','possible','names'].forEach(id=>{ const el=document.getElementById('dup-content-'+id); if(el) el.innerHTML=EMPTY_STATE; });
@@ -10155,40 +10263,8 @@ function buildDuplicados() {
 
   // ── Nombres similares: variantes en TODOS los campos de catálogo ───
   // (cliente, cargo, EPS, AFP, ARL, municipio, departamento, escolaridad, motivo)
-  // Dos nombres se consideran "la misma variante" con un análisis PALABRA POR PALABRA, no por
-  // similitud del texto completo — comparar el texto completo falla con nombres tipo plantilla
-  // que comparten un prefijo largo pero terminan en algo totalmente distinto: "Edificio Coral"
-  // vs "Edificio Vitral" (dos edificios DISTINTOS) o "...seccional Sincelejo" vs "...seccional
-  // Bolívar" (dos sedes DISTINTAS) sacan un puntaje global alto por el prefijo compartido, aunque
-  // la palabra que en verdad cambia sea corta y no tenga nada que ver con un error de tipeo.
-  function _soloFormato(s){ return String(s||'').toUpperCase().replace(/[^A-ZÁÉÍÓÚÑÜ0-9]/g,''); }
-  function _splitPalabras(s){ return String(s||'').toUpperCase().split(/[^A-ZÁÉÍÓÚÑÜ0-9]+/).filter(Boolean); }
-  function _esVarianteReal(a, b) {
-    if (simScore(a, b) <= 0.75) return false;
-    // Si solo difieren en mayúsculas, espacios o puntuación (sin cambiar ninguna letra/número),
-    // es sin duda la misma entidad con otra grafía.
-    if (_soloFormato(a) === _soloFormato(b)) return true;
-    // Si no, deben tener la MISMA cantidad de palabras y solo UNA debe diferir — y esa única
-    // palabra debe parecerse mucho a sí misma (typo/tilde), no ser una palabra distinta.
-    const wa = _splitPalabras(a), wb = _splitPalabras(b);
-    if (wa.length !== wb.length) return false;
-    let difPos = -1, difCount = 0;
-    for (let i = 0; i < wa.length; i++) { if (wa[i] !== wb[i]) { difCount++; difPos = i; } }
-    if (difCount !== 1) return false;
-    return simScore(wa[difPos], wb[difPos]) > 0.6;
-  }
-  function groupSimilarNames(map){
-    const entries=Object.entries(map).sort((a,b)=>b[1]-a[1]);
-    const groups=[]; const used=new Set();
-    entries.forEach(([name,count])=>{
-      if(used.has(name)) return;
-      const group=[{name,count,isMain:true}];
-      entries.forEach(([n2,c2])=>{ if(n2!==name&&!used.has(n2)&&_esVarianteReal(name,n2)){group.push({name:n2,count:c2});used.add(n2);}});
-      used.add(name);
-      if(group.length>1) groups.push(group);
-    });
-    return groups;
-  }
+  // _esVarianteReal/groupSimilarNames ahora son top-level (ver arriba de buildDuplicados),
+  // para que "Cargos con nombres inconsistentes" en Alertas de Datos use la misma lógica.
   // Clave = valor TAL CUAL viene (solo trim, sin forzar mayúsculas) — así una
   // misma entidad guardada con distinta grafía ("GECELCA 3 AIRE" / "Gecelca 3 Aire")
   // queda en entradas separadas y groupSimilarNames() puede detectarla como variante
@@ -11316,7 +11392,7 @@ function certClearEmployee() {
   document.getElementById('certEmpFound').style.display = 'none';
   document.getElementById('certOptions').style.display = 'none';
   document.getElementById('certPreviewWrap').style.display = 'none';
-  document.getElementById('certDocBody').innerHTML = '<div class="cert-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 10px;display:block;opacity:.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="font-size:13px;color:var(--text2)">Selecciona un empleado para ver la vista previa</p></div>';
+  document.getElementById('certDocBody').innerHTML = '<div class="cert-empty"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" style="width:36px;height:36px;margin:0 auto 10px;display:block;opacity:.3"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg><p style="font-size:13px;color:#475569">Selecciona un empleado para ver la vista previa</p></div>';
 }
 
 // ── Helper: formatea valor monetario en pesos colombianos ────────────────────
