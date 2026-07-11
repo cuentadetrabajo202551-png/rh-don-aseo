@@ -2337,6 +2337,10 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
           <label class="form-label">Entidad prestadora (EPS) *</label>
           <select class="form-select" id="eno-eps"></select>
         </div>
+        <div class="form-group" id="eno-arl-wrap" style="display:none">
+          <label class="form-label">ARL (si el accidente lo cubre la ARL, no la EPS)</label>
+          <select class="form-select" id="eno-arl"></select>
+        </div>
         <div class="form-group" id="eno-diagnostico-wrap" style="display:none">
           <label class="form-label">Código de diagnóstico (CIE-10)</label>
           <input type="text" class="form-input" id="eno-diagnostico-codigo" oninput="_novBuscarDiagnostico('eno')" style="text-transform:uppercase">
@@ -5647,9 +5651,10 @@ async function crearNovedad() {
     if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
   }
 
-  let eps = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
+  let eps = '', arl = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
   if (tipo.toUpperCase() === 'INCAPACIDAD') {
     eps = document.getElementById('nov-eps')?.value || '';
+    arl = document.getElementById('nov-arl')?.value || '';
     diagCodigo = (document.getElementById('nov-diagnostico-codigo')?.value || '').trim().toUpperCase();
     if (diagCodigo) {
       const { data: diag } = await sb.from('codigos_cie10').select('nombre,descripcion').eq('codigo', diagCodigo).maybeSingle();
@@ -5665,7 +5670,7 @@ async function crearNovedad() {
     empleado_cargo: emp.cargo || '',
     tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
     vacaciones_pagadas: vacacionesPagadas, valor_pagado: valorPagado,
-    eps, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
+    eps, arl, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
     creado_por: _currentUser.id,
     creado_por_nombre: _currentUser.display_name || _currentUser.email
   };
@@ -5712,9 +5717,10 @@ async function guardarEdicionNovedad(id) {
     if (dias < 1) { showToast('La fecha fin debe ser posterior o igual a la fecha inicio'); return; }
   }
 
-  let eps = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
+  let eps = '', arl = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
   if (tipo.toUpperCase() === 'INCAPACIDAD') {
     eps = document.getElementById('eno-eps')?.value || '';
+    arl = document.getElementById('eno-arl')?.value || '';
     diagCodigo = (document.getElementById('eno-diagnostico-codigo')?.value || '').trim().toUpperCase();
     if (diagCodigo) {
       const { data: diag } = await sb.from('codigos_cie10').select('nombre,descripcion').eq('codigo', diagCodigo).maybeSingle();
@@ -5725,7 +5731,7 @@ async function guardarEdicionNovedad(id) {
   const cambios = {
     tipo, fecha_inicio: fechaIni, fecha_fin: fechaFin, dias, descripcion,
     vacaciones_pagadas: vacacionesPagadas, valor_pagado: valorPagado,
-    eps, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
+    eps, arl, diagnostico_codigo: diagCodigo, diagnostico_nombre: diagNombre, diagnostico_descripcion: diagDescripcion,
     updated_at: new Date().toISOString(),
     updated_por: _currentUser.id,
     updated_por_nombre: _currentUser.display_name || _currentUser.email
@@ -6003,6 +6009,13 @@ function buildNovedadesRegistrar() {
             ${(CATALOGS.eps||[]).map(e => '<option value="'+escapeHTML(e)+'">'+escapeHTML(e)+'</option>').join('')}
           </select>
         </div>
+        <div class="form-group" id="nov-arl-wrap" style="display:none">
+          <label class="form-label">ARL (si el accidente lo cubre la ARL, no la EPS)</label>
+          <select class="form-select" id="nov-arl">
+            <option value="">— Seleccionar —</option>
+            ${(CATALOGS.arl||[]).map(a => '<option value="'+escapeHTML(a)+'">'+escapeHTML(a)+'</option>').join('')}
+          </select>
+        </div>
         <div class="form-group" id="nov-diagnostico-wrap" style="display:none">
           <label class="form-label">Código de diagnóstico (CIE-10)</label>
           <input type="text" class="form-input" id="nov-diagnostico-codigo" placeholder="Ej: J11" oninput="_novBuscarDiagnostico('nov')" style="text-transform:uppercase">
@@ -6122,6 +6135,7 @@ function _novAplicarVisibilidadPorTipo(prefix, tipo, vacacionesPagadas) {
   const esInc = tipoUp === 'INCAPACIDAD';
   if ($('vacaciones-pagas-wrap')) $('vacaciones-pagas-wrap').style.display = esVac ? '' : 'none';
   if ($('eps-wrap'))              $('eps-wrap').style.display = esInc ? '' : 'none';
+  if ($('arl-wrap'))              $('arl-wrap').style.display = esInc ? '' : 'none';
   if ($('diagnostico-wrap'))      $('diagnostico-wrap').style.display = esInc ? '' : 'none';
   const pagas = esVac && vacacionesPagadas;
   if ($('fecha-inicio-wrap'))  $('fecha-inicio-wrap').style.display = pagas ? 'none' : '';
@@ -6202,7 +6216,7 @@ async function _novGuardarDesdeForm() {
     }
 
     // Limpiar el formulario por completo (incluidos los adjuntos) para registrar la siguiente novedad
-    ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-valor-pagado','nov-eps','nov-diagnostico-codigo'].forEach(id => {
+    ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-valor-pagado','nov-eps','nov-arl','nov-diagnostico-codigo'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
     });
@@ -6407,6 +6421,8 @@ function _abrirModalEditarNovedad(nov) {
   // Incapacidad: EPS (catálogo) + diagnóstico CIE-10
   const epsSel = document.getElementById('eno-eps');
   epsSel.innerHTML = '<option value="">— Seleccionar —</option>' + (CATALOGS.eps||[]).map(e => '<option value="'+escapeHTML(e)+'"' + (e===nov.eps?' selected':'') + '>' + escapeHTML(e) + '</option>').join('');
+  const arlSel = document.getElementById('eno-arl');
+  if (arlSel) arlSel.innerHTML = '<option value="">— Seleccionar —</option>' + (CATALOGS.arl||[]).map(a => '<option value="'+escapeHTML(a)+'"' + (a===nov.arl?' selected':'') + '>' + escapeHTML(a) + '</option>').join('');
   document.getElementById('eno-diagnostico-codigo').value = nov.diagnostico_codigo || '';
   const diagInfo = document.getElementById('eno-diagnostico-info');
   if (diagInfo) diagInfo.innerHTML = nov.diagnostico_nombre ? ('<strong>' + escapeHTML(nov.diagnostico_nombre) + '</strong> &middot; ' + escapeHTML(nov.diagnostico_descripcion||'')) : '';
