@@ -7561,6 +7561,24 @@ function _catalogSidebarEl(key){
 function _refrescarTrasCambioCatalogo(){
   _refrescarDuplicadosSiVisible();
   _refrescarMasEditSiVisible();
+  _refrescarCatalogosNovedadesSiVisible();
+}
+
+// Refresca las listas de EPS/ARL del formulario "Registrar novedad" cuando ese catálogo
+// cambia — sin reconstruir todo el formulario, para no perder lo que el usuario ya escribió.
+function _refrescarCatalogosNovedadesSiVisible(){
+  const cont = document.getElementById('nov-content-registrar');
+  if (!cont || cont.style.display === 'none') return;
+  _refrescarSelectCatalogo('nov-eps', CATALOGS.eps);
+  _refrescarSelectCatalogo('nov-arl', CATALOGS.arl);
+}
+function _refrescarSelectCatalogo(selectId, valores){
+  const sel = document.getElementById(selectId);
+  if (!sel) return;
+  const actual = sel.value;
+  sel.innerHTML = '<option value="">— Seleccionar —</option>' + (valores||[]).map(v =>
+    '<option value="'+escapeHTML(v)+'"' + (v===actual?' selected':'') + '>'+escapeHTML(v)+'</option>'
+  ).join('');
 }
 
 function saveCatalogItem(){
