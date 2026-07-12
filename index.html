@@ -5805,6 +5805,18 @@ function _calcularDiasNovedad(fechaIni, fechaFin) {
 }
 
 // ── CRUD ──────────────────────────────────────────────────────────────────
+// Lee el valor de un campo que puede haberse convertido en combobox buscable (EPS/ARL):
+// si el <select> oculto encontró la opción exacta, usa ese valor; si no (porque el usuario
+// escribió algo que no está en el catálogo), usa el texto tal cual fue escrito, para no perderlo.
+function _leerValorCombobox(fid) {
+  const el = document.getElementById(fid);
+  if (!el) return '';
+  if (el.value) return el.value.trim();
+  const cbInp = document.querySelector('[data-cb-for="' + fid + '"]');
+  if (cbInp && cbInp.value) return cbInp.value.trim();
+  return '';
+}
+
 async function crearNovedad() {
   if (!canCreateNovedad()) { showToast('No tienes permiso para crear novedades'); return; }
 
@@ -5835,8 +5847,8 @@ async function crearNovedad() {
 
   let eps = '', arl = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
   if (tipo.toUpperCase() === 'INCAPACIDAD') {
-    eps = document.getElementById('nov-eps')?.value || '';
-    arl = document.getElementById('nov-arl')?.value || '';
+    eps = _leerValorCombobox('nov-eps');
+    arl = _leerValorCombobox('nov-arl');
     diagCodigo = (document.getElementById('nov-diagnostico-codigo')?.value || '').trim().toUpperCase();
     if (diagCodigo) {
       const { data: diag } = await sb.from('codigos_cie10').select('nombre,descripcion').eq('codigo', diagCodigo).maybeSingle();
@@ -5903,8 +5915,8 @@ async function guardarEdicionNovedad(id) {
 
   let eps = '', arl = '', diagCodigo = '', diagNombre = '', diagDescripcion = '';
   if (tipo.toUpperCase() === 'INCAPACIDAD') {
-    eps = document.getElementById('eno-eps')?.value || '';
-    arl = document.getElementById('eno-arl')?.value || '';
+    eps = _leerValorCombobox('eno-eps');
+    arl = _leerValorCombobox('eno-arl');
     diagCodigo = (document.getElementById('eno-diagnostico-codigo')?.value || '').trim().toUpperCase();
     if (diagCodigo) {
       const { data: diag } = await sb.from('codigos_cie10').select('nombre,descripcion').eq('codigo', diagCodigo).maybeSingle();
@@ -6227,6 +6239,7 @@ function buildNovedadesRegistrar() {
     </div>
   `;
   _novArchivosPendientes = [];
+  initComboboxes(); // EPS/ARL como combobox buscable, igual que en el formulario de empleado
 }
 
 function novSearchEmployee() {
@@ -6402,6 +6415,8 @@ async function _novGuardarDesdeForm() {
     ['nov-tipo','nov-fecha-inicio','nov-fecha-fin','nov-dias','nov-descripcion','nov-fecha-pago','nov-dias-pagados','nov-valor-pagado','nov-eps','nov-arl','nov-diagnostico-codigo'].forEach(id => {
       const el = document.getElementById(id);
       if (el) el.value = '';
+      const cbInp = document.querySelector('[data-cb-for="' + id + '"]');
+      if (cbInp) cbInp.value = '';
     });
     const chk = document.getElementById('nov-vacaciones-pagas');
     if (chk) chk.checked = false;
@@ -6611,6 +6626,14 @@ function _abrirModalEditarNovedad(nov) {
   const diagInfo = document.getElementById('eno-diagnostico-info');
   if (diagInfo) diagInfo.innerHTML = nov.diagnostico_nombre ? ('<strong>' + escapeHTML(nov.diagnostico_nombre) + '</strong> &middot; ' + escapeHTML(nov.diagnostico_descripcion||'')) : '';
 
+  // EPS/ARL como combobox buscable — sincroniza el texto visible con el valor real guardado
+  // (incluso si no coincide con el catálogo, para no ocultar valores históricos "fuera de catálogo").
+  initComboboxes();
+  const epsInp = document.querySelector('[data-cb-for="eno-eps"]');
+  if (epsInp) epsInp.value = nov.eps || '';
+  const arlInp = document.querySelector('[data-cb-for="eno-arl"]');
+  if (arlInp) arlInp.value = nov.arl || '';
+
   _novAplicarVisibilidadPorTipo('eno', nov.tipo, !!nov.vacaciones_pagadas);
   _renderSoportesList(nov.id, 'eno-adjuntos-list');
   document.getElementById('modal-overlay-novedad').style.display = 'flex';
@@ -6726,9 +6749,6 @@ function buildNovedadesReportes() {
   }
 
   cont.innerHTML = `
-    <div style="display:flex;justify-content:flex-end;margin-bottom:14px">
-      <button class="btn btn-primary btn-sm" onclick="exportarNovedadesExcel()">&#11015; Exportar Excel</button>
-    </div>
     <div class="stats-grid" id="nov-rep-kpis"></div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px">
       <div style="background:var(--card);border:1px solid var(--border);border-radius:10px;padding:16px">
@@ -10783,7 +10803,8 @@ function _updateDupBadge(exact,possible,names){
 const COMBOBOX_MAP = {
   f_cliente:'clientes', f_cargo:'cargos', f_eps:'eps',
   f_afp:'afp', f_arl:'arl', f_municipio:'municipios',
-  f_motivo:'motivosRetiro'
+  f_motivo:'motivosRetiro',
+  'nov-eps':'eps', 'nov-arl':'arl', 'eno-eps':'eps', 'eno-arl':'arl'
 };
 
 let _cbActiveDropdown = null;
