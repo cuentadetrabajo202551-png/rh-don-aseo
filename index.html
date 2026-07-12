@@ -721,6 +721,11 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
           placeholder="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"
           onkeydown="if(event.key==='Enter')doLogin()">
 
+        <label style="display:flex;align-items:center;gap:8px;font-size:12.5px;color:#475569;margin:-8px 0 16px;cursor:pointer">
+          <input type="checkbox" id="login-recordar" style="width:auto;accent-color:#003c9d;cursor:pointer">
+          Mantener sesi&oacute;n iniciada en este dispositivo
+        </label>
+
         <button class="login-btn" id="login-btn" onclick="doLogin()">Iniciar sesi&oacute;n</button>
         <div class="login-error" id="login-error"></div>
 
@@ -764,7 +769,7 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
   <div id="sb-nav-novedades" class="sb-item" onclick="showSection('novedades',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>
     Novedades
-    <span class="sb-badge" id="sb-novedades-badge" style="display:none">0</span>
+    <span class="sb-badge" id="sb-novedades-badge" onclick="irANovedadesPorVencer(event)" title="Incapacidades por vencer (5 días o menos) — clic para verlas" style="display:none;cursor:pointer">0</span>
   </div>
   <div id="sb-nav-importacion" class="sb-item" onclick="showSection('importacion',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
@@ -2622,10 +2627,38 @@ const CERT_MAIL_TOKEN    = 'donaseo-certificados-2026-xk92m'; // debe coincidir 
 
 const SUPABASE_URL = 'https://eimprmejytunsgzazdkh.supabase.co';
 const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbXBybWVqeXR1bnNnemF6ZGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMjc4NDEsImV4cCI6MjA5NTcwMzg0MX0.IG7Ou9YcIMQn7TdHd5WJuhNvAKL-LqVmuxWfkEo1_wQ';
+
+// Adaptador de almacenamiento para la sesión: si el usuario marcó "Mantener sesión
+// iniciada" (checkbox de login), la sesión se guarda en localStorage y sobrevive a
+// cerrar el navegador. Si no la marcó, se guarda en sessionStorage: sobrevive a
+// recargar la página, pero se pierde al cerrar la pestaña/navegador. En ambos casos,
+// "Cerrar sesión" (doLogout) siempre borra la sesión de inmediato, sin importar dónde
+// esté guardada — es la única forma de que el auto-login se desactive.
+const _authStorageAdapter = {
+  getItem: (key) => {
+    try { return localStorage.getItem(key) || sessionStorage.getItem(key); } catch(e) { return null; }
+  },
+  setItem: (key, value) => {
+    try {
+      if (localStorage.getItem('recordarSesion') === 'true') {
+        localStorage.setItem(key, value);
+        sessionStorage.removeItem(key);
+      } else {
+        sessionStorage.setItem(key, value);
+        localStorage.removeItem(key);
+      }
+    } catch(e) {}
+  },
+  removeItem: (key) => {
+    try { localStorage.removeItem(key); sessionStorage.removeItem(key); } catch(e) {}
+  }
+};
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
   auth: {
-    persistSession: false,  // Cerrar el navegador cierra la sesion automaticamente
-    autoRefreshToken: true
+    persistSession: true,
+    autoRefreshToken: true,
+    storage: _authStorageAdapter
   }
 });
 
@@ -2702,15 +2735,7 @@ async function loadFromSupabase() {
     });
     renderTable(); // refrescar tabla con indicadores
   });
-  // Cargar conteo de soportes adjuntos a novedades (en paralelo, no bloquea la UI)
-  sb.from('novedades_soportes').select('novedad_id,novedades(empleado_id)').then(({ data }) => {
-    _novSoportesCounts = {};
-    (data || []).forEach(r => {
-      const empId = Number(r.novedades?.empleado_id);
-      if (empId) _novSoportesCounts[empId] = (_novSoportesCounts[empId] || 0) + 1;
-    });
-    renderTable(); // refrescar tabla con indicadores
-  });
+  _recalcularNovCounts(); // conteo de novedades por empleado (para el ícono morado en la tabla)
   filterTable();
   try { renderAlerts(); } catch(e) { console.error('renderAlerts error:', e); }
   try { refreshDashboard(); } catch(e) { console.error('refreshDashboard error:', e); }
@@ -3361,7 +3386,7 @@ function renderTable(){
               ${emp.genero==='FEMENINO'?'<span class="badge badge-f" style="padding:1px 6px;font-size:10px">&#9792; F</span>':'<span class="badge badge-m" style="padding:1px 6px;font-size:10px">&#9794; M</span>'}
               ${hist?'<span class="badge badge-hist">Historial</span>':''}
               ${_docsCounts[emp.id]>0?`<span title="${_docsCounts[emp.id]} documento${_docsCounts[emp.id]!==1?'s':''} adjunto${_docsCounts[emp.id]!==1?'s':''}" style="display:inline-flex;align-items:center;gap:2px;background:var(--blue-light);color:var(--blue-dark);border:1px solid var(--blue-light);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:default"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M21.44 11.05l-9.19 9.19a6 6 0 0 1-8.49-8.49l9.19-9.19a4 4 0 0 1 5.66 5.66l-9.2 9.19a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg>${_docsCounts[emp.id]}</span>`:''}
-              ${_novSoportesCounts[emp.id]>0?`<span title="${_novSoportesCounts[emp.id]} soporte${_novSoportesCounts[emp.id]!==1?'s':''} adjunto${_novSoportesCounts[emp.id]!==1?'s':''} en novedades" style="display:inline-flex;align-items:center;gap:2px;background:var(--purple-light);color:var(--purple);border:1px solid var(--purple-light);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:default"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>${_novSoportesCounts[emp.id]}</span>`:''}
+              ${_novCounts[emp.id]>0?`<span title="${_novCounts[emp.id]} novedad${_novCounts[emp.id]!==1?'es':''} registrada${_novCounts[emp.id]!==1?'s':''} (vacaciones, incapacidades, permisos, etc.)" style="display:inline-flex;align-items:center;gap:2px;background:var(--purple-light);color:var(--purple);border:1px solid var(--purple-light);border-radius:4px;padding:1px 5px;font-size:9px;font-weight:700;cursor:default"><svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/><path d="M9 16l2 2 4-4"/></svg>${_novCounts[emp.id]}</span>`:''}
             </div>
           </div>
         </div>
@@ -3804,7 +3829,16 @@ const DOC_TIPOS = [
 ];
 let _docsEmpId = null;
 let _docsCounts = {};  // { empId: count } — empleados con documentos adjuntos
-let _novSoportesCounts = {};  // { empId: count } — empleados con soportes adjuntos en sus novedades
+let _novCounts = {};  // { empId: count } — cuántas novedades (de cualquier tipo) tiene registradas cada empleado
+// Recalcula _novCounts a partir del array NOVEDADES ya cargado en memoria — no depende de si
+// tienen soportes adjuntos o no, así el ícono morado sale con cualquier novedad registrada.
+function _recalcularNovCounts() {
+  _novCounts = {};
+  NOVEDADES.forEach(n => {
+    const empId = Number(n.empleado_id);
+    if (empId) _novCounts[empId] = (_novCounts[empId] || 0) + 1;
+  });
+}
 let _empAdjuntoTipos = {};  // { empId: [tipo1, tipo2, ...] } — tipos de adjunto por empleado (para filtro en Edición Masiva)
 let _docsActuales = [];  // documentos del empleado actualmente abierto en el panel (para editar el tipo sin re-consultar)
 
@@ -4772,6 +4806,12 @@ document.addEventListener('DOMContentLoaded', async () => {
   _actualizarLabelTema();
   initCatalogs();
 
+  // Recordar la preferencia de "mantener sesión" del último inicio de sesión
+  try {
+    const recordarChk = document.getElementById('login-recordar');
+    if (recordarChk) recordarChk.checked = localStorage.getItem('recordarSesion') === 'true';
+  } catch(e) {}
+
   // Poner logo en login Y en sidebar
   if (typeof LOGO_B64 !== 'undefined') {
     const loginLogoEl = document.getElementById('login-logo-img');
@@ -5721,16 +5761,29 @@ async function loadNovedadesFromDB() {
   if (error) { console.warn('Error cargando novedades:', error); return; }
   NOVEDADES = data || [];
   _updateNovedadesBadge();
+  _recalcularNovCounts();
+  renderTable(); // refresca el ícono morado en Empleados por si la tabla está visible
 }
 
+// El número rojo del menú lateral es el MISMO que el de la pestaña "Por vencer" (incapacidades
+// que terminan en 5 días o menos) — así, al ver el número, siempre se sabe dónde consultarlo:
+// clic en el número (o en Novedades) lleva directo a esa pestaña.
 function _updateNovedadesBadge() {
-  const hoy = new Date().toISOString().slice(0,10);
-  const activas = NOVEDADES.filter(n => n.fecha_inicio <= hoy && n.fecha_fin >= hoy).length;
+  const hoy    = new Date().toISOString().slice(0,10);
+  const limite = new Date(Date.now()+5*86400000).toISOString().slice(0,10);
+  const porVencer = NOVEDADES.filter(n => (n.tipo||'').toUpperCase()==='INCAPACIDAD' && n.fecha_fin >= hoy && n.fecha_fin <= limite).length;
   const badge = document.getElementById('sb-novedades-badge');
   if (badge) {
-    badge.textContent = activas;
-    badge.style.display = activas > 0 ? '' : 'none';
+    badge.textContent = porVencer;
+    badge.style.display = porVencer > 0 ? '' : 'none';
   }
+}
+
+// Lleva directamente a Novedades → "Por vencer", que es lo que explica el número rojo del menú.
+function irANovedadesPorVencer(event) {
+  if (event) event.stopPropagation();
+  showSection('novedades', document.getElementById('sb-nav-novedades'));
+  buildNovedades('porvencer');
 }
 
 // ── Permisos: regla de "propiedad" — admin sin restricción, editor/auxiliar solo lo propio ──
@@ -5809,6 +5862,8 @@ async function crearNovedad() {
 
   NOVEDADES.unshift(data);
   _updateNovedadesBadge();
+  _recalcularNovCounts();
+  renderTable(); // refresca el ícono morado en Empleados por si la tabla está visible
   await logAudit('create', 'novedades', data.id, 'Registró novedad ' + tipo + ' para ' + emp.nombre + ' (' + fechaIni + ' a ' + fechaFin + ')');
   showToast('✓ Novedad registrada');
   return data;
@@ -5921,12 +5976,6 @@ async function _subirArchivoDirecto(file, novedadId) {
   }]);
   if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando soporte: ' + dbErr.message); return false; }
 
-  const nov = NOVEDADES.find(n => n.id === novedadId);
-  if (nov) {
-    const empId = Number(nov.empleado_id);
-    _novSoportesCounts[empId] = (_novSoportesCounts[empId] || 0) + 1;
-  }
-
   await logAudit('create', 'novedades_soportes', novedadId, 'Adjuntó soporte: ' + file.name);
   return true;
 }
@@ -5966,12 +6015,6 @@ async function eliminarSoporteNovedad(id, storagePath, novedadId) {
     const { error: dbErr } = await sb.from('novedades_soportes').delete().eq('id', id);
     if (dbErr) { showToast('Error en base de datos: ' + dbErr.message); return; }
 
-    const nov = NOVEDADES.find(n => n.id === novedadId);
-    if (nov) {
-      const empId = Number(nov.empleado_id);
-      if (_novSoportesCounts[empId]) _novSoportesCounts[empId] = Math.max(0, _novSoportesCounts[empId] - 1);
-    }
-
     await logAudit('delete', 'novedades_soportes', novedadId, 'Eliminó soporte adjunto');
     showToast('Soporte eliminado');
     if (typeof _recargarSoportesNovedad === 'function') _recargarSoportesNovedad(novedadId);
@@ -6010,38 +6053,49 @@ function buildNovedadesPorVencer() {
   if (!cont) return;
   const hoy    = new Date().toISOString().slice(0,10);
   const limite = new Date(Date.now()+5*86400000).toISOString().slice(0,10);
-  const lista = NOVEDADES
-    .filter(n => (n.tipo||'').toUpperCase() === 'INCAPACIDAD' && n.fecha_fin >= hoy && n.fecha_fin <= limite)
+  // Todas las incapacidades activas (aún no terminan), no solo las que vencen pronto —
+  // se dividen en "Urgentes" (≤5 días) y "Próximas", para tener control de todas a la vez.
+  const activas = NOVEDADES
+    .filter(n => (n.tipo||'').toUpperCase() === 'INCAPACIDAD' && n.fecha_fin >= hoy)
     .sort((a,b) => a.fecha_fin.localeCompare(b.fecha_fin));
+  const urgentes = activas.filter(n => n.fecha_fin <= limite);
+  const proximas = activas.filter(n => n.fecha_fin > limite);
 
   refreshNovPorVencerBadge();
 
-  if (!lista.length) {
-    cont.innerHTML = '<div class="empty-state" style="padding:40px 24px"><p>✓ Ninguna incapacidad vence en los próximos 5 días</p></div>';
+  if (!activas.length) {
+    cont.innerHTML = '<div class="empty-state" style="padding:40px 24px"><p>✓ No hay incapacidades activas en este momento</p></div>';
     return;
   }
 
-  cont.innerHTML = `
-    <div style="font-size:12px;color:var(--text3);margin-bottom:12px">Incapacidades activas cuya fecha de finalización está a 5 días o menos — útil para anticipar el regreso a labores o gestionar una extensión.</div>
-    <div class="table-wrap">
+  const filaHTML = (n, urgente) => {
+    const diasFaltan = Math.round((new Date(n.fecha_fin) - new Date(hoy)) / 86400000);
+    return '<tr>'
+      + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(n.empleado_nombre) + '</div>'
+      + '<div class="td-sub">CC ' + escapeHTML(n.empleado_cedula) + '</div></td>'
+      + '<td style="font-size:12px">' + escapeHTML(n.empleado_cliente||'—') + '</td>'
+      + '<td style="font-size:12px">' + escapeHTML((n.diagnostico_codigo||'') + (n.diagnostico_nombre?(' · '+n.diagnostico_nombre):'')||'—') + '</td>'
+      + '<td style="font-size:12px">' + escapeHTML(n.fecha_fin) + '</td>'
+      + '<td style="font-size:12px;font-weight:700;color:' + (urgente?'#dc2626':'var(--text2)') + '">' + (diasFaltan===0?'HOY':diasFaltan+' día'+(diasFaltan!==1?'s':'')) + '</td>'
+      + '<td><span class="alert-emp-action" onclick="editarNovedad(' + n.id + ')">Ver / editar</span></td>'
+      + '</tr>';
+  };
+
+  const seccionHTML = (titulo, colorTexto, colorFondo, items, urgente) => !items.length ? '' : `
+    <div style="font-size:12px;font-weight:700;color:${colorTexto};background:${colorFondo};padding:9px 16px;border-radius:8px 8px 0 0;margin-top:18px">
+      ${titulo} (${items.length})
+    </div>
+    <div class="table-wrap" style="border-top-left-radius:0;border-top-right-radius:0">
       <table class="table">
         <thead><tr><th>Empleado</th><th>Cliente</th><th>Diagnóstico</th><th>Fin</th><th>Días restantes</th><th></th></tr></thead>
-        <tbody>
-          ${lista.map(n => {
-            const diasFaltan = Math.round((new Date(n.fecha_fin) - new Date(hoy)) / 86400000);
-            return '<tr>'
-              + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(n.empleado_nombre) + '</div>'
-              + '<div class="td-sub">CC ' + escapeHTML(n.empleado_cedula) + '</div></td>'
-              + '<td style="font-size:12px">' + escapeHTML(n.empleado_cliente||'—') + '</td>'
-              + '<td style="font-size:12px">' + escapeHTML((n.diagnostico_codigo||'') + (n.diagnostico_nombre?(' · '+n.diagnostico_nombre):'')||'—') + '</td>'
-              + '<td style="font-size:12px">' + escapeHTML(n.fecha_fin) + '</td>'
-              + '<td style="font-size:12px;font-weight:700;color:#dc2626">' + (diasFaltan===0?'HOY':diasFaltan+' día'+(diasFaltan!==1?'s':'')) + '</td>'
-              + '<td><span class="alert-emp-action" onclick="editarNovedad(' + n.id + ')">Ver / editar</span></td>'
-              + '</tr>';
-          }).join('')}
-        </tbody>
+        <tbody>${items.map(n => filaHTML(n, urgente)).join('')}</tbody>
       </table>
-    </div>
+    </div>`;
+
+  cont.innerHTML = `
+    <div style="font-size:12px;color:var(--text3)">Todas las incapacidades activas — útil para anticipar el regreso a labores, gestionar una extensión, o llevar control de quién las usa con frecuencia.</div>
+    ${seccionHTML('&#128308; Urgentes — vencen en 5 días o menos', 'var(--red)', 'var(--red-light)', urgentes, true)}
+    ${seccionHTML('&#128993; Próximas', 'var(--orange)', 'var(--orange-light)', proximas, false)}
   `;
 }
 
@@ -6748,16 +6802,16 @@ function buildNovedadesReportes() {
 }
 
 function _construirWorkbookNovedades(source) {
-  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','VALOR PAGADO','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
+  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','EPS','ARL','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','VALOR PAGADO','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
   const dataRows = source.map(n => [
     n.empleado_nombre||'', n.empleado_cedula||'', n.empleado_cliente||'', n.empleado_cargo||'',
-    n.tipo||'', n.diagnostico_codigo||'', n.diagnostico_nombre||'', n.diagnostico_descripcion||'',
+    n.tipo||'', n.eps||'', n.arl||'', n.diagnostico_codigo||'', n.diagnostico_nombre||'', n.diagnostico_descripcion||'',
     n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, (n.vacaciones_pagadas ? (n.valor_pagado||0) : ''), n.descripcion||'',
     n.creado_por_nombre||'', (n.created_at||'').slice(0,10)
   ]);
   const aoa = [HEADERS, ...dataRows];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:16},{wch:34},{wch:34},{wch:14},{wch:14},{wch:8},{wch:16},{wch:40},{wch:20},{wch:16}];
+  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:20},{wch:20},{wch:16},{wch:34},{wch:34},{wch:14},{wch:14},{wch:8},{wch:16},{wch:40},{wch:20},{wch:16}];
   ws['!freeze'] = {xSplit:0, ySplit:1};
 
   const wb = XLSX.utils.book_new();
@@ -6799,6 +6853,7 @@ const NOV_HEADER_MAP = {
   'VACACIONES PAGADAS':'vacaciones_pagadas_raw',
   'VALOR PAGADO':'valor_pagado_raw',
   'EPS':'eps',
+  'ARL':'arl',
   'CODIGO DIAGNOSTICO':'diagnostico_codigo', 'CODIGO DE DIAGNOSTICO':'diagnostico_codigo', 'CODIGO CIE10':'diagnostico_codigo', 'CODIGO CIE-10':'diagnostico_codigo',
   'DESCRIPCION':'descripcion',
 };
@@ -6901,8 +6956,13 @@ function validateNovRow(row, cie10Map) {
   } else {
     const tNorm = removeAccents(row.tipo);
     const tiposCat = CATALOGS.novedades_tipos || [];
-    const inCat = tiposCat.some(t => removeAccents(t.toUpperCase()) === tNorm);
-    if (!inCat) {
+    const matchExacto = tiposCat.find(t => removeAccents(t.toUpperCase()) === tNorm);
+    if (matchExacto) {
+      // Normalizar a la grafía exacta del catálogo (Sentencia case) — si no, una novedad
+      // creada por carga masiva queda como "INCAPACIDAD" mientras que una creada desde el
+      // formulario queda como "Incapacidad", aunque para el sistema signifiquen lo mismo.
+      row.tipo = matchExacto;
+    } else {
       const sim = findSimilar(tNorm, tiposCat.map(t => removeAccents(t)));
       const simOrig = sim ? tiposCat.find(t => removeAccents(t) === sim) : null;
       issues.push({ type:'warn', field:'Tipo', msg:`Tipo "${escapeHTML(row.tipo)}" no está en el catálogo${simOrig ? ` — ¿quisiste decir "${escapeHTML(simOrig)}"?` : ''}` });
@@ -6923,6 +6983,20 @@ function validateNovRow(row, cie10Map) {
       const sim = findSimilar(v, epsCat.map(e => removeAccents(e)));
       const simOrig = sim ? epsCat.find(e => removeAccents(e) === sim) : null;
       issues.push({ type:'warn', field:'EPS', msg:`EPS "${escapeHTML(row.eps)}" no está en catálogo${simOrig ? ` — ¿quisiste decir "${escapeHTML(simOrig)}"?` : ''}` });
+    }
+  }
+
+  // ARL: aplica cuando el accidente/incapacidad lo cubre la ARL en vez de la EPS
+  if (row.arl) {
+    const v = removeAccents(row.arl.toString().trim().toUpperCase());
+    const arlCat = CATALOGS.arl || [];
+    const matchExacto = arlCat.find(a => removeAccents(a.toUpperCase()) === v);
+    if (matchExacto) {
+      row.arl = matchExacto;
+    } else {
+      const sim = findSimilar(v, arlCat.map(a => removeAccents(a)));
+      const simOrig = sim ? arlCat.find(a => removeAccents(a) === sim) : null;
+      issues.push({ type:'warn', field:'ARL', msg:`ARL "${escapeHTML(row.arl)}" no está en catálogo${simOrig ? ` — ¿quisiste decir "${escapeHTML(simOrig)}"?` : ''}` });
     }
   }
 
@@ -6956,18 +7030,20 @@ function validateNovRow(row, cie10Map) {
 function descargarPlantillaNovedades() {
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
 
-  const HEADERS = ['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','CODIGO DIAGNOSTICO','DESCRIPCION'];
+  const HEADERS = ['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','ARL','CODIGO DIAGNOSTICO','DESCRIPCION'];
   const ejemplos = [
-    ['1234567890','PERMISO REMUNERADO','10/03/2026','10/03/2026','1','','','','','Cita médica'],
-    ['9876543210','VACACIONES','15/02/2026','','15','SI','750000','','','Vacaciones pagadas — continuó laborando'],
-    ['1029384756','INCAPACIDAD','01/04/2026','05/04/2026','5','','','SALUDTOTAL','J00','Incapacidad médica EPS'],
+    ['1234567890','PERMISO REMUNERADO','10/03/2026','10/03/2026','1','','','','','','Cita médica'],
+    ['9876543210','VACACIONES','15/02/2026','','15','SI','750000','','','','Vacaciones pagadas — continuó laborando'],
+    ['1029384756','INCAPACIDAD','01/04/2026','05/04/2026','5','','','SALUDTOTAL','','J00','Incapacidad médica EPS'],
+    ['1029384756','INCAPACIDAD','20/05/2026','25/05/2026','6','','','','POSITIVA ARL','S60','Incapacidad por accidente laboral — la cubrió la ARL, no la EPS'],
   ];
   const wsDatos = XLSX.utils.aoa_to_sheet([HEADERS, ...ejemplos]);
-  wsDatos['!cols'] = [{wch:16},{wch:22},{wch:14},{wch:14},{wch:8},{wch:18},{wch:14},{wch:16},{wch:16},{wch:40}];
+  wsDatos['!cols'] = [{wch:16},{wch:22},{wch:14},{wch:14},{wch:8},{wch:18},{wch:14},{wch:16},{wch:16},{wch:16},{wch:40}];
   wsDatos['!freeze'] = { xSplit:0, ySplit:1 };
 
   const tipos = CATALOGS.novedades_tipos || [];
   const epsList = CATALOGS.eps || [];
+  const arlList = CATALOGS.arl || [];
   const instrucciones = [
     ['INSTRUCCIONES PARA LA CARGA MASIVA DE NOVEDADES'],
     [''],
@@ -6980,13 +7056,17 @@ function descargarPlantillaNovedades() {
     ['5. VACACIONES PAGADAS: escribe SI solo si el empleado siguió trabajando y se le pagaron los días sin tomar el descanso. En ese caso FECHA FIN se ignora (se usa FECHA INICIO como fecha de causación).'],
     ['6. Si VACACIONES PAGADAS no es SI, entonces FECHA FIN sí es obligatoria.'],
     ['7. VALOR PAGADO: solo aplica si VACACIONES PAGADAS = SI. Escribe el número sin puntos ni signo de pesos (ej: 750000).'],
-    ['8. EPS y CODIGO DIAGNOSTICO: solo aplican cuando el TIPO es INCAPACIDAD. Son opcionales pero recomendados.'],
-    ['9. CODIGO DIAGNOSTICO: escribe SOLO el código CIE-10 (ej: J00). El sistema busca automáticamente el nombre y la descripción de ese código — NO escribas el nombre del diagnóstico, se autocompleta solo.'],
-    ['10. EPS debe ser una de las siguientes (si no coincide, se guarda igual pero queda marcada para revisión):'],
+    ['8. EPS, ARL y CODIGO DIAGNOSTICO: solo aplican cuando el TIPO es INCAPACIDAD. Son opcionales pero recomendados.'],
+    ['9. ARL: úsala en vez de (o además de) la EPS cuando el accidente/incapacidad lo cubre la ARL — por ejemplo, accidentes de tránsito o laborales.'],
+    ['10. CODIGO DIAGNOSTICO: escribe SOLO el código CIE-10 (ej: J00). El sistema busca automáticamente el nombre y la descripción de ese código — NO escribas el nombre del diagnóstico, se autocompleta solo.'],
+    ['11. EPS debe ser una de las siguientes (si no coincide, se guarda igual pero queda marcada para revisión):'],
     ...epsList.map(e => ['   • ' + e]),
     [''],
-    ['11. DIAS: si lo dejas vacío, el sistema lo calcula automáticamente a partir de las fechas (días corridos, incluyendo el día de inicio y el de fin).'],
-    ['12. Nada se guarda automáticamente al subir el archivo: primero verás una vista previa y una validación fila por fila, y solo se guarda lo que confirmes.'],
+    ['12. ARL debe ser una de las siguientes (si no coincide, se guarda igual pero queda marcada para revisión):'],
+    ...arlList.map(a => ['   • ' + a]),
+    [''],
+    ['13. DIAS: si lo dejas vacío, el sistema lo calcula automáticamente a partir de las fechas (días corridos, incluyendo el día de inicio y el de fin).'],
+    ['14. Nada se guarda automáticamente al subir el archivo: primero verás una vista previa y una validación fila por fila, y solo se guarda lo que confirmes.'],
   ];
   const wsInstr = XLSX.utils.aoa_to_sheet(instrucciones);
   wsInstr['!cols'] = [{ wch: 95 }];
@@ -7241,8 +7321,8 @@ async function simulateNovUpload(input) {
     renderNovPreview();
     renderNovDiagnostic({
       sheetName:'DEMO', headerIdx:0,
-      rawHeaders:['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','CODIGO DIAGNOSTICO','DESCRIPCION'],
-      normHeaders:['cedula','tipo','fecha_inicio','fecha_fin','dias','vacaciones_pagadas_raw','valor_pagado_raw','eps','diagnostico_codigo','descripcion'],
+      rawHeaders:['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','ARL','CODIGO DIAGNOSTICO','DESCRIPCION'],
+      normHeaders:['cedula','tipo','fecha_inicio','fecha_fin','dias','vacaciones_pagadas_raw','valor_pagado_raw','eps','arl','diagnostico_codigo','descripcion'],
       totalRows:_novImportData.length, fileName:'demo_novedades.xlsx', kb:0
     });
     return;
@@ -7504,6 +7584,7 @@ async function commitNovImport() {
       vacaciones_pagadas:  !!row.vacaciones_pagadas,
       valor_pagado:        row.valor_pagado || 0,
       eps:                 row.eps || '',
+      arl:                 row.arl || '',
       diagnostico_codigo:      row.diagnostico_codigo || '',
       diagnostico_nombre:      row.diagnostico_nombre || '',
       diagnostico_descripcion: row.diagnostico_descripcion || '',
@@ -8447,6 +8528,13 @@ async function doLogin() {
   const btn   =  document.getElementById('login-btn');
 
   if (!email || !pass) { errEl.textContent = 'Ingresa tu correo y contrasena.'; return; }
+
+  // Guardar la preferencia de "mantener sesión" ANTES de iniciar sesión, para que el
+  // adaptador de almacenamiento sepa dónde guardar la sesión que está a punto de crearse.
+  try {
+    const recordar = document.getElementById('login-recordar')?.checked;
+    localStorage.setItem('recordarSesion', recordar ? 'true' : 'false');
+  } catch(e) {}
 
   btn.disabled = true;
   btn.textContent = 'Iniciando sesion...';
