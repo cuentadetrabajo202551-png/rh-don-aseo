@@ -6460,7 +6460,9 @@ function _recargarSoportesNovedad(novedadId) {
 async function buildNovedadesHistorial() {
   const cont = document.getElementById('nov-content-historial');
   if (!cont) return;
-  await loadNovedadesFromDB();  // refresca con lo más reciente (propio u de otros usuarios) antes de mostrar
+  // Refresca con lo más reciente (propio u de otros usuarios) antes de mostrar. Si falla por
+  // conexión, no se debe quedar la pantalla en blanco — se sigue mostrando con lo que ya había.
+  try { await loadNovedadesFromDB(); } catch(e) { console.error('Error refrescando novedades:', e); }
   const tipos = CATALOGS.novedades_tipos || [];
   const clientes = [...new Set(NOVEDADES.map(n => n.empleado_cliente).filter(Boolean))].sort();
 
