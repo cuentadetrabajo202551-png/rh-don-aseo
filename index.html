@@ -1726,6 +1726,19 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
                 style="resize:vertical;min-height:44px"
                 oninput="certUpdatePreview()">SALARIO MÍNIMO MENSUAL LEGAL VIGENTE (SMMLV) + AUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY</textarea>
             </div>
+            <div class="form-group" id="cert-row-tipocontrato" style="grid-column:span 2">
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
+                <label class="form-label" style="margin:0">Tipo de contrato</label>
+                <label style="display:flex;align-items:center;gap:5px;font-size:12px;cursor:pointer;color:var(--text2)">
+                  <input type="checkbox" id="certIncTipoContrato" onchange="certUpdatePreview()"> Incluir en certificado
+                </label>
+              </div>
+              <select class="form-select" id="certTipoContrato" onchange="certUpdatePreview()">
+                <option value="Contrato de obra o labor">Contrato de obra o labor</option>
+                <option value="Contrato a término fijo">Contrato a término fijo</option>
+                <option value="Contrato a término indefinido">Contrato a término indefinido</option>
+              </select>
+            </div>
             <div class="form-group" id="certHorasRow">
               <div style="display:flex;align-items:center;gap:8px;margin-bottom:6px">
                 <label class="form-label" style="margin:0">Horas laboradas</label>
@@ -11954,6 +11967,8 @@ function certUpdatePreview() {
   const desempeno = document.getElementById('certDesempeno')?.value || 'BUENO';
   const incSal    = document.getElementById('certIncSalario')?.checked !== false;
   const incHoras  = document.getElementById('certIncHoras')?.checked !== false;
+  const incTipoContrato = document.getElementById('certIncTipoContrato')?.checked === true;
+  const tipoContratoTxt = document.getElementById('certTipoContrato')?.value || '';
 
   const isActivo  = emp.estado === 'ACTIVO';
 
@@ -12008,6 +12023,9 @@ function certUpdatePreview() {
   const hexRow = (emp.horas_extras && String(emp.horas_extras).trim())
     ? '<tr><td '+tdL+'>Valor Horas Extras:</td><td '+tdR+'>'+escapeHTML(formatCOP(emp.horas_extras))+'</td></tr>'
     : '';
+  const tipoContratoRow = (incTipoContrato && tipoContratoTxt)
+    ? '<tr><td '+tdL+'>Tipo de Contrato:</td><td '+tdR+'>'+escapeHTML(tipoContratoTxt)+'</td></tr>'
+    : '';
 
   let filas = '';
   // Todos los registros de este empleado (por cédula), ordenados cronológicamente
@@ -12035,6 +12053,7 @@ function certUpdatePreview() {
       filas +=
         '<tr><td '+tdL+'>Historial de Vinculaci\xf3n:</td>'
         +'<td style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
+        +tipoContratoRow
         +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '');
@@ -12043,6 +12062,7 @@ function certUpdatePreview() {
       filas +=
         '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
         +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
+        +tipoContratoRow
         +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '')
@@ -12067,6 +12087,7 @@ function certUpdatePreview() {
       filas +=
         '<tr><td '+tdL+'>Historial de Vinculaci\xf3n:</td>'
         +'<td style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top">'+filasHist+'</td></tr>'
+        +tipoContratoRow
         +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
@@ -12077,6 +12098,7 @@ function certUpdatePreview() {
         +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(emp.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
+        +tipoContratoRow
         +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
