@@ -9879,7 +9879,12 @@ function abrirModalMasEdit(){
     if(!sel) return;
     sel.innerHTML = '<option value="">— No cambiar —</option>' + (CATALOGS[catKey]||[]).map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
     sel.value = '';
+    // Si ya está convertido a combobox (buscador), limpiar también el texto visible —
+    // si no, quedaría mostrando lo escrito la última vez que se abrió este modal.
+    const cbInp = document.querySelector('[data-cb-for="' + selId + '"]');
+    if (cbInp) cbInp.value = '';
   });
+  initComboboxes(); // convierte los campos de masedit a buscador la primera vez que se abre el modal
   document.getElementById('modal-masedit-bulk').style.display = 'flex';
 }
 
@@ -9892,7 +9897,7 @@ async function ejecutarMasEdit(){
   const cambios = {};
   const descPartes = [];
   _MASEDIT_CAMPOS.forEach(({campo, selId, label})=>{
-    const val = document.getElementById(selId)?.value;
+    const val = _leerValorCombobox(selId);
     if(val){ cambios[campo] = val; descPartes.push(label + ' → "' + val + '"'); }
   });
 
@@ -10880,7 +10885,13 @@ const COMBOBOX_MAP = {
   f_cliente:'clientes', f_cargo:'cargos', f_eps:'eps',
   f_afp:'afp', f_arl:'arl', f_municipio:'municipios',
   f_motivo:'motivosRetiro',
-  'nov-eps':'eps', 'nov-arl':'arl', 'eno-eps':'eps', 'eno-arl':'arl'
+  'nov-eps':'eps', 'nov-arl':'arl', 'eno-eps':'eps', 'eno-arl':'arl',
+  // Edición Masiva (Corrección de Datos): sin buscador era fácil escoger por error una opción
+  // parecida y adyacente en la lista (p. ej. "Gecelca minas las palmeras" en vez de
+  // "...- aire") sin darse cuenta, ya que se aplica a varios empleados a la vez.
+  'masedit-cliente':'clientes', 'masedit-cargo':'cargos', 'masedit-eps':'eps',
+  'masedit-afp':'afp', 'masedit-arl':'arl', 'masedit-municipio':'municipios',
+  'masedit-motivo':'motivosRetiro'
 };
 
 let _cbActiveDropdown = null;
