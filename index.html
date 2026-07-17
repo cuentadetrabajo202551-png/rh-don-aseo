@@ -3813,6 +3813,11 @@ async function saveEdit(){
 
     // Re-renderizar todos los componentes que dependen de EMPLEADOS
     filteredData = [...EMPLEADOS];
+    // Reconstruir las listas "fuera de catálogo" de los filtros (Empleados y Edición Masiva)
+    // — si no se hace aquí, quedan desactualizadas hasta el próximo recargue de página o
+    // importación masiva, y un valor recién corregido puede seguir apareciendo como opción.
+    initFilters();
+    initMasEditFilters();
     filterTable();
     renderAlerts();
     refreshDashboard();
@@ -11694,10 +11699,17 @@ let _certSolicitudActual = null; // id de la solicitud de la que se generó (par
 function certSelectEmployee(id) {
   const emp = EMPLEADOS.find(e => e.id === id);
   if (!emp) return;
+  // Si se vuelve a seleccionar el MISMO empleado (p. ej. clic de nuevo en el buscador después
+  // de "Generar desde solicitud"), no se debe perder el vínculo con esa solicitud — antes esto
+  // hacía que el certificado se enviara bien pero la solicitud se quedara sin marcar como
+  // generada, como si nunca se hubiera hecho nada.
+  const mismoEmpleado = _certEmp && _certEmp.id === id;
   _certEmp = emp;
-  _certCorreoSolicitud = ''; // al seleccionar un empleado a mano, no hay correo de solicitud
-  _certOrigenSolicitud = false; // selección manual → origen manual (se marca aparte si viene de solicitud)
-  _certSolicitudActual = null;
+  if (!mismoEmpleado) {
+    _certCorreoSolicitud = ''; // al cambiar de empleado a mano, no hay correo de solicitud
+    _certOrigenSolicitud = false; // selección manual → origen manual (se marca aparte si viene de solicitud)
+    _certSolicitudActual = null;
+  }
 
   const res = document.getElementById('certSearchResults');
   if (res) res.style.display = 'none';
