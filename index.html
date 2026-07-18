@@ -5786,12 +5786,10 @@ async function loadNovedadesFromDB() {
 // El número rojo del menú lateral es el MISMO que el de la pestaña "Por vencer" (incapacidades
 // que terminan en 5 días o menos) — así, al ver el número, siempre se sabe dónde consultarlo:
 // clic en el número (o en Novedades) lleva directo a esa pestaña.
-// Cuenta cuántas incapacidades necesitan atención ya (vencidas o vencen en ≤5 días) y aún no
-// se marcaron "Listo" — la misma cifra que usan el badge del menú lateral y el de la pestaña
-// "Por vencer". Ya no se filtra por fecha de fin ≥ hoy: las vencidas cuentan hasta resolverse.
 function _novPorVencerCount() {
+  const hoy = new Date().toISOString().slice(0,10);
   const limite = new Date(Date.now()+5*86400000).toISOString().slice(0,10);
-  return NOVEDADES.filter(n => (n.tipo||'').toUpperCase()==='INCAPACIDAD' && !n.vencimiento_resuelto && n.fecha_fin <= limite).length;
+  return NOVEDADES.filter(n => (n.tipo||'').toUpperCase()==='INCAPACIDAD' && n.fecha_fin >= hoy && n.fecha_fin <= limite).length;
 }
 
 function _updateNovedadesBadge() {
@@ -6087,99 +6085,39 @@ function buildNovedadesPorVencer() {
   if (!cont) return;
   const hoy    = new Date().toISOString().slice(0,10);
   const limite = new Date(Date.now()+5*86400000).toISOString().slice(0,10);
-  // Nunca se quitan solas por fecha — solo desaparecen cuando se marcan "Listo".
-  // Se dividen en 3 secciones según qué tan urgente es hacerles seguimiento.
-  const activas = NOVEDADES
-    .filter(n => (n.tipo||'').toUpperCase() === 'INCAPACIDAD' && !n.vencimiento_resuelto)
+  const items = NOVEDADES
+    .filter(n => (n.tipo||'').toUpperCase() === 'INCAPACIDAD' && n.fecha_fin >= hoy && n.fecha_fin <= limite)
     .sort((a,b) => (a.fecha_fin||'').localeCompare(b.fecha_fin||''));
-  const vencidas = activas.filter(n => n.fecha_fin < hoy);
-  const urgentes = activas.filter(n => n.fecha_fin >= hoy && n.fecha_fin <= limite);
-  const proximas = activas.filter(n => n.fecha_fin > limite);
 
   refreshNovPorVencerBadge();
 
-  if (!activas.length) {
-    cont.innerHTML = '<div class="empty-state" style="padding:40px 24px"><p>✓ No hay incapacidades pendientes de resolver</p></div>';
+  if (!items.length) {
+    cont.innerHTML = '<div class="empty-state" style="padding:40px 24px"><p>✓ No hay incapacidades por vencer en los próximos 5 días</p></div>';
     return;
   }
 
-  const filaHTML = (n, nivel) => {
+  const filaHTML = (n) => {
     const diasFaltan = Math.round((new Date(n.fecha_fin) - new Date(hoy)) / 86400000);
-    const diasTxt = diasFaltan === 0 ? 'HOY' : diasFaltan > 0
-      ? (diasFaltan + ' día' + (diasFaltan!==1?'s':''))
-      : ('vencida hace ' + Math.abs(diasFaltan) + ' día' + (Math.abs(diasFaltan)!==1?'s':''));
-    const colorDias = nivel === 'vencida' ? '#991b1b' : nivel === 'urgente' ? '#dc2626' : 'var(--text2)';
-    const comentario = n.comentario_vencimiento
-      ? '<div style="margin-top:4px;font-size:11px;color:var(--text2);font-style:italic">&#128172; ' + escapeHTML(n.comentario_vencimiento) + '</div>'
-      : '';
+    const diasTxt = diasFaltan === 0 ? 'HOY' : (diasFaltan + ' día' + (diasFaltan!==1?'s':''));
     return '<tr>'
       + '<td><div class="td-name" style="font-size:13px">' + escapeHTML(n.empleado_nombre) + '</div>'
       + '<div class="td-sub">CC ' + escapeHTML(n.empleado_cedula) + '</div></td>'
       + '<td style="font-size:12px">' + escapeHTML(n.empleado_cliente||'—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML((n.diagnostico_codigo||'') + (n.diagnostico_nombre?(' · '+n.diagnostico_nombre):'')||'—') + '</td>'
       + '<td style="font-size:12px">' + escapeHTML(n.fecha_fin) + '</td>'
-      + '<td style="font-size:12px;font-weight:700;color:' + colorDias + '">' + diasTxt + comentario + '</td>'
-      + '<td><div class="td-actions">'
-      + '<span class="alert-emp-action" onclick="editarNovedad(' + n.id + ')">Ver / editar</span>'
-      + '<button class="btn-icon" title="Marcar como resuelto — ya no vuelve a salir aquí" style="color:var(--green)" onclick="marcarVencimientoResuelto(' + n.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg></button>'
-      + '<button class="btn-icon" title="Agregar comentario" onclick="comentarVencimientoNovedad(' + n.id + ')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg></button>'
-      + '</div></td>'
+      + '<td style="font-size:12px;font-weight:700;color:var(--red)">' + diasTxt + '</td>'
+      + '<td><div class="td-actions"><span class="alert-emp-action" onclick="editarNovedad(' + n.id + ')">Ver / editar</span></div></td>'
       + '</tr>';
   };
 
-  const seccionHTML = (titulo, colorTexto, colorFondo, items, nivel) => !items.length ? '' : `
-    <div style="font-size:12px;font-weight:700;color:${colorTexto};background:${colorFondo};padding:9px 16px;border-radius:8px 8px 0 0;margin-top:18px">
-      ${titulo} (${items.length})
-    </div>
-    <div class="table-wrap" style="border-top-left-radius:0;border-top-right-radius:0">
+  cont.innerHTML = `
+    <div style="font-size:12px;color:var(--text3);margin-bottom:10px">Incapacidades que vencen en los próximos 5 días.</div>
+    <div class="table-wrap">
       <table class="table">
-        <thead><tr><th>Empleado</th><th>Cliente</th><th>Diagnóstico</th><th>Fin</th><th>Estado</th><th></th></tr></thead>
-        <tbody>${items.map(n => filaHTML(n, nivel)).join('')}</tbody>
+        <thead><tr><th>Empleado</th><th>Cliente</th><th>Diagnóstico</th><th>Fin</th><th>Vence en</th><th></th></tr></thead>
+        <tbody>${items.map(filaHTML).join('')}</tbody>
       </table>
     </div>`;
-
-  cont.innerHTML = `
-    <div style="font-size:12px;color:var(--text3)">Incapacidades pendientes de resolver — no se quitan solas al pasar la fecha, solo cuando las marques como "Listo".</div>
-    ${seccionHTML('&#9888; Vencidas — ya pasó la fecha y sigue sin resolver', '#ffffff', '#991b1b', vencidas, 'vencida')}
-    ${seccionHTML('&#128308; Urgentes — vencen en 5 días o menos', 'var(--red)', 'var(--red-light)', urgentes, 'urgente')}
-    ${seccionHTML('&#128993; Próximas', 'var(--orange)', 'var(--orange-light)', proximas, 'proxima')}
-  `;
-}
-
-// ── Acciones de la pestaña "Por vencer": marcar como resuelto, o dejar un comentario ──
-async function marcarVencimientoResuelto(id) {
-  if (!confirm('¿Marcar esta incapacidad como resuelta? Ya no volverá a aparecer en "Por vencer".')) return;
-  showBlockingOverlay('Actualizando...');
-  try {
-    const { error } = await sb.from('novedades').update({ vencimiento_resuelto: true }).eq('id', id);
-    if (error) { showToast('Error: ' + error.message); return; }
-    const nov = NOVEDADES.find(n => n.id === id);
-    if (nov) nov.vencimiento_resuelto = true;
-    await logAudit('update', 'novedades', String(id), 'Marcó como resuelto el seguimiento de vencimiento de incapacidad');
-    showToast('✓ Marcado como resuelto');
-    buildNovedadesPorVencer();
-    _updateNovedadesBadge();
-  } finally {
-    hideBlockingOverlay();
-  }
-}
-
-async function comentarVencimientoNovedad(id) {
-  const nov = NOVEDADES.find(n => n.id === id);
-  const actual = nov?.comentario_vencimiento || '';
-  const comentario = prompt('Comentario sobre el seguimiento de esta incapacidad:', actual);
-  if (comentario === null) return; // canceló
-  showBlockingOverlay('Guardando comentario...');
-  try {
-    const { error } = await sb.from('novedades').update({ comentario_vencimiento: comentario.trim() }).eq('id', id);
-    if (error) { showToast('Error: ' + error.message); return; }
-    if (nov) nov.comentario_vencimiento = comentario.trim();
-    await logAudit('update', 'novedades', String(id), 'Actualizó el comentario de seguimiento de vencimiento');
-    showToast('✓ Comentario guardado');
-    buildNovedadesPorVencer();
-  } finally {
-    hideBlockingOverlay();
-  }
 }
 
 // ── Sub-tab: Registrar novedad ─────────────────────────────────────────────
@@ -6895,16 +6833,16 @@ function buildNovedadesReportes() {
 }
 
 function _construirWorkbookNovedades(source) {
-  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','EPS','ARL','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','VALOR PAGADO','DESCRIPCION','COMENTARIO POR VENCIMIENTO','CREADO POR','FECHA DE REGISTRO'];
+  const HEADERS = ['EMPLEADO','CEDULA','CLIENTE','CARGO','TIPO','EPS','ARL','CODIGO DIAGNOSTICO','DIAGNOSTICO','DESCRIPCION DIAGNOSTICO','FECHA INICIO','FECHA FIN','DIAS','VALOR PAGADO','DESCRIPCION','CREADO POR','FECHA DE REGISTRO'];
   const dataRows = source.map(n => [
     n.empleado_nombre||'', n.empleado_cedula||'', n.empleado_cliente||'', n.empleado_cargo||'',
     n.tipo||'', n.eps||'', n.arl||'', n.diagnostico_codigo||'', n.diagnostico_nombre||'', n.diagnostico_descripcion||'',
     n.fecha_inicio||'', n.fecha_fin||'', n.dias||0, (n.vacaciones_pagadas ? (n.valor_pagado||0) : ''), n.descripcion||'',
-    n.comentario_vencimiento||'', n.creado_por_nombre||'', (n.created_at||'').slice(0,10)
+    n.creado_por_nombre||'', (n.created_at||'').slice(0,10)
   ]);
   const aoa = [HEADERS, ...dataRows];
   const ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:20},{wch:20},{wch:16},{wch:34},{wch:34},{wch:14},{wch:14},{wch:8},{wch:16},{wch:40},{wch:34},{wch:20},{wch:16}];
+  ws['!cols'] = [{wch:32},{wch:14},{wch:32},{wch:24},{wch:20},{wch:20},{wch:20},{wch:16},{wch:34},{wch:34},{wch:14},{wch:14},{wch:8},{wch:16},{wch:40},{wch:20},{wch:16}];
   ws['!freeze'] = {xSplit:0, ySplit:1};
 
   const wb = XLSX.utils.book_new();
@@ -6949,7 +6887,6 @@ const NOV_HEADER_MAP = {
   'ARL':'arl',
   'CODIGO DIAGNOSTICO':'diagnostico_codigo', 'CODIGO DE DIAGNOSTICO':'diagnostico_codigo', 'CODIGO CIE10':'diagnostico_codigo', 'CODIGO CIE-10':'diagnostico_codigo',
   'DESCRIPCION':'descripcion',
-  'COMENTARIO POR VENCIMIENTO':'comentario_vencimiento',
 };
 function normalizeNovHeader(raw) {
   if (!raw) return '';
@@ -7124,15 +7061,15 @@ function validateNovRow(row, cie10Map) {
 function descargarPlantillaNovedades() {
   if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
 
-  const HEADERS = ['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','ARL','CODIGO DIAGNOSTICO','DESCRIPCION','COMENTARIO POR VENCIMIENTO'];
+  const HEADERS = ['CEDULA EMPLEADO','TIPO DE NOVEDAD','FECHA INICIO','FECHA FIN','DIAS','VACACIONES PAGADAS','VALOR PAGADO','EPS','ARL','CODIGO DIAGNOSTICO','DESCRIPCION'];
   const ejemplos = [
-    ['1234567890','PERMISO REMUNERADO','10/03/2026','10/03/2026','1','','','','','','Cita médica',''],
-    ['9876543210','VACACIONES','15/02/2026','','15','SI','750000','','','','Vacaciones pagadas — continuó laborando',''],
-    ['1029384756','INCAPACIDAD','01/04/2026','05/04/2026','5','','','SALUDTOTAL','','J00','Incapacidad médica EPS',''],
-    ['1029384756','INCAPACIDAD','20/05/2026','25/05/2026','6','','','','POSITIVA ARL','S60','Incapacidad por accidente laboral — la cubrió la ARL, no la EPS',''],
+    ['1234567890','PERMISO REMUNERADO','10/03/2026','10/03/2026','1','','','','','','Cita médica'],
+    ['9876543210','VACACIONES','15/02/2026','','15','SI','750000','','','','Vacaciones pagadas — continuó laborando'],
+    ['1029384756','INCAPACIDAD','01/04/2026','05/04/2026','5','','','SALUDTOTAL','','J00','Incapacidad médica EPS'],
+    ['1029384756','INCAPACIDAD','20/05/2026','25/05/2026','6','','','','POSITIVA ARL','S60','Incapacidad por accidente laboral — la cubrió la ARL, no la EPS'],
   ];
   const wsDatos = XLSX.utils.aoa_to_sheet([HEADERS, ...ejemplos]);
-  wsDatos['!cols'] = [{wch:16},{wch:22},{wch:14},{wch:14},{wch:8},{wch:18},{wch:14},{wch:16},{wch:16},{wch:16},{wch:40},{wch:34}];
+  wsDatos['!cols'] = [{wch:16},{wch:22},{wch:14},{wch:14},{wch:8},{wch:18},{wch:14},{wch:16},{wch:16},{wch:16},{wch:40}];
   wsDatos['!freeze'] = { xSplit:0, ySplit:1 };
 
   const tipos = CATALOGS.novedades_tipos || [];
@@ -7160,8 +7097,7 @@ function descargarPlantillaNovedades() {
     ...arlList.map(a => ['   • ' + a]),
     [''],
     ['13. DIAS: si lo dejas vacío, el sistema lo calcula automáticamente a partir de las fechas (días corridos, incluyendo el día de inicio y el de fin).'],
-    ['14. COMENTARIO POR VENCIMIENTO: opcional — es el mismo campo que se usa en la pestaña "Novedades → Por vencer" para dejar notas de seguimiento de una incapacidad. No afecta si la incapacidad se marca como resuelta.'],
-    ['15. Nada se guarda automáticamente al subir el archivo: primero verás una vista previa y una validación fila por fila, y solo se guarda lo que confirmes.'],
+    ['14. Nada se guarda automáticamente al subir el archivo: primero verás una vista previa y una validación fila por fila, y solo se guarda lo que confirmes.'],
   ];
   const wsInstr = XLSX.utils.aoa_to_sheet(instrucciones);
   wsInstr['!cols'] = [{ wch: 95 }];
@@ -7683,7 +7619,6 @@ async function commitNovImport() {
       diagnostico_codigo:      row.diagnostico_codigo || '',
       diagnostico_nombre:      row.diagnostico_nombre || '',
       diagnostico_descripcion: row.diagnostico_descripcion || '',
-      comentario_vencimiento: row.comentario_vencimiento || '',
       creado_por:          _currentUser.id,
       creado_por_nombre:   _currentUser.display_name || _currentUser.email,
     };
