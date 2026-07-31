@@ -3810,6 +3810,18 @@ async function saveEdit(){
   datosNuevos.arl       = _snapToCatalog(datosNuevos.arl,       'arl');
   datosNuevos.municipio = _snapToCatalog(datosNuevos.municipio, 'municipios');
 
+  // No permitir crear un empleado NUEVO como ACTIVO si esa misma cédula ya está ACTIVA en
+  // otro contrato — evita que una persona quede con 2 contratos activos a la vez por error.
+  // Solo aplica al crear (no al editar uno existente ni al usar "Reingreso", que primero
+  // cierra el contrato anterior).
+  if (!_editingEmpId && datosNuevos.estado === 'ACTIVO' && datosNuevos.cedula) {
+    const activoExistente = EMPLEADOS.find(e => e.cedula === datosNuevos.cedula && e.estado === 'ACTIVO');
+    if (activoExistente) {
+      showToast('⚠ Esta cédula ya está ACTIVA en otro contrato: ' + (activoExistente.cliente||'Sin cliente') + ' — ' + (activoExistente.cargo||'Sin cargo') + '. No se puede agregar como activo mientras ese contrato siga activo.');
+      return;
+    }
+  }
+
   showBlockingOverlay(_editingEmpId ? 'Guardando cambios...' : 'Creando empleado...');
   try {
     if (_editingEmpId) {
