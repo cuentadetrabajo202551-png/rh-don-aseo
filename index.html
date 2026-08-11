@@ -7908,12 +7908,17 @@ function _hvBuildBodyHTML(emp) {
     + '<div style="font-size:10.5px;color:#64748b;margin-top:24px">Documento generado autom\xe1ticamente por el sistema de RH de Don Aseo Ltda. el '+fechaGen+'. La informaci\xf3n corresponde \xfanicamente a la vinculaci\xf3n laboral registrada en la empresa.</div>';
 }
 
-// Genera el PDF en un contenedor oculto (fuera de pantalla) para no interferir con la
-// vista previa de Certificados si estuviera abierta al mismo tiempo.
+// Genera el PDF a partir de un contenedor temporal. IMPORTANTE: tiene que quedar en el
+// flujo normal de la página (nada de position:fixed/absolute ni left:-9999px) — se probó
+// que con esas posiciones html2canvas mide la altura del contenido como 0 y el PDF sale en
+// blanco, aunque el elemento sí tenga contenido real. Por eso se agrega tal cual (sin sacarlo
+// del flujo) y se confía en que quien llama a esta función ya mostró el overlay de carga
+// (showBlockingOverlay, position:fixed;inset:0;z-index:10000) para que el usuario no vea
+// el contenido real por debajo mientras se genera.
 async function _hvGenerarPDFBlob(emp) {
   const cont = document.createElement('div');
   cont.className = 'cert-doc';
-  cont.style.cssText = 'position:fixed;left:-9999px;top:0;width:750px;background:#fff';
+  cont.style.cssText = 'width:750px;background:#fff';
   cont.innerHTML = _hvBuildBodyHTML(emp);
   document.body.appendChild(cont);
   try {
