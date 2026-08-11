@@ -1072,6 +1072,9 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
         <button class="bulk-btn deactivar" onclick="abrirModalDesactivar()">
           &#8595; Dar de baja
         </button>
+        <button class="bulk-btn editar" onclick="abrirModalHVMasivo()">
+          &#128196; Hojas de vida
+        </button>
         <button class="bulk-btn cancel" onclick="limpiarSeleccion()">&#215; Cancelar</button>
       </div>
 
@@ -2066,6 +2069,10 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
         Editar
       </button>
+      <button id="panel-hv-btn" class="btn btn-ghost btn-sm" onclick="abrirModalHV(currentEmpId)">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+        Hoja de vida
+      </button>
       <button id="panel-reingreso-btn" class="btn btn-ghost btn-sm" onclick="abrirModalReingreso()" style="display:none">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 3l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14"/><path d="M7 21l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></svg>
         Reingreso
@@ -2316,6 +2323,29 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
       <button class="btn btn-ghost" onclick="cerrarModalMasEdit()">Cancelar</button>
       <button class="btn btn-primary" onclick="ejecutarMasEdit()">
         &#10003; Aplicar a seleccionados
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL HOJA DE VIDA — opciones antes de descargar (individual o masivo) -->
+<div id="modal-hv-opciones" class="bulk-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarModalHV()">
+  <div class="bulk-modal" style="max-width:380px">
+    <div class="bulk-modal-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      Descargar Hoja de Vida
+    </div>
+    <div class="bulk-modal-body">
+      <div id="hv-modal-resumen" style="font-size:13px;font-weight:600;color:var(--text);margin-bottom:14px">—</div>
+      <label style="display:flex;align-items:flex-start;gap:8px;font-size:13px;cursor:pointer">
+        <input type="checkbox" id="hv-incluir-adjuntos" style="margin-top:2px">
+        <span>Incluir documentos adjuntos <span style="display:block;font-size:11px;color:var(--text3);font-weight:400">Se descarga como .zip (cuerpo + adjuntos). Sin marcar, solo se descarga el PDF del cuerpo.</span></span>
+      </label>
+    </div>
+    <div class="bulk-modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalHV()">Cancelar</button>
+      <button class="btn btn-primary" onclick="_hvConfirmarDescarga()">
+        &#11015; Descargar
       </button>
     </div>
   </div>
@@ -7820,6 +7850,213 @@ async function descargarRespaldoCompleto() {
   } finally {
     if (btn) { btn.disabled = false; btn.innerHTML = btnHtmlOriginal; }
   }
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// HOJA DE VIDA — PDF con datos personales + experiencia laboral en la empresa
+// (todos los contratos de la misma cédula), opcionalmente empaquetado en .zip
+// junto con los documentos adjuntos del empleado. Reutiliza el mismo encabezado
+// (_certHeaderHTML) y estilo (.cert-doc) que los certificados laborales.
+// ══════════════════════════════════════════════════════════════════════════
+function _hvBuildBodyHTML(emp) {
+  const headerHTML = _certHeaderHTML();
+  const keyIngreso = (s) => { const p = _dmy(s); return p ? (p.y*10000 + p.m*100 + p.d) : 0; };
+  const contratos = emp.cedula
+    ? EMPLEADOS.filter(e => e.cedula === emp.cedula).sort((a,b) => keyIngreso(a.ingreso) - keyIngreso(b.ingreso))
+    : [emp];
+
+  const tdL = 'style="border:1px solid #000;color:#1a1a1a;padding:6px 10px;width:32%;font-size:12px;vertical-align:top;font-weight:700"';
+  const tdR = 'style="border:1px solid #000;color:#1a1a1a;padding:6px 10px;font-size:12px;vertical-align:top"';
+  const filaOpc = (label, val) => val ? '<tr><td '+tdL+'>'+label+':</td><td '+tdR+'>'+escapeHTML(val)+'</td></tr>' : '';
+
+  const datosPersonales =
+    '<tr><td '+tdL+'>Nombre completo:</td><td '+tdR+'>'+escapeHTML(emp.nombre||'—')+'</td></tr>'
+    + '<tr><td '+tdL+'>Cédula:</td><td '+tdR+'>'+escapeHTML(emp.cedula||'—')+'</td></tr>'
+    + filaOpc('Género', emp.genero)
+    + filaOpc('Fecha de nacimiento', emp.nacimiento)
+    + (emp.edad ? filaOpc('Edad', emp.edad + ' años') : '')
+    + filaOpc('Nivel de escolaridad', emp.escolaridad)
+    + filaOpc('Dirección', emp.direccion)
+    + filaOpc('Celular', emp.celular)
+    + filaOpc('Correo', emp.correo)
+    + filaOpc('Municipio', emp.municipio);
+
+  const filasExperiencia = contratos.map(c => {
+    const periodo = (c.ingreso||'—') + ' — ' + (c.retiro || (c.estado==='ACTIVO' ? 'Actualidad' : '—'));
+    return '<tr>'
+      + '<td '+tdR+'>'+escapeHTML(c.cliente||'—')+'</td>'
+      + '<td '+tdR+'>'+escapeHTML(c.cargo||'—')+'</td>'
+      + '<td '+tdR+'>'+escapeHTML(periodo)+'</td>'
+      + '<td '+tdR+'>'+escapeHTML(c.estado==='ACTIVO' ? 'Activo' : (c.motivo||'—'))+'</td>'
+      + '</tr>';
+  }).join('');
+
+  const hoy = new Date();
+  const fechaGen = String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
+
+  return headerHTML
+    + '<div style="text-align:center;font-weight:700;font-size:16px;margin-bottom:18px;letter-spacing:.5px">HOJA DE VIDA</div>'
+    + '<div style="font-weight:700;font-size:12.5px;margin-bottom:6px;color:#003c9d">1. DATOS PERSONALES</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-bottom:18px">'+datosPersonales+'</table>'
+    + '<div style="font-weight:700;font-size:12.5px;margin-bottom:6px;color:#003c9d">2. EXPERIENCIA LABORAL EN DON ASEO LTDA.</div>'
+    + '<table style="width:100%;border-collapse:collapse;margin-bottom:18px">'
+    +   '<thead><tr>'
+    +     '<td '+tdL+'>Cliente / Entidad</td><td '+tdL+'>Cargo</td><td '+tdL+'>Período</td><td '+tdL+'>Estado / Motivo de retiro</td>'
+    +   '</tr></thead>'
+    +   '<tbody>'+filasExperiencia+'</tbody>'
+    + '</table>'
+    + '<div style="font-size:10.5px;color:#64748b;margin-top:24px">Documento generado autom\xe1ticamente por el sistema de RH de Don Aseo Ltda. el '+fechaGen+'. La informaci\xf3n corresponde \xfanicamente a la vinculaci\xf3n laboral registrada en la empresa.</div>';
+}
+
+// Genera el PDF en un contenedor oculto (fuera de pantalla) para no interferir con la
+// vista previa de Certificados si estuviera abierta al mismo tiempo.
+async function _hvGenerarPDFBlob(emp) {
+  const cont = document.createElement('div');
+  cont.className = 'cert-doc';
+  cont.style.cssText = 'position:fixed;left:-9999px;top:0;width:750px;background:#fff';
+  cont.innerHTML = _hvBuildBodyHTML(emp);
+  document.body.appendChild(cont);
+  try {
+    const opt = {
+      margin: [10,14,8,14],
+      image: { type:'jpeg', quality:0.98 },
+      html2canvas: { scale:2, useCORS:true },
+      jsPDF: { unit:'mm', format:'a4', orientation:'portrait' }
+    };
+    return await html2pdf().set(opt).from(cont).outputPdf('blob');
+  } finally {
+    document.body.removeChild(cont);
+  }
+}
+
+function _hvDescargarBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+
+// Descarga la hoja de vida de UN empleado — solo el cuerpo (PDF) o con sus adjuntos (.zip).
+async function descargarHojaDeVida(id, conAdjuntos) {
+  const emp = EMPLEADOS.find(e => e.id === id);
+  if (!emp) { showToast('No se encontró el empleado'); return; }
+  showBlockingOverlay('Generando hoja de vida...');
+  try {
+    const pdfBlob = await _hvGenerarPDFBlob(emp);
+    const nombreBase = _sanitizarNombreArchivo('Hoja de vida - ' + emp.nombre);
+
+    if (!conAdjuntos) {
+      _hvDescargarBlob(pdfBlob, nombreBase + '.pdf');
+      await logAudit('export', 'hoja_de_vida', String(emp.id), 'Descargó hoja de vida (solo cuerpo) de ' + emp.nombre);
+      showToast('✓ Hoja de vida descargada');
+      return;
+    }
+
+    if (typeof JSZip === 'undefined') { showToast('Librería ZIP cargando, intenta de nuevo en unos segundos...'); return; }
+    const zip = new JSZip();
+    zip.file(nombreBase + '.pdf', pdfBlob);
+
+    const { data: docs, error } = await sb.from('documentos_empleados').select('*').eq('empleado_id', String(emp.id));
+    if (error) showToast('Advertencia: no se pudieron consultar los adjuntos — se descarga solo el cuerpo');
+    if (docs && docs.length) {
+      showBlockingOverlay('Descargando ' + docs.length + ' adjunto(s)...');
+      await _procesarEnLotes(docs, 4, async (d) => {
+        const { data: blob, error: errDl } = await sb.storage.from('documentos').download(d.storage_path);
+        if (errDl || !blob) return;
+        zip.file('Adjuntos/' + _sanitizarNombreArchivo(d.nombre || d.storage_path.split('/').pop()), blob);
+      });
+    }
+
+    showBlockingOverlay('Comprimiendo archivo ZIP...');
+    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    _hvDescargarBlob(zipBlob, nombreBase + '.zip');
+    await logAudit('export', 'hoja_de_vida', String(emp.id), 'Descargó hoja de vida con adjuntos de ' + emp.nombre);
+    showToast('✓ Hoja de vida descargada (con adjuntos)');
+  } catch (e) {
+    console.error('descargarHojaDeVida error:', e);
+    showToast('Error generando la hoja de vida: ' + (e.message||e));
+  } finally {
+    hideBlockingOverlay();
+  }
+}
+
+// Descarga las hojas de vida de VARIOS empleados seleccionados en Empleados — siempre .zip,
+// una carpeta por empleado (cédula_nombre) con su PDF y, si se eligió, sus adjuntos.
+async function descargarHojasDeVidaMasivo(conAdjuntos) {
+  const ids = [..._selectedEmps];
+  if (!ids.length) { showToast('Selecciona al menos un empleado'); return; }
+  if (typeof JSZip === 'undefined') { showToast('Librería ZIP cargando, intenta de nuevo en unos segundos...'); return; }
+
+  showBlockingOverlay('Generando hojas de vida (0/' + ids.length + ')...');
+  try {
+    const zip = new JSZip();
+    let procesados = 0;
+    for (const id of ids) {
+      const emp = EMPLEADOS.find(e => e.id === id);
+      if (emp) {
+        const carpeta = _sanitizarNombreArchivo((emp.cedula||'sin_cedula') + '_' + (emp.nombre||'sin_nombre')) + '/';
+        const pdfBlob = await _hvGenerarPDFBlob(emp);
+        zip.file(carpeta + 'Hoja de vida.pdf', pdfBlob);
+
+        if (conAdjuntos) {
+          const { data: docs } = await sb.from('documentos_empleados').select('*').eq('empleado_id', String(emp.id));
+          if (docs && docs.length) {
+            await _procesarEnLotes(docs, 4, async (d) => {
+              const { data: blob, error: errDl } = await sb.storage.from('documentos').download(d.storage_path);
+              if (errDl || !blob) return;
+              zip.file(carpeta + 'Adjuntos/' + _sanitizarNombreArchivo(d.nombre || d.storage_path.split('/').pop()), blob);
+            });
+          }
+        }
+      }
+      procesados++;
+      showBlockingOverlay('Generando hojas de vida (' + procesados + '/' + ids.length + ')...');
+    }
+
+    showBlockingOverlay('Comprimiendo archivo ZIP...');
+    const zipBlob = await zip.generateAsync({ type: 'blob', compression: 'DEFLATE', compressionOptions: { level: 6 } });
+    const now = new Date();
+    const fecha = `${now.getFullYear()}${String(now.getMonth()+1).padStart(2,'0')}${String(now.getDate()).padStart(2,'0')}`;
+    _hvDescargarBlob(zipBlob, `hojas_de_vida_${fecha}.zip`);
+
+    await logAudit('export', 'hoja_de_vida', '', 'Descargó hojas de vida masivas de ' + ids.length + ' empleado(s)' + (conAdjuntos ? ' (con adjuntos)' : ''));
+    showToast('✓ ' + ids.length + ' hoja(s) de vida descargadas');
+  } catch (e) {
+    console.error('descargarHojasDeVidaMasivo error:', e);
+    showToast('Error generando las hojas de vida: ' + (e.message||e));
+  } finally {
+    hideBlockingOverlay();
+  }
+}
+
+// ── Modal de opciones (una sola vez para el caso individual y el masivo) ──
+let _hvModo = null; // 'single' | 'bulk'
+let _hvEmpId = null;
+
+function abrirModalHV(id) {
+  const emp = EMPLEADOS.find(e => e.id === id);
+  if (!emp) { showToast('No se encontró el empleado'); return; }
+  _hvModo = 'single'; _hvEmpId = id;
+  document.getElementById('hv-modal-resumen').textContent = emp.nombre;
+  document.getElementById('hv-incluir-adjuntos').checked = false;
+  document.getElementById('modal-hv-opciones').style.display = 'flex';
+}
+function abrirModalHVMasivo() {
+  if (_selectedEmps.size === 0) return;
+  _hvModo = 'bulk';
+  document.getElementById('hv-modal-resumen').textContent = _selectedEmps.size + ' empleado(s) seleccionados';
+  document.getElementById('hv-incluir-adjuntos').checked = false;
+  document.getElementById('modal-hv-opciones').style.display = 'flex';
+}
+function cerrarModalHV() {
+  document.getElementById('modal-hv-opciones').style.display = 'none';
+}
+function _hvConfirmarDescarga() {
+  const conAdjuntos = document.getElementById('hv-incluir-adjuntos')?.checked === true;
+  cerrarModalHV();
+  if (_hvModo === 'single') descargarHojaDeVida(_hvEmpId, conAdjuntos);
+  else descargarHojasDeVidaMasivo(conAdjuntos);
 }
 
 // ───────────────────────────────────────────────────────────────────────────
