@@ -7859,7 +7859,14 @@ async function descargarRespaldoCompleto() {
 // (_certHeaderHTML) y estilo (.cert-doc) que los certificados laborales.
 // ══════════════════════════════════════════════════════════════════════════
 function _hvBuildBodyHTML(emp) {
-  const headerHTML = _certHeaderHTML();
+  // Sin logo ni encabezado de Don Aseo — es la hoja de vida de la persona, no una carta de la
+  // empresa, así que solo lleva un título neutral, igual que un formato de hoja de vida normal.
+  const headerHTML =
+    '<div style="text-align:center;margin-bottom:22px">'
+    + '<div style="font-weight:700;font-size:20px;letter-spacing:1px">HOJA DE VIDA</div>'
+    + '<div style="font-size:12px;color:#475569;margin-top:4px;letter-spacing:.5px">PERSONA NATURAL</div>'
+    + '</div>'
+    + '<hr style="border:none;border-top:1.5px solid #1a1a1a;margin:0 0 18px">';
   const keyIngreso = (s) => { const p = _dmy(s); return p ? (p.y*10000 + p.m*100 + p.d) : 0; };
   const contratos = emp.cedula
     ? EMPLEADOS.filter(e => e.cedula === emp.cedula).sort((a,b) => keyIngreso(a.ingreso) - keyIngreso(b.ingreso))
@@ -7895,7 +7902,6 @@ function _hvBuildBodyHTML(emp) {
   const fechaGen = String(hoy.getDate()).padStart(2,'0')+'/'+String(hoy.getMonth()+1).padStart(2,'0')+'/'+hoy.getFullYear();
 
   return headerHTML
-    + '<div style="text-align:center;font-weight:700;font-size:16px;margin-bottom:18px;letter-spacing:.5px">HOJA DE VIDA</div>'
     + '<div style="font-weight:700;font-size:12.5px;margin-bottom:6px;color:#003c9d">1. DATOS PERSONALES</div>'
     + '<table style="width:100%;border-collapse:collapse;margin-bottom:18px">'+datosPersonales+'</table>'
     + '<div style="font-weight:700;font-size:12.5px;margin-bottom:6px;color:#003c9d">2. EXPERIENCIA LABORAL EN DON ASEO LTDA.</div>'
