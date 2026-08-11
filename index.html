@@ -943,6 +943,20 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
               <div class="stat-sub">C&eacute;dulas con m&aacute;s de un registro</div>
             </div>
           </div>
+          <!-- Activos por año (histórico) -->
+          <div class="stat-card">
+            <div class="stat-icon blue">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+            </div>
+            <div class="stat-info" style="width:100%">
+              <div class="stat-label" style="display:flex;align-items:center;justify-content:space-between;gap:6px">
+                <span>Activos en el a&ntilde;o</span>
+                <select id="dashAnioActivos" onchange="_dashActualizarAnioActivos()" style="font-size:11px;padding:2px 6px;border:1px solid var(--border);border-radius:5px;background:var(--bg1);color:var(--text1)"></select>
+              </div>
+              <div class="stat-value" style="color:#003c9d" id="stat-activos-anio">0</div>
+              <div class="stat-sub"><span class="alert-emp-action" onclick="_dashVerListaAnio()">Ver / exportar lista &rarr;</span></div>
+            </div>
+          </div>
         </div>
 
       <div class="charts-grid">
@@ -2347,6 +2361,33 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
       <button class="btn btn-primary" onclick="_hvConfirmarDescarga()">
         &#11015; Descargar
       </button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL DASHBOARD — lista de empleados activos en el año seleccionado -->
+<div id="modal-dash-anio" class="bulk-modal-overlay" style="display:none" onclick="if(event.target===this)cerrarModalDashAnio()">
+  <div class="bulk-modal" style="max-width:900px">
+    <div class="bulk-modal-header">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+      <span id="dash-anio-modal-titulo">Empleados activos</span>
+    </div>
+    <div class="bulk-modal-body" style="max-height:60vh;overflow-y:auto">
+      <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
+        <button class="btn btn-ghost btn-sm" onclick="_dashExportarListaAnio()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Exportar a Excel
+        </button>
+      </div>
+      <div class="table-wrap">
+        <table class="table">
+          <thead><tr><th>Empleado</th><th>C&eacute;dula</th><th>Cliente</th><th>Cargo</th><th>Ingreso</th><th>Retiro</th></tr></thead>
+          <tbody id="dash-anio-modal-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+    <div class="bulk-modal-footer">
+      <button class="btn btn-ghost" onclick="cerrarModalDashAnio()">Cerrar</button>
     </div>
   </div>
 </div>
@@ -4962,6 +5003,11 @@ function refreshDashboard() {
   const badge = document.getElementById('sb-activos-badge');
   if (badge) badge.textContent = activos;
 
+  // "Activos en el año" — el selector solo se llena una vez, para no perder la selección
+  // del usuario cada vez que se refresca el dashboard.
+  _dashPoblarSelectorAnios();
+  _dashActualizarAnioActivos();
+
   // Alertas del dashboard (calcula desde EMPLEADOS)
   updateDashGreeting();
   buildDashAlerts();
@@ -4981,6 +5027,86 @@ function refreshDashboard() {
   // Badge de la pestaña "Alertas de Datos" (ahora dentro de Corrección de Datos)
   const sa=document.getElementById('dup-count-alertas');
   if(sa){sa.textContent=totalAlerts;sa.style.display=totalAlerts>0?'':'none';}
+}
+
+// ══════════════════════════════════════════════════════════════════════════
+// DASHBOARD — "Activos en el año": empleados que estaban activos en una fecha
+// de corte. Para el año en curso, la fecha de corte es HOY (aún no ha cerrado el
+// año, así que "activos en 2026" mientras estemos en 2026 es lo mismo que "activos
+// ahora"). Para años anteriores, la fecha de corte es el 31 de diciembre de ese año
+// — una foto de quién seguía vinculado al cierre de ese año.
+// ══════════════════════════════════════════════════════════════════════════
+let _dashListaAnioActual = [];
+
+function _empleadosActivosEnFecha(corteISO) {
+  const [cy, cm, cd] = corteISO.split('-').map(Number);
+  const corteKey = cy*10000 + cm*100 + cd;
+  const keyDMY = (s) => { const p = _dmy(s); return p ? (p.y*10000 + p.m*100 + p.d) : null; };
+  return EMPLEADOS.filter(e => {
+    const ik = keyDMY(e.ingreso);
+    if (ik === null || ik > corteKey) return false; // aún no había ingresado en esa fecha
+    if (!e.retiro) return true; // sigue activo hoy → estaba activo en cualquier fecha pasada desde su ingreso
+    const rk = keyDMY(e.retiro);
+    return rk === null || rk > corteKey; // se retiró DESPUÉS de la fecha de corte
+  });
+}
+
+// Solo llena el <select> una vez (con los años desde el ingreso más antiguo hasta hoy) para
+// no perder la selección del usuario cada vez que refreshDashboard() se vuelve a ejecutar.
+function _dashPoblarSelectorAnios() {
+  const sel = document.getElementById('dashAnioActivos');
+  if (!sel || sel.dataset.poblado === '1') return;
+  const anioActual = new Date().getFullYear();
+  let anioMin = anioActual;
+  EMPLEADOS.forEach(e => { const p = _dmy(e.ingreso); if (p && p.y < anioMin) anioMin = p.y; });
+  const opts = [];
+  for (let y = anioActual; y >= anioMin; y--) opts.push(y);
+  sel.innerHTML = opts.map(y => '<option value="'+y+'"'+(y===anioActual?' selected':'')+'>'+y+'</option>').join('');
+  sel.dataset.poblado = '1';
+}
+
+function _dashActualizarAnioActivos() {
+  const sel = document.getElementById('dashAnioActivos');
+  const anio = parseInt(sel?.value, 10);
+  if (!anio) return;
+  const hoy = new Date();
+  const esAnioActual = anio === hoy.getFullYear();
+  const corteISO = esAnioActual ? hoy.toISOString().slice(0,10) : (anio + '-12-31');
+  _dashListaAnioActual = _empleadosActivosEnFecha(corteISO)
+    .sort((a,b) => (a.nombre||'').localeCompare(b.nombre||''));
+  const el = document.getElementById('stat-activos-anio');
+  if (el) el.textContent = _dashListaAnioActual.length.toLocaleString('es-CO');
+}
+
+function _dashVerListaAnio() {
+  const anio = document.getElementById('dashAnioActivos')?.value || '';
+  const titulo = document.getElementById('dash-anio-modal-titulo');
+  if (titulo) titulo.textContent = 'Empleados activos en ' + anio + ' (' + _dashListaAnioActual.length + ')';
+  const tbody = document.getElementById('dash-anio-modal-tbody');
+  if (tbody) {
+    tbody.innerHTML = _dashListaAnioActual.length
+      ? _dashListaAnioActual.map(e => '<tr>'
+          + '<td>' + escapeHTML(e.nombre||'—') + '</td>'
+          + '<td>' + escapeHTML(e.cedula||'—') + '</td>'
+          + '<td>' + escapeHTML(e.cliente||'—') + '</td>'
+          + '<td>' + escapeHTML(e.cargo||'—') + '</td>'
+          + '<td>' + escapeHTML(e.ingreso||'—') + '</td>'
+          + '<td>' + escapeHTML(e.retiro||'—') + '</td>'
+          + '</tr>').join('')
+      : '<tr><td colspan="6" style="text-align:center;color:var(--text3);padding:20px">Sin registros para este año</td></tr>';
+  }
+  document.getElementById('modal-dash-anio').style.display = 'flex';
+}
+function cerrarModalDashAnio() {
+  document.getElementById('modal-dash-anio').style.display = 'none';
+}
+function _dashExportarListaAnio() {
+  if (!_dashListaAnioActual.length) { showToast('No hay empleados para exportar'); return; }
+  if (typeof XLSX === 'undefined') { showToast('Librería Excel cargando, intenta de nuevo...'); return; }
+  const anio = document.getElementById('dashAnioActivos')?.value || 'anio';
+  const wb = _construirWorkbookEmpleados(_dashListaAnioActual, true);
+  XLSX.writeFile(wb, 'empleados_activos_' + anio + '.xlsx');
+  showToast('✓ ' + _dashListaAnioActual.length + ' empleados exportados → empleados_activos_' + anio + '.xlsx');
 }
 
 function updateDashGreeting() {
