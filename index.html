@@ -5963,7 +5963,9 @@ let _novPage = 1;
 const NOV_PAGE_SIZE = 15;
 
 async function loadNovedadesFromDB() {
-  const { data, error } = await sb.from('novedades').select('*').order('fecha_inicio', { ascending: false });
+  // Ordenado por fecha de creación (la más reciente primero) — no por fecha_inicio de la
+  // novedad, que puede ser una fecha vieja si se registra tarde y desordenaba el historial.
+  const { data, error } = await sb.from('novedades').select('*').order('created_at', { ascending: false });
   if (error) { console.warn('Error cargando novedades:', error); return; }
   NOVEDADES = data || [];
   _updateNovedadesBadge();
