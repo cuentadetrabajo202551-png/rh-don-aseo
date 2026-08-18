@@ -8500,7 +8500,7 @@ const ROLE_SECTIONS = {
   admin:    ['dashboard','empleados','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','usuarios','novedades'],
   editor:   ['dashboard','empleados','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','novedades'],
   auxiliar: ['dashboard','empleados','novedades'],
-  viewer:   ['dashboard','empleados','fechas','estadisticas']
+  viewer:   ['dashboard','empleados']
 };
 
 function canAccess(section) {
@@ -8514,6 +8514,8 @@ function applyRoleVisibility() {
   const role = _currentUser.role || 'viewer';
 
   // ── Sidebar: mostrar/ocultar items según ROLE_SECTIONS (fuente única de verdad) ──
+  // "Modo oscuro" no está aquí a propósito — es una preferencia visual, no una sección
+  // de datos, así que se mantiene visible para todos los roles, incluido Visualizador.
   const navItems = {
     'sb-nav-importacion':  'importacion',
     'sb-nav-duplicados':   'duplicados',
@@ -8522,6 +8524,8 @@ function applyRoleVisibility() {
     'sb-nav-auditoria':    'auditoria',
     'sb-nav-novedades':    'novedades',
     'sb-nav-usuarios':     'usuarios',
+    'sb-nav-fechas':       'fechas',
+    'sb-nav-estadisticas': 'estadisticas',
   };
   Object.entries(navItems).forEach(([id, section]) => {
     const el = document.getElementById(id);
@@ -8759,6 +8763,27 @@ async function subirFotoPerfil(input) {
 }
 
 // ── GESTIÓN DE USUARIOS (solo admin) ──────────────────────────────────────
+// signUp() inicia sesión automáticamente en el cliente que lo llama — si se usara el
+// cliente "sb" normal (el mismo con el que el admin tiene su propia sesión abierta),
+// crear un usuario nuevo reemplazaría la sesión del admin por la del usuario recién
+// creado. Por eso se usa un cliente Supabase aparte y desechable, con almacenamiento
+// en memoria (no toca localStorage/sessionStorage), solo para la llamada a signUp().
+// La sesión del admin en "sb" nunca se toca.
+function _clienteTemporalParaCrearUsuario() {
+  const memoria = {};
+  return supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false,
+      storage: {
+        getItem: (k) => memoria[k] || null,
+        setItem: (k, v) => { memoria[k] = v; },
+        removeItem: (k) => { delete memoria[k]; }
+      }
+    }
+  });
+}
+
 function abrirFormNuevoUsuario() {
   document.getElementById('form-nuevo-usuario').style.display = 'block';
 }
@@ -8774,7 +8799,8 @@ async function crearNuevoUsuario() {
 
   showBlockingOverlay('Creando usuario...');
   try {
-    const { data: signUpData, error } = await sb.auth.signUp({ email, password: pass });
+    const sbTemp = _clienteTemporalParaCrearUsuario();
+    const { data: signUpData, error } = await sbTemp.auth.signUp({ email, password: pass });
     if (error) { showToast('Error: ' + error.message); return; }
 
     if (signUpData.user) {
