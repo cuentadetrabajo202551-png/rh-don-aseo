@@ -1710,12 +1710,29 @@ html[data-theme="dark"] .catalog-list-item.active .catalog-count{background:rgba
             </select>
           </div>
 
+          <!-- Solo aparece si la persona tiene más de un contrato con la empresa -->
+          <div class="form-group" id="cert-row-todos-periodos" style="display:none">
+            <label style="display:flex;align-items:center;gap:6px;font-size:13px;cursor:pointer">
+              <input type="checkbox" id="certMostrarTodosPeriodos" checked onchange="_certOnToggleMostrarTodos()">
+              Mostrar todos los períodos en el certificado <span style="font-size:11px;color:var(--text3);font-weight:400">(esta persona tiene varios contratos — si lo desmarcas, puedes elegir un periodo específico para mostrar solo ese)</span>
+            </label>
+          </div>
+          <!-- Solo aparece si se desmarcó "Mostrar todos los períodos" — para elegir CUÁL mostrar -->
+          <div class="form-group" id="cert-row-periodo-laboral" style="display:none">
+            <label class="form-label">Periodo a mostrar en el certificado <span style="font-size:10px;color:var(--text3);font-weight:400">(el salario y las horas extras serán las de ese periodo)</span></label>
+            <select class="form-select" id="certPeriodoLaboral" onchange="_certAplicarPeriodoLaboral()"></select>
+          </div>
+
           <!-- Campos específicos de cartas de cesantías -->
           <div id="cert-campos-cesantias" style="display:none">
             <div class="cert-options-grid">
               <div class="form-group">
                 <label class="form-label">Fondo de cesantías</label>
                 <select class="form-select" id="certFondo" onchange="certUpdatePreview()"></select>
+              </div>
+              <div class="form-group" id="cert-row-periodo-cesantias" style="display:none;grid-column:span 2">
+                <label class="form-label">Periodo del que se toma la fecha de terminación <span style="font-size:10px;color:var(--text3);font-weight:400">(esta persona tiene varios contratos)</span></label>
+                <select class="form-select" id="certPeriodoCesantias" onchange="_certAplicarPeriodoCesantias()"></select>
               </div>
               <div class="form-group" id="cert-row-fecha-hasta">
                 <label class="form-label">Laboró hasta</label>
@@ -11866,8 +11883,11 @@ function generarDesdeSolicitud(id) {
   if (!sol) return;
   // Comparar solo dígitos — tolera puntos, espacios u otros caracteres que a veces trae el dato del formulario
   const cedNorm = (sol.empleado_cedula || '').replace(/\D/g, '');
-  const emp = EMPLEADOS.find(e => (e.cedula || '').replace(/\D/g, '') === cedNorm && cedNorm);
-  if (!emp) { showToast('No se encontró ningún empleado con la cédula "' + sol.empleado_cedula + '" — verifica el dato'); return; }
+  const empCualquiera = EMPLEADOS.find(e => (e.cedula || '').replace(/\D/g, '') === cedNorm && cedNorm);
+  if (!empCualquiera) { showToast('No se encontró ningún empleado con la cédula "' + sol.empleado_cedula + '" — verifica el dato'); return; }
+  // Si la persona ha entrado varias veces a la empresa, seleccionar el contrato MÁS RECIENTE
+  // (no el primero que aparezca) — evita traer el salario o cargo de un periodo viejo.
+  const emp = _certUltimoContrato(empCualquiera);
   buildCertificados('generar');
   certSelectEmployee(emp.id);
   // Guardar el correo que la persona escribió en la solicitud, para precargarlo al enviar
@@ -12211,14 +12231,31 @@ function formatCOP(val) {
   return '$' + Math.round(num).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
 }
 
-// Texto por defecto de "Salario Devengado" en el certificado:
-// si el salario del empleado es EXACTAMENTE el SMMLV vigente, se usa la frase legal genérica;
-// si es distinto (mayor o menor), se muestra el valor exacto seguido de la frase de auxilio de transporte.
+// Cuando una persona ha entrado varias veces a la empresa (varios registros con la misma
+// cédula), devuelve el contrato MÁS RECIENTE (por fecha de ingreso) — para no mostrar por
+// error el salario o la fecha de terminación de un contrato viejo en vez del último.
+function _certKeyIngreso(s) { const p = _dmy(s); return p ? (p.y*10000 + p.m*100 + p.d) : 0; }
+// Todos los contratos (registros) de la misma cédula, ordenados del más antiguo al más
+// reciente por fecha de ingreso — para no confundir el orden si se ordenara alfabético.
+function _certTodosContratos(emp) {
+  if (!emp || !emp.cedula) return [emp];
+  const contratos = EMPLEADOS.filter(e => e.cedula === emp.cedula);
+  return contratos.length ? contratos.sort((a,b) => _certKeyIngreso(a.ingreso) - _certKeyIngreso(b.ingreso)) : [emp];
+}
+function _certUltimoContrato(emp) {
+  const contratos = _certTodosContratos(emp);
+  return contratos.reduce((mejor, c) => _certKeyIngreso(c.ingreso) > _certKeyIngreso(mejor.ingreso) ? c : mejor, contratos[0]);
+}
+
+// Texto de "Salario Devengado" para UN contrato puntual (no resuelve al último) — se usa
+// tanto para el valor por defecto (con el último contrato) como para cuando en "Certificado
+// laboral" se elige mostrar un periodo específico distinto del más reciente.
+// Si el salario es EXACTAMENTE el SMMLV vigente, se usa la frase legal genérica; si es
+// distinto (mayor o menor), se muestra el valor exacto seguido de la frase de auxilio de
+// transporte (solo si ese contrato tiene un valor registrado en "Aux. de transporte").
 const SMMLV_VIGENTE = 1750905;
-function _certSalarioDefault(emp) {
+function _certSalarioTextoParaContrato(emp) {
   const num = _parseCOPNumber(emp && emp.salario);
-  // La leyenda de auxilio de transporte solo se agrega si el empleado tiene un valor
-  // registrado en el campo "Aux. de transporte" — si está vacío, no se menciona en el certificado.
   const numAux = _parseCOPNumber(emp && emp.aux_transporte);
   const conAuxTransporte = !isNaN(numAux) && numAux > 0;
   if (num === SMMLV_VIGENTE) {
@@ -12229,6 +12266,12 @@ function _certSalarioDefault(emp) {
   return formatCOP(emp && emp.salario) + (conAuxTransporte
     ? '\nAUXILIO DE TRANSPORTE LEGAL VIGENTE, CON SUS RESPECTIVAS DEDUCCIONES ESTABLECIDAS POR LEY'
     : '');
+}
+// Valor por defecto al seleccionar un empleado (o al volver a "Mostrar todos los períodos"):
+// siempre el salario del ÚLTIMO contrato, no el del registro que se haya seleccionado
+// puntualmente en el buscador.
+function _certSalarioDefault(empSeleccionado) {
+  return _certSalarioTextoParaContrato(_certUltimoContrato(empSeleccionado));
 }
 
 // ── Helper: convierte "01/06/2015" → "01 DE JUNIO DEL 2015" ────────────────
@@ -12282,12 +12325,27 @@ function certOnTipoDocChange() {
   const rowGirar = document.getElementById('cert-row-girar');
   if (rowGirar) rowGirar.style.display = esParcial ? '' : 'none';
 
-  // Precargas útiles al cambiar a cesantías
+  // ── Persona con varios contratos: mostrar los selectores de periodo que apliquen ──
   const emp = _certEmp;
+  const tieneHistorial = emp ? _certTodosContratos(emp).length > 1 : false;
+
+  // "Mostrar todos los períodos" y el selector de periodo específico — solo en certificado laboral
+  _certActualizarVisibilidadPeriodos();
+
+  // Selector de periodo para cesantías TOTAL (de dónde sale "Laboró hasta")
+  const rowPeriodoCesantias = document.getElementById('cert-row-periodo-cesantias');
+  const mostrarSelectorPeriodo = (t === 'cesantias_total') && tieneHistorial;
+  if (rowPeriodoCesantias) rowPeriodoCesantias.style.display = mostrarSelectorPeriodo ? '' : 'none';
+  if (mostrarSelectorPeriodo) _certPoblarSelectorPeriodos(emp);
+
+  // Precargas útiles al cambiar a cesantías
   if (emp) {
-    if (t === 'cesantias_total') {
+    if (t === 'cesantias_total' && !mostrarSelectorPeriodo) {
       const fh = document.getElementById('certFechaHasta');
-      if (fh && !fh.value && emp.retiro) fh.value = _certDdmmaaaaAIso(emp.retiro);
+      // Por defecto, la fecha de terminación del ÚLTIMO contrato (no la del registro que se
+      // haya seleccionado puntualmente) — si hay varios periodos, el selector de arriba manda.
+      const ultimo = _certUltimoContrato(emp);
+      if (fh && !fh.value && ultimo && ultimo.retiro) fh.value = _certDdmmaaaaAIso(ultimo.retiro);
     }
     if (esParcial) {
       const ga = document.getElementById('certGirarA');
@@ -12295,6 +12353,99 @@ function certOnTipoDocChange() {
       const co = document.getElementById('certConcepto');
       if (co && !co.value) co.value = 'Remodelación de vivienda';
     }
+  }
+  certUpdatePreview();
+}
+
+// Llena el selector de periodos de la carta de cesantías con todos los contratos de la
+// persona (el más reciente primero) y deja seleccionado por defecto el más reciente.
+function _certPoblarSelectorPeriodos(emp) {
+  const sel = document.getElementById('certPeriodoCesantias');
+  if (!sel) return;
+  const contratos = [..._certTodosContratos(emp)].reverse(); // más reciente primero
+  sel.innerHTML = contratos.map((c, i) => {
+    const rango = (c.ingreso||'—') + ' a ' + (c.retiro || (c.estado==='ACTIVO' ? 'actualidad' : '—'));
+    const etiqueta = (c.cliente||'Sin cliente') + ' (' + rango + ')' + (i===0 ? ' — más reciente' : '');
+    return '<option value="' + c.id + '">' + escapeHTML(etiqueta) + '</option>';
+  }).join('');
+  _certAplicarPeriodoCesantias(); // aplica el seleccionado (el más reciente) a "Laboró hasta"
+}
+
+// Al elegir un periodo distinto en la carta de cesantías, actualiza "Laboró hasta" con la
+// fecha de retiro de ESE contrato puntual.
+function _certAplicarPeriodoCesantias() {
+  const sel = document.getElementById('certPeriodoCesantias');
+  const fh = document.getElementById('certFechaHasta');
+  if (!sel || !fh || !sel.value) return;
+  const contrato = EMPLEADOS.find(e => String(e.id) === String(sel.value));
+  fh.value = contrato && contrato.retiro ? _certDdmmaaaaAIso(contrato.retiro) : '';
+  certUpdatePreview();
+}
+
+// ── Certificado laboral: mostrar/ocultar "Mostrar todos los períodos" y el selector de
+// periodo específico (solo aparece cuando esa casilla se desmarca). Se llama al cambiar de
+// tipo de documento y al marcar/desmarcar la casilla. ──
+function _certActualizarVisibilidadPeriodos() {
+  const emp = _certEmp;
+  const t = _certTipoDoc();
+  const esCesantias = (t === 'cesantias_total' || t === 'cesantias_parcial');
+  const tieneHistorial = emp ? _certTodosContratos(emp).length > 1 : false;
+  const mostrarTodos = document.getElementById('certMostrarTodosPeriodos')?.checked !== false;
+
+  const rowTodosPeriodos = document.getElementById('cert-row-todos-periodos');
+  if (rowTodosPeriodos) rowTodosPeriodos.style.display = (!esCesantias && tieneHistorial) ? '' : 'none';
+
+  const rowPeriodoLaboral = document.getElementById('cert-row-periodo-laboral');
+  const mostrarSelectorLaboral = !esCesantias && tieneHistorial && !mostrarTodos;
+  if (rowPeriodoLaboral) rowPeriodoLaboral.style.display = mostrarSelectorLaboral ? '' : 'none';
+  if (mostrarSelectorLaboral) _certPoblarSelectorPeriodoLaboral(emp);
+}
+
+// Al marcar/desmarcar la casilla "Mostrar todos los períodos" (a diferencia de un simple
+// cambio de tipo de documento) — si se vuelve a marcar, restaura salario/horas al del ÚLTIMO
+// contrato, para que no se quede el valor de un periodo puntual que se hubiera elegido antes.
+function _certOnToggleMostrarTodos() {
+  _certActualizarVisibilidadPeriodos();
+  const emp = _certEmp;
+  const mostrarTodos = document.getElementById('certMostrarTodosPeriodos')?.checked !== false;
+  const tieneHistorial = emp ? _certTodosContratos(emp).length > 1 : false;
+  if (mostrarTodos && tieneHistorial && emp) {
+    const ultimo = _certUltimoContrato(emp);
+    const stxt = document.getElementById('certSalarioText');
+    if (stxt) stxt.value = _certSalarioTextoParaContrato(ultimo);
+    const htxt = document.getElementById('certHorasText');
+    if (htxt) htxt.value = ultimo.horas === '12 HORAS' ? '12 HORAS DIARIAS' : '42 HORAS SEMANALES';
+  }
+  certUpdatePreview();
+}
+
+// Llena el selector de "qué periodo mostrar" del certificado laboral (el más reciente
+// primero) — conserva la selección anterior si sigue existiendo, si no elige el más reciente.
+function _certPoblarSelectorPeriodoLaboral(emp) {
+  const sel = document.getElementById('certPeriodoLaboral');
+  if (!sel || !emp) return;
+  const contratos = [..._certTodosContratos(emp)].reverse(); // más reciente primero
+  const valorPrevio = sel.value;
+  sel.innerHTML = contratos.map((c, i) => {
+    const rango = (c.ingreso||'—') + ' a ' + (c.retiro || (c.estado==='ACTIVO' ? 'actualidad' : '—'));
+    const etiqueta = (c.cliente||'Sin cliente') + ' — ' + (c.cargo||'—') + ' (' + rango + ')' + (i===0 ? ' — más reciente' : '');
+    return '<option value="' + c.id + '">' + escapeHTML(etiqueta) + '</option>';
+  }).join('');
+  if (valorPrevio && contratos.some(c => String(c.id) === valorPrevio)) sel.value = valorPrevio;
+  _certAplicarPeriodoLaboral();
+}
+
+// Al elegir un periodo puntual para el certificado laboral, actualiza el salario y las horas
+// laboradas con los de ESE contrato (no siempre el último) y refresca la vista previa.
+function _certAplicarPeriodoLaboral() {
+  const sel = document.getElementById('certPeriodoLaboral');
+  if (!sel || !sel.value) { certUpdatePreview(); return; }
+  const contrato = EMPLEADOS.find(e => String(e.id) === String(sel.value));
+  if (contrato) {
+    const stxt = document.getElementById('certSalarioText');
+    if (stxt) stxt.value = _certSalarioTextoParaContrato(contrato);
+    const htxt = document.getElementById('certHorasText');
+    if (htxt) htxt.value = contrato.horas === '12 HORAS' ? '12 HORAS DIARIAS' : '42 HORAS SEMANALES';
   }
   certUpdatePreview();
 }
@@ -12425,9 +12576,7 @@ function certUpdatePreview() {
 
   // Todos los contratos del empleado (se necesita para saber estado real)
   // Se calcula ANTES del bloque de contratos para usarlo en el párrafo
-  const todosContratosEarly = emp.cedula
-    ? EMPLEADOS.filter(e => e.cedula === emp.cedula)
-    : [emp];
+  const todosContratosEarly = _certTodosContratos(emp);
   // Estado real: activo si ALGUNO de sus contratos está activo
   const isActivoReal = todosContratosEarly.some(r => r.estado === 'ACTIVO');
 
@@ -12438,8 +12587,6 @@ function certUpdatePreview() {
   if (dsRow) dsRow.style.display = isActivoReal ? 'none' : '';
 
   const fechaCierre = fechaLargaISO(fecha);
-  const ingresoLargo = fechaLargaCert(emp.ingreso);
-  const retiroLargo  = fechaLargaCert(emp.retiro);
 
   // ── HEADER: logo izquierda + servicios derecha (compartido con las cartas de cesantías) ──
   const headerHTML = _certHeaderHTML();
@@ -12471,25 +12618,41 @@ function certUpdatePreview() {
   const tdL = 'style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;width:35%;font-size:12px;vertical-align:top"';
   const tdR = 'style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top"';
   const tdRb= 'style="border:1px solid #000;color:#1a1a1a;padding:7px 10px;font-size:12px;vertical-align:top;font-weight:700"';
-  const hexRow = (emp.horas_extras && String(emp.horas_extras).trim())
-    ? '<tr><td '+tdL+'>Valor Horas Extras:</td><td '+tdR+'>'+escapeHTML(formatCOP(emp.horas_extras))+'</td></tr>'
+
+  // Todos los registros de este empleado (por cédula), ordenados cronológicamente
+  // del primer contrato al más reciente.
+  const todosContratos = todosContratosEarly.length ? [...todosContratosEarly].sort((a,b) => _certKeyIngreso(a.ingreso) - _certKeyIngreso(b.ingreso)) : [emp];
+  const tieneHistorial = todosContratos.length > 1;
+  const ultimoContrato = _certUltimoContrato(emp);
+  // Si hay varios periodos pero se desmarcó "Mostrar todos los períodos", el certificado se
+  // arma como si tuviera un solo periodo — el que se haya elegido en el selector de periodo
+  // (por defecto el último contrato, hasta que se elija otro puntualmente).
+  const mostrarTodosPeriodos = document.getElementById('certMostrarTodosPeriodos')?.checked !== false;
+  const tieneHistorialEfectivo = tieneHistorial && mostrarTodosPeriodos;
+  let periodoElegido = ultimoContrato;
+  if (tieneHistorial && !mostrarTodosPeriodos) {
+    const selPeriodo = document.getElementById('certPeriodoLaboral');
+    const contratoElegido = selPeriodo && selPeriodo.value ? EMPLEADOS.find(e => String(e.id) === String(selPeriodo.value)) : null;
+    if (contratoElegido) periodoElegido = contratoElegido;
+  }
+  const empDatos = tieneHistorialEfectivo ? emp : periodoElegido;
+  const ingresoLargo = fechaLargaCert(empDatos.ingreso);
+  const retiroLargo  = fechaLargaCert(empDatos.retiro);
+
+  // Horas extras: del último contrato cuando se muestran todos los períodos (certificado
+  // combinado), o del periodo puntual elegido cuando se muestra uno solo.
+  const contratoParaHex = tieneHistorialEfectivo ? ultimoContrato : periodoElegido;
+  const hexRow = (contratoParaHex.horas_extras && String(contratoParaHex.horas_extras).trim())
+    ? '<tr><td '+tdL+'>Valor Horas Extras:</td><td '+tdR+'>'+escapeHTML(formatCOP(contratoParaHex.horas_extras))+'</td></tr>'
     : '';
   const tipoContratoRow = (incTipoContrato && tipoContratoTxt)
     ? '<tr><td '+tdL+'>Tipo de Contrato:</td><td '+tdR+'>'+escapeHTML(tipoContratoTxt)+'</td></tr>'
     : '';
 
   let filas = '';
-  // Todos los registros de este empleado (por cédula), ordenados cronológicamente
-  // del primer contrato al más reciente. Se ordena por fecha REAL (no por texto),
-  // porque las fechas están en DD/MM/AAAA y un orden alfabético las desordena.
-  const _keyIngreso = (s) => { const p = _dmy(s); return p ? (p.y*10000 + p.m*100 + p.d) : 0; };
-  const todosContratos = emp.cedula
-    ? EMPLEADOS.filter(e => e.cedula === emp.cedula).sort((a,b) => _keyIngreso(a.ingreso) - _keyIngreso(b.ingreso))
-    : [emp];
-  const tieneHistorial = todosContratos.length > 1;
 
   if (isActivo) {
-    if (tieneHistorial) {
+    if (tieneHistorialEfectivo) {
       // ── Activo con historial: bloque de vinculaciones en la misma área ──
       const filasHist = todosContratos.map((r, i) => {
         const esActual = r.id === emp.id || r.estado === 'ACTIVO';
@@ -12509,18 +12672,18 @@ function certUpdatePreview() {
         +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '');
     } else {
-      // ── Activo sin historial: filas normales ──
+      // ── Activo sin historial (o con historial pero oculto): filas normales ──
       filas +=
         '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
-        +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdR+'>'+escapeHTML(empDatos.cliente||'—')+'</td></tr>'
         +tipoContratoRow
         +(incSal   ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
         +(incHoras ? '<tr><td '+tdL+'>Horas Laboradas:</td><td '+tdR+'>'+escapeHTML(horasTxt)+'</td></tr>' : '')
-        +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>';
+        +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdR+'>'+escapeHTML(empDatos.cargo||'—')+'</td></tr>';
     }
   } else {
-    if (tieneHistorial) {
+    if (tieneHistorialEfectivo) {
       // ── Inactivo con historial: bloque de todos los períodos ──
       const filasHist = todosContratos.map((r, i) => {
         const ing = fechaLargaCert(r.ingreso);
@@ -12543,16 +12706,16 @@ function certUpdatePreview() {
         +hexRow
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
     } else {
-      // ── Inactivo sin historial: filas normales ──
+      // ── Inactivo sin historial (o con historial pero oculto): filas normales ──
       filas +=
         '<tr><td '+tdL+'>Fecha de Ingreso:</td><td '+tdRb+'>'+escapeHTML(ingresoLargo)+'</td></tr>'
-        +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(emp.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
-        +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(emp.cliente||'—')+'</td></tr>'
-        +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(emp.cargo||'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Fecha de Terminaci\xf3n:</td><td '+tdRb+'>'+(empDatos.retiro?escapeHTML(retiroLargo):'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Empresa cliente:</td><td '+tdRb+'>'+escapeHTML(empDatos.cliente||'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Cargo desempe\xf1ado:</td><td '+tdRb+'>'+escapeHTML(empDatos.cargo||'—')+'</td></tr>'
         +tipoContratoRow
         +(incSal ? '<tr><td '+tdL+'>Salario Devengado:</td><td '+tdR+'>'+salTxtHTML+'</td></tr>' : '')
         +hexRow
-        +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(emp.motivo||'—')+'</td></tr>'
+        +'<tr><td '+tdL+'>Motivo de terminaci\xf3n del contrato:</td><td '+tdR+'>'+escapeHTML(empDatos.motivo||'—')+'</td></tr>'
         +'<tr><td '+tdL+'>Desempe\xf1o.</td><td '+tdR+'>'+escapeHTML(desempeno)+'</td></tr>';
     }
   }
