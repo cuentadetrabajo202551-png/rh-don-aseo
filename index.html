@@ -14551,7 +14551,7 @@ function cmHtmlLineaTiempo(det) {
       tit: reap ? 'Caso reabierto' : 'Seguimiento #' + s.numero + ' <small>· ' + cmEsc(s.tipo) + '</small>',
       chip: (s.estado_resultante ? cmPillEstado(s.estado_resultante) : '')
         + (isAdmin() ? '<button class="cmx-mini-ib" title="Eliminar este seguimiento (administrador del sistema)" onclick="cmAbrirEliminarRegistro(\'seguimiento\',' + s.id + ')">' + cmIc('papelera') + '</button>' : ''),
-      cuerpo: '<div class="cmx-tl-txt">' + cmEsc(s.descripcion) + '</div>' + L('Gestión', s.gestion) + L('Resultado', s.resultado)
+      cuerpo: (s.descripcion ? '<div class="cmx-tl-txt">' + cmEsc(s.descripcion) + '</div>' : '') + L('Gestión', s.gestion) + L('Resultado', s.resultado)
         + L('Compromisos', s.compromisos) + inds
         + (s.proxima_fecha || s.proxima_accion ? L('Próximo seguimiento', (s.proxima_fecha ? cmFecha(s.proxima_fecha) : 'sin fecha') + (s.proxima_accion ? ' — ' + s.proxima_accion : '')) : '')
         + L('Observaciones', s.observaciones) + L('Registro histórico', s.registro_historico)
@@ -14607,12 +14607,12 @@ function cmHtmlLineaTiempo(det) {
     + x.cuerpo + '</div></div></div>').join('') + '</div>';
 }
 
-// "Marcar como realizado": abre el registro del seguimiento con la acción ya escrita
+// "Marcar como realizado": abre el registro del seguimiento con la acción ya escrita como gestión
 function cmMarcarRealizado(id) {
   const c = cmCasoActual(id);
   cmAbrirSeguimiento(id);
-  const d = document.getElementById('cm-sg-desc');
-  if (d && c?.proxima_accion) d.value = 'Se realizó: ' + c.proxima_accion;
+  const g = document.getElementById('cm-sg-gestion');
+  if (g && c?.proxima_accion) g.value = 'Se realizó: ' + c.proxima_accion;
 }
 function cmHtmlDocFila(d, det) {
   const numSeg = d.seguimiento_id ? (det.seguimientos.find(s => s.id === d.seguimiento_id)?.numero || '?') : null;
@@ -14898,8 +14898,8 @@ function cmAbrirSeguimiento(id) {
   const cuerpo = '<div class="cm-form">'
     + '<div class="form-group"><label class="form-label">Fecha y hora *</label><input id="cm-sg-fecha" type="datetime-local" class="form-input" value="' + ahora + '" max="' + ahora + '" min="' + cmEsc(c.fecha_reporte) + 'T00:00"></div>'
     + '<div class="form-group"><label class="form-label">Tipo de seguimiento *</label><select id="cm-sg-tipo" class="form-select">' + cmOpciones(CM_LISTAS.tiposSeguimiento, '', 'Selecciona...') + '</select></div>'
-    + '<div class="form-group full"><label class="form-label">Descripción *</label><textarea id="cm-sg-desc" class="form-input" rows="3" placeholder="¿Qué se hizo o se revisó? ¿Qué informó el trabajador?"></textarea></div>'
-    + '<div class="form-group full"><label class="form-label">Gestión realizada</label><textarea id="cm-sg-gestion" class="form-input" rows="2" placeholder="Ej: Se envió correo a la EPS solicitando el concepto médico"></textarea></div>'
+    + '<div class="form-group full"><label class="form-label">Descripción</label><textarea id="cm-sg-desc" class="form-input" rows="3" placeholder="Opcional: ¿qué se revisó? ¿qué informó el trabajador?"></textarea></div>'
+    + '<div class="form-group full"><label class="form-label">Gestión realizada *</label><textarea id="cm-sg-gestion" class="form-input" rows="2" placeholder="Ej: Se envió correo a la EPS solicitando el concepto médico"></textarea></div>'
     + '<div class="form-group"><label class="form-label">Estado después del seguimiento</label><select id="cm-sg-estado" class="form-select">'
     + '<option value="">Sin cambio (sigue «' + cmEsc(c.estado) + '»)</option>' + cmOpciones(CM_ESTADOS_ACTIVOS.filter(x => x !== c.estado)) + '</select></div>'
     + '<div class="form-group"><label class="form-label">Fecha del próximo seguimiento</label><input id="cm-sg-prox" type="date" class="form-input" min="' + hoy + '"></div>'
@@ -14940,9 +14940,9 @@ async function cmGuardarSeguimiento(id) {
   if (fecha.getTime() > Date.now() + 5 * 60 * 1000) return cmErrorModal('La fecha del seguimiento no puede ser futura.');
   const dia = cmIso(fecha);
   if (dia < c.fecha_reporte) return cmErrorModal('La fecha del seguimiento no puede ser anterior a la fecha de reporte (' + cmFecha(c.fecha_reporte) + ').');
-  const tipo = cmValor('cm-sg-tipo'), desc = cmValor('cm-sg-desc');
+  const tipo = cmValor('cm-sg-tipo'), desc = cmValor('cm-sg-desc'), gestion = cmValor('cm-sg-gestion');
   if (!tipo) return cmErrorModal('Selecciona el tipo de seguimiento.');
-  if (!desc) return cmErrorModal('Escribe la descripción del seguimiento.');
+  if (!gestion) return cmErrorModal('Escribe la gestión realizada.');
   const prox = cmValor('cm-sg-prox') || null, acc = cmValor('cm-sg-acc');
   if (acc && !prox) return cmErrorModal('Indica la fecha del próximo seguimiento para esa acción (o deja la acción vacía).');
   if (prox && prox < dia) return cmErrorModal('La fecha del próximo seguimiento no puede ser anterior a la del seguimiento.');
@@ -14960,7 +14960,7 @@ async function cmGuardarSeguimiento(id) {
   const avisos = [];
   try {
     const { data: seg, error } = await sb.from('casos_medicos_seguimientos').insert([{
-      caso_id: id, fecha: fecha.toISOString(), tipo, descripcion: desc, gestion: cmValor('cm-sg-gestion'),
+      caso_id: id, fecha: fecha.toISOString(), tipo, descripcion: desc, gestion,
       resultado: cmValor('cm-sg-resultado'), compromisos: cmValor('cm-sg-compromisos'),
       proxima_accion: acc, proxima_fecha: prox, estado_resultante: cmValor('cm-sg-estado') || null, observaciones: cmValor('cm-sg-obs'),
     }]).select().single();
