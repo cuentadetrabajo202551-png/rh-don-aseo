@@ -5479,7 +5479,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   // Verificar si ya hay sesion activa (usuario ya habia iniciado sesion antes)
   const { data: { session } } = await sb.auth.getSession();
   if (session) {
-    await loadUserProfile(session.user);
+    const acceso = await loadUserProfile(session.user);
+    if (acceso !== 'ok') { await _sinPerfilRH(acceso); return; }
     mostrarApp(session.user.email);
     applyRoleVisibility();
     _resetInactivity();
@@ -9016,18 +9017,27 @@ function isAdmin()    { return _currentUser?.role === 'admin'; }
 function isEditor()   { return ['admin','editor'].includes(_currentUser?.role); }
 function isAuxiliar() { return _currentUser?.role === 'auxiliar'; }
 
-// Cargar perfil de Supabase y crearlo si no existe
+// Cargar el perfil de RH. Solo entra quien tiene perfil: lo crea el administrador en
+// "Gestión de Usuarios" (ya no se crea solo al iniciar sesión). Devuelve 'ok', 'sin_acceso' o 'error'.
 async function loadUserProfile(user) {
-  _currentUser = { id: user.id, email: user.email, role: 'viewer', display_name: '', cargo: '', avatar_url: '' };
-  let { data } = await sb.from('profiles').select('*').eq('id', user.id).single();
-  if (!data) {
-    const newP = { id: user.id, display_name: user.email.split('@')[0], cargo: '', avatar_url: '', role: 'viewer', email: user.email };
-    const { data: created } = await sb.from('profiles').insert([newP]).select().single();
-    data = created || newP;
-  }
+  _currentUser = null;
+  const { data, error } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
+  if (error) return 'error';
+  if (!data) return 'sin_acceso';
   _currentUser = { id: user.id, email: user.email, ...data };
   // Guardar email en profiles si no estaba
   if (!data.email) sb.from('profiles').update({ email: user.email }).eq('id', user.id).then(() => {});
+  return 'ok';
+}
+
+// Si no se pudo cargar el perfil no se entra: sin perfil de RH se cierra la sesión y se avisa
+async function _sinPerfilRH(estado) {
+  _currentUser = null;
+  const errEl = document.getElementById('login-error');
+  if (estado === 'sin_acceso') {
+    try { await sb.auth.signOut(); } catch (e) {}
+    if (errEl) errEl.textContent = 'Tu usuario no tiene acceso a Recursos Humanos. Pídeselo al administrador.';
+  } else if (errEl) errEl.textContent = 'No se pudo verificar tu acceso. Revisa la conexión e intenta de nuevo.';
 }
 
 // Secciones permitidas por rol
@@ -9567,7 +9577,13 @@ async function doLogin() {
     return;
   }
 
-  await loadUserProfile(data.user);
+  const acceso = await loadUserProfile(data.user);
+  if (acceso !== 'ok') {
+    await _sinPerfilRH(acceso);
+    btn.disabled = false;
+    btn.textContent = 'Iniciar sesion';
+    return;
+  }
   mostrarApp(data.user.email);
   applyRoleVisibility();
   _resetInactivity();
