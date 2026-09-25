@@ -952,6 +952,7 @@ html[data-theme="dark"] .cmx-e-seg{background:#3b82f6;color:#fff}
 .cmx-mini-ib{border:none;background:none;cursor:pointer;color:var(--text3);padding:2px;border-radius:5px;display:inline-flex}
 .cmx-mini-ib:hover{color:var(--red);background:var(--red-light)}
 .cmx-mini-ib svg{width:13px;height:13px}
+.cmx-mini-ib.editar:hover{color:var(--cmx-azul);background:var(--cmx-azul-cl)}
 
 /* Tarjetas de la columna derecha y pestañas del caso */
 .cmx-doc{display:flex;align-items:center;gap:8px;padding:6px 0;border-bottom:1px solid var(--cmx-borde)}
@@ -980,6 +981,9 @@ html[data-theme="dark"] .cmx-doc-i{background:rgba(248,113,113,.15);color:#fca5a
 .cmx-ev-f{color:var(--text3);font-size:10.5px;line-height:1.45}
 .cmx-ev b{color:var(--cmx-titulo)}
 .cmx-ev div{color:var(--text2);line-height:1.5}
+.cmx-ev-cambio{margin-top:4px;padding:4px 8px;border-left:2px solid var(--cmx-borde);font-size:11px}
+.cmx-ev-cambio b{font-weight:600}
+.cmx-ev-cambio span{color:var(--text3)}
 
 /* Páginas internas: reportes, importar, listas */
 .cmx-pagina{padding:14px 16px}
@@ -13702,6 +13706,7 @@ async function cmCargarDatos(forzar) {
   const gen = CM.gen;
   CM.cargando = (async () => {
     try {
+      const marca = await cmMarcaCambios();   // antes de leer: un cambio que llegue mientras tanto no se pierde
       const [casos, inds] = await Promise.all([
         cmFetchTodo('casos_medicos', '*'),
         cmFetchTodo('casos_medicos_indicaciones', '*'),
@@ -13711,6 +13716,7 @@ async function cmCargarDatos(forzar) {
       CM.indicaciones = inds;
       CM.cargado = true;
       CM.errorCarga = '';
+      _cmMarca = marca;
       await Promise.all([cmCargarListas(), cmCargarResponsables()]);
     } catch (e) {
       if (gen !== CM.gen) return;
@@ -13754,6 +13760,69 @@ async function cmRecargar() {
   cmRender();
 }
 
+// ── Sincronización: lo que cambian otros usuarios aparece sin tocar «Actualizar datos» ──────
+// Toda acción del módulo deja un registro en casos_medicos_eventos. Con Supabase Realtime el aviso
+// llega al instante y se vuelve a leer solo ese caso (requiere esa tabla en la publicación
+// supabase_realtime). Como respaldo, una revisión liviana (último registro y cuántos hay) al entrar
+// al módulo, al volver a la pestaña y cada 30 s mientras el módulo está a la vista.
+let _cmCanal = null, _cmRevision = null, _cmFlush = null, _cmMarca = '', _cmRevisando = false;
+const _cmPendientes = new Set();
+function cmIniciarSincronizacion() {
+  cmDetenerSincronizacion();
+  if (!cmPuede('ver')) return;
+  try {
+    _cmCanal = sb.channel('rt-casos-medicos')
+      .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'casos_medicos_eventos' }, p => cmAvisoTiempoReal(p.new))
+      .subscribe();
+  } catch (e) { _cmCanal = null; }
+  _cmRevision = setInterval(() => { if (cmEnModulo() && document.visibilityState === 'visible') cmSincronizar(); }, 30000);
+}
+function cmDetenerSincronizacion() {
+  if (_cmCanal) { try { sb.removeChannel(_cmCanal); } catch (e) {} _cmCanal = null; }
+  clearInterval(_cmRevision); _cmRevision = null;
+  clearTimeout(_cmFlush); _cmPendientes.clear();
+  _cmMarca = '';
+}
+// Cambio de otro usuario: se agrupan los avisos que llegan juntos y se vuelve a leer cada caso afectado.
+// Lo que hace este mismo usuario ya se refresca al guardarlo (sus otras pestañas se ponen al día al volver a ellas).
+function cmAvisoTiempoReal(ev) {
+  if (!ev || !ev.caso_id || ev.usuario_id === _currentUser?.id) return;
+  _cmPendientes.add(ev.caso_id);
+  clearTimeout(_cmFlush);
+  _cmFlush = setTimeout(cmAplicarAvisos, 700);
+}
+async function cmAplicarAvisos() {
+  const ids = [..._cmPendientes];
+  _cmPendientes.clear();
+  if (!ids.length || !CM.cargado) return;
+  if (ids.length > 5) return cmSincronizar(true);   // muchos a la vez (p. ej. una importación): una sola lectura completa
+  for (const id of ids) await cmRefrescarCaso(id);
+}
+// ¿Cambió algo desde la última lectura? (último registro de la bitácora y cuántos hay)
+async function cmMarcaCambios() {
+  try {
+    const { data, count, error } = await sb.from('casos_medicos_eventos').select('id', { count: 'exact' }).order('id', { ascending: false }).limit(1);
+    return error ? '' : (data?.[0]?.id || 0) + '/' + (count ?? '');
+  } catch (e) { return ''; }
+}
+async function cmSincronizar(forzar) {
+  if (!cmPuede('ver') || !CM.cargado || CM.cargando || _cmRevisando) return;
+  _cmRevisando = true;
+  try {
+    if (!forzar) {
+      const marca = await cmMarcaCambios();
+      if (!marca || marca === _cmMarca) return;
+    }
+    await cmCargarDatos(true);
+    if (CM.casoId && !cmCaso(CM.casoId)) { CM.casoId = null; CM.detalle = null; }   // lo eliminó el administrador
+    if (CM.casoId) await cmCargarDetalle(CM.casoId).catch(() => {});
+    if (cmEnModulo()) { cmRenderDatos(); cmRenderDrawer(); }
+  } finally { _cmRevisando = false; }
+}
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible' && cmEnModulo()) cmSincronizar();
+});
+
 // ── Sesión: se llama al final de applyRoleVisibility() y al cerrar sesión ────────────────
 function cmEnModulo() { return !!document.getElementById('section-casosmedicos')?.classList.contains('active'); }
 
@@ -13761,6 +13830,8 @@ function cmAlIniciarSesion() {
   const uid = _currentUser?.id || null;
   if (CM.usuarioSesion !== uid) { cmLimpiarDatos(); CM.usuarioSesion = uid; }
   cmActualizarVisibilidad();
+  if (!cmPuede('ver')) cmDetenerSincronizacion();
+  else if (!_cmCanal && !_cmRevision) cmIniciarSincronizacion();
   if (cmPuede('ver') && !CM.cargado && !CM.cargando) {
     cmCargarDatos().then(() => {
       cmAvisoInicio();
@@ -13770,6 +13841,7 @@ function cmAlIniciarSesion() {
 }
 
 function cmLimpiarDatos() {
+  cmDetenerSincronizacion();
   CM.gen++;
   Object.assign(CM, {
     usuarioSesion: null, cargado: false, cargando: null, errorCarga: '', casos: [], indicaciones: [], responsables: [],
@@ -13912,6 +13984,7 @@ async function cmConstruirModulo() {
   const app = document.getElementById('cm-app');
   if (!app) return;
   if (!cmPuede('ver')) { app.innerHTML = ''; return; }
+  const yaCargado = CM.cargado;
   if (!CM.cargado) {
     app.innerHTML = cmHtmlCabecera() + cmHtmlCargando();
     await cmCargarDatos();
@@ -13924,6 +13997,7 @@ async function cmConstruirModulo() {
     }
   }
   cmRender();
+  if (yaCargado) cmSincronizar();   // se muestra lo que hay en memoria y, si otros cambiaron algo, se actualiza enseguida
 }
 
 // Dibuja todo el módulo
@@ -14522,13 +14596,14 @@ function cmDrResumen(det) {
 
 // Línea de tiempo (de lo más antiguo a lo más reciente, y al final lo que falta por hacer)
 function cmHtmlLineaTiempo(det) {
-  const c = det.caso;
+  const c = det.caso, puedeCorregir = cmActivo(c) && cmPuede('editar');
   const indDeSeg = {}, docDeSeg = {};
   det.indicaciones.forEach(i => { if (i.seguimiento_id) (indDeSeg[i.seguimiento_id] = indDeSeg[i.seguimiento_id] || []).push(i); });
   det.documentos.forEach(d => { if (d.seguimiento_id) (docDeSeg[d.seguimiento_id] = docDeSeg[d.seguimiento_id] || []).push(d); });
   const ms = ts => new Date(ts).getTime();
   const msDia = iso => { const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
   const L = (lbl, v) => v && String(v).trim() ? '<div class="cmx-tl-txt"><strong>' + lbl + ':</strong> ' + cmEsc(v) + '</div>' : '';
+  const Lsiempre = (lbl, v) => '<div class="cmx-tl-txt"><strong>' + lbl + ':</strong> ' + (v && String(v).trim() ? cmEsc(v) : '<span style="color:var(--text3)">—</span>') + '</div>';
   const por = txt => '<div class="cmx-tl-txt" style="color:var(--text3);font-size:11.5px">' + txt + '</div>';
   const adjs = docs => docs && docs.length ? '<div class="cmx-adjs">' + docs.map(d => '<span class="cmx-adj' + (d.anulado ? ' anulado' : '')
     + '" onclick="cmVerDocumento(' + d.id + ')" title="' + cmEsc(d.tipo) + '">' + cmIc('pdf') + cmEsc(d.nombre) + '</span>').join('') + '</div>' : '';
@@ -14538,7 +14613,7 @@ function cmHtmlLineaTiempo(det) {
   E.push({ t: msDia(c.fecha_reporte), f: c.fecha_reporte, h: cmIsoDeTs(c.created_at) === c.fecha_reporte ? cmHoraDeTs(c.created_at) : '',
     p: 'azul', ico: 'doc', col: 'cmx-c-azul', tit: 'Caso reportado',
     chip: creado?.detalle?.estado ? cmPillEstado(creado.detalle.estado) : '',
-    cuerpo: (c.descripcion ? '<div class="cmx-tl-txt">' + cmEsc(c.descripcion) + '</div>' : '') + L('Tipo', c.tipo)
+    cuerpo: L('Situación / motivo', c.motivo) + L('Descripción', c.descripcion) + L('Tipo', c.tipo)
       + por('Registrado por ' + cmEsc(c.creado_por_nombre || '—') + (c.origen === 'importacion_excel' ? ' · importado del Excel histórico' : '')) });
 
   det.seguimientos.forEach(s => {
@@ -14546,16 +14621,22 @@ function cmHtmlLineaTiempo(det) {
     const inds = (indDeSeg[s.id] || []).map(i => L(i.clase === 'restriccion' ? 'Restricción' : 'Recomendación',
       i.descripcion + (i.fecha_fin ? ' (hasta ' + cmFecha(i.fecha_fin) + ')' : ''))).join('');
     const tardio = Math.abs(ms(s.created_at) - ms(s.fecha)) > 36 * 3600 * 1000;
+    const corr = cmCorreccionDe(det, s.id);
     E.push({ t: ms(s.fecha), f: cmIsoDeTs(s.fecha), h: cmHoraDeTs(s.fecha), p: reap ? 'naranja' : 'verde', ico: reap ? 'rotar' : 'lista',
       col: reap ? 'cmx-c-naranja' : 'cmx-c-azul',
       tit: reap ? 'Caso reabierto' : 'Seguimiento #' + s.numero + ' <small>· ' + cmEsc(s.tipo) + '</small>',
       chip: (s.estado_resultante ? cmPillEstado(s.estado_resultante) : '')
+        + (puedeCorregir ? '<button class="cmx-mini-ib editar" title="Corregir este seguimiento" onclick="cmAbrirCorregirSeguimiento(' + s.id + ')">' + cmIc('lapiz') + '</button>' : '')
         + (isAdmin() ? '<button class="cmx-mini-ib" title="Eliminar este seguimiento (administrador del sistema)" onclick="cmAbrirEliminarRegistro(\'seguimiento\',' + s.id + ')">' + cmIc('papelera') + '</button>' : ''),
-      cuerpo: (s.descripcion ? '<div class="cmx-tl-txt">' + cmEsc(s.descripcion) + '</div>' : '') + L('Gestión', s.gestion) + L('Resultado', s.resultado)
+      // Descripción y gestión siempre visibles; en «Cambio de estado» y «Reapertura» lo registrado es el motivo
+      cuerpo: (reap || s.tipo === 'Cambio de estado' ? L(reap ? 'Motivo de la reapertura' : 'Motivo', s.descripcion) + L('Gestión', s.gestion)
+                                                      : Lsiempre('Descripción', s.descripcion) + Lsiempre('Gestión', s.gestion))
+        + L('Resultado', s.resultado)
         + L('Compromisos', s.compromisos) + inds
         + (s.proxima_fecha || s.proxima_accion ? L('Próximo seguimiento', (s.proxima_fecha ? cmFecha(s.proxima_fecha) : 'sin fecha') + (s.proxima_accion ? ' — ' + s.proxima_accion : '')) : '')
         + L('Observaciones', s.observaciones) + L('Registro histórico', s.registro_historico)
-        + por('Por ' + cmEsc(s.responsable_nombre || '—') + (tardio ? ' · registrado el ' + cmFechaHora(s.created_at) : ''))
+        + por('Por ' + cmEsc(s.responsable_nombre || '—') + (tardio ? ' · registrado el ' + cmFechaHora(s.created_at) : '')
+          + (corr ? ' · corregido por ' + cmEsc(corr.usuario_nombre || '—') + ' el ' + cmFechaHora(corr.created_at) : ''))
         + adjs(docDeSeg[s.id]) });
   });
 
@@ -14633,18 +14714,25 @@ function cmDrSeguimientos(det) {
   const c = det.caso, puedeEditar = cmActivo(c) && cmPuede('editar');
   const segs = [...det.seguimientos].sort((a, b) => new Date(b.fecha) - new Date(a.fecha) || b.numero - a.numero);
   const campo = (l, v) => v && String(v).trim() ? '<div class="cmx-campo"><div class="cmx-campo-l">' + l + '</div><div class="cmx-campo-v">' + cmEsc(v) + '</div></div>' : '';
+  const campoSiempre = (l, v) => '<div class="cmx-campo"><div class="cmx-campo-l">' + l + '</div><div class="cmx-campo-v">'
+    + (v && String(v).trim() ? cmEsc(v) : '<span style="color:var(--text3)">—</span>') + '</div></div>';
   return '<div class="cmx-barra-sup"><span>' + cmPlural(segs.length, 'seguimiento registrado', 'seguimientos registrados') + ' · del más reciente al más antiguo</span>'
     + (puedeEditar ? '<button class="cmx-btn primario chico" onclick="cmAbrirSeguimiento(' + c.id + ')">' + cmIc('mas') + 'Registrar seguimiento</button>' : '') + '</div>'
     + (segs.length ? segs.map(s => {
         const reap = s.tipo === 'Reapertura del caso';
         const inds = det.indicaciones.filter(i => i.seguimiento_id === s.id);
         const docs = det.documentos.filter(d => d.seguimiento_id === s.id);
+        const corr = cmCorreccionDe(det, s.id);
         return '<div class="cmx-item"><div class="cmx-item-cab"><div><div class="cmx-item-t">' + (reap ? 'Reapertura del caso' : 'Seguimiento #' + s.numero + ' · ' + cmEsc(s.tipo)) + '</div>'
-          + '<div class="cmx-item-m">' + cmFechaHora(s.fecha) + ' · por ' + cmEsc(s.responsable_nombre || '—') + (s.origen === 'importacion_excel' ? ' · importado del Excel' : '') + '</div></div>'
+          + '<div class="cmx-item-m">' + cmFechaHora(s.fecha) + ' · por ' + cmEsc(s.responsable_nombre || '—') + (s.origen === 'importacion_excel' ? ' · importado del Excel' : '')
+          + (corr ? ' · corregido por ' + cmEsc(corr.usuario_nombre || '—') + ' el ' + cmFechaHora(corr.created_at) : '') + '</div></div>'
           + '<div style="display:flex;gap:6px;align-items:center;flex-shrink:0">' + (s.estado_resultante ? cmPillEstado(s.estado_resultante) : '')
+          + (puedeEditar ? '<button class="cmx-mini-ib editar" title="Corregir este seguimiento" onclick="cmAbrirCorregirSeguimiento(' + s.id + ')">' + cmIc('lapiz') + '</button>' : '')
           + (isAdmin() ? '<button class="cmx-mini-ib" title="Eliminar (administrador del sistema)" onclick="cmAbrirEliminarRegistro(\'seguimiento\',' + s.id + ')">' + cmIc('papelera') + '</button>' : '')
           + '</div></div>'
-          + campo(reap ? 'Motivo de la reapertura' : 'Descripción', s.descripcion) + campo('Gestión realizada', s.gestion) + campo('Resultado', s.resultado)
+          + (reap || s.tipo === 'Cambio de estado' ? campo(reap ? 'Motivo de la reapertura' : 'Motivo', s.descripcion) + campo('Gestión realizada', s.gestion)
+                                                  : campoSiempre('Descripción', s.descripcion) + campoSiempre('Gestión realizada', s.gestion))
+          + campo('Resultado', s.resultado)
           + campo('Compromisos', s.compromisos)
           + (s.proxima_fecha || s.proxima_accion ? campo('Próxima acción', (s.proxima_accion || 'Sin descripción') + (s.proxima_fecha ? ' — para el ' + cmFecha(s.proxima_fecha) : '')) : '')
           + campo('Observaciones', s.observaciones) + campo('Registro histórico (Excel)', s.registro_historico)
@@ -14682,8 +14770,16 @@ function cmDrDocumentos(det) {
 function cmDrAuditoria(det) {
   return '<div class="cmx-barra-sup"><span>Registro automático e inalterable: quién hizo qué y cuándo (' + det.eventos.length + ')</span></div>'
     + '<div class="cmx-card">' + (det.eventos.length ? det.eventos.map(ev => '<div class="cmx-ev"><div class="cmx-ev-f">' + cmFechaHora(ev.created_at) + '</div>'
-        + '<div><b>' + cmEsc(ev.usuario_nombre || '—') + '</b><div>' + cmEsc(ev.descripcion) + '</div></div></div>').join('')
+        + '<div><b>' + cmEsc(ev.usuario_nombre || '—') + '</b><div>' + cmEsc(ev.descripcion) + '</div>' + cmHtmlCorreccion(ev) + '</div></div>').join('')
       : '<div class="cmx-vacio">Sin registros</div>') + '</div>';
+}
+// En la corrección de un seguimiento: lo que decía antes y lo que dice ahora, campo por campo
+function cmHtmlCorreccion(ev) {
+  const d = ev.detalle || {};
+  if (ev.entidad !== 'seguimiento' || ev.accion !== 'editado' || !d.antes) return '';
+  const txt = v => v && String(v).trim() ? cmEsc(v) : '<i>(vacío)</i>';
+  return Object.keys(d.antes).map(k => '<div class="cmx-ev-cambio"><b>' + (CM_CAMPOS_SEG[k] || cmEsc(k)) + '</b>'
+    + '<div><span>Antes:</span> ' + txt(d.antes[k]) + '</div><div><span>Ahora:</span> ' + txt((d.despues || {})[k]) + '</div></div>').join('');
 }
 
 // ── Ventanas (modales) del módulo: los errores se muestran DENTRO de la ventana ────────────
@@ -14898,8 +14994,8 @@ function cmAbrirSeguimiento(id) {
   const cuerpo = '<div class="cm-form">'
     + '<div class="form-group"><label class="form-label">Fecha y hora *</label><input id="cm-sg-fecha" type="datetime-local" class="form-input" value="' + ahora + '" max="' + ahora + '" min="' + cmEsc(c.fecha_reporte) + 'T00:00"></div>'
     + '<div class="form-group"><label class="form-label">Tipo de seguimiento *</label><select id="cm-sg-tipo" class="form-select">' + cmOpciones(CM_LISTAS.tiposSeguimiento, '', 'Selecciona...') + '</select></div>'
-    + '<div class="form-group full"><label class="form-label">Descripción</label><textarea id="cm-sg-desc" class="form-input" rows="3" placeholder="Opcional: ¿qué se revisó? ¿qué informó el trabajador?"></textarea></div>'
-    + '<div class="form-group full"><label class="form-label">Gestión realizada *</label><textarea id="cm-sg-gestion" class="form-input" rows="2" placeholder="Ej: Se envió correo a la EPS solicitando el concepto médico"></textarea></div>'
+    + '<div class="form-group full"><label class="form-label">Descripción</label><textarea id="cm-sg-desc" class="form-input" rows="3" placeholder="¿Qué se revisó? ¿Qué informó el trabajador?"></textarea></div>'
+    + '<div class="form-group full"><label class="form-label">Gestión realizada</label><textarea id="cm-sg-gestion" class="form-input" rows="2" placeholder="Ej: Se envió correo a la EPS solicitando el concepto médico"></textarea></div>'
     + '<div class="form-group"><label class="form-label">Estado después del seguimiento</label><select id="cm-sg-estado" class="form-select">'
     + '<option value="">Sin cambio (sigue «' + cmEsc(c.estado) + '»)</option>' + cmOpciones(CM_ESTADOS_ACTIVOS.filter(x => x !== c.estado)) + '</select></div>'
     + '<div class="form-group"><label class="form-label">Fecha del próximo seguimiento</label><input id="cm-sg-prox" type="date" class="form-input" min="' + hoy + '"></div>'
@@ -14925,7 +15021,7 @@ function cmAbrirSeguimiento(id) {
       + '<div class="form-group"><label class="form-label">Tipo de documento</label><select id="cm-sg-doctipo" class="form-select">' + cmOpciones(CM_LISTAS.tiposDocumento) + '</select></div>'
       + '<div class="form-group"><label class="form-label">Archivos (máx. 25 MB c/u)</label><input id="cm-sg-files" type="file" multiple class="form-input"></div>'
       + '</div></details>' : '')
-    + '<div class="cm-aviso info full">Los seguimientos no se pueden editar después de guardarlos: quedan como parte del histórico. Si algo queda mal, registra otro de tipo «Aclaración / corrección» (solo el administrador del sistema puede eliminarlos).</div>'
+    + '<div class="cm-aviso info full">Después de guardarlo podrás corregir sus textos con el lápiz mientras el caso esté abierto (cada corrección queda en la Auditoría con lo que decía antes). La fecha y el estado no se corrigen; solo el administrador del sistema puede eliminar un seguimiento.</div>'
     + '</div>';
   cmAbrirModal('Registrar seguimiento — ' + cmEsc(c.codigo) + ' · ' + cmEsc(c.motivo), cuerpo,
     '<button class="btn btn-ghost btn-sm" onclick="cmCerrarModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="cmGuardarSeguimiento(' + id + ')">Guardar seguimiento</button>', 720);
@@ -14942,7 +15038,6 @@ async function cmGuardarSeguimiento(id) {
   if (dia < c.fecha_reporte) return cmErrorModal('La fecha del seguimiento no puede ser anterior a la fecha de reporte (' + cmFecha(c.fecha_reporte) + ').');
   const tipo = cmValor('cm-sg-tipo'), desc = cmValor('cm-sg-desc'), gestion = cmValor('cm-sg-gestion');
   if (!tipo) return cmErrorModal('Selecciona el tipo de seguimiento.');
-  if (!gestion) return cmErrorModal('Escribe la gestión realizada.');
   const prox = cmValor('cm-sg-prox') || null, acc = cmValor('cm-sg-acc');
   if (acc && !prox) return cmErrorModal('Indica la fecha del próximo seguimiento para esa acción (o deja la acción vacía).');
   if (prox && prox < dia) return cmErrorModal('La fecha del próximo seguimiento no puede ser anterior a la del seguimiento.');
@@ -14984,6 +15079,64 @@ async function cmGuardarSeguimiento(id) {
     await cmRefrescarCaso(id);
     if (avisos.length) alert('El seguimiento #' + seg.numero + ' quedó guardado, pero no se pudo guardar:\n\n• ' + avisos.join('\n• ') + '\n\nPuedes agregarlo desde el perfil del caso.');
     else showToast('✓ Seguimiento #' + seg.numero + ' registrado');
+  } finally { hideBlockingOverlay(); }
+}
+
+// ── Corregir un seguimiento: solo sus textos, mientras el caso esté abierto ─────────────────
+// La base de datos deja cada corrección en la Auditoría del caso con lo que decía antes.
+const CM_TIPOS_SISTEMA = ['Cambio de estado', 'Reapertura del caso', 'Registro histórico (Excel)'];
+const CM_CAMPOS_SEG = { tipo: 'Tipo', descripcion: 'Descripción', gestion: 'Gestión realizada', resultado: 'Resultado', compromisos: 'Compromisos', observaciones: 'Observaciones' };
+function cmCorreccionDe(det, segId) {   // la última corrección de un seguimiento
+  return det.eventos.filter(ev => ev.entidad === 'seguimiento' && ev.entidad_id === segId && ev.accion === 'editado')
+    .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))[0] || null;
+}
+function cmAbrirCorregirSeguimiento(segId) {
+  const s = CM.detalle?.seguimientos.find(x => x.id === segId), c = CM.detalle?.caso;
+  if (!s || !cmValidarAbierto(c, 'editar')) return;
+  const motivo = s.tipo === 'Cambio de estado' || s.tipo === 'Reapertura del caso';
+  const tipoFijo = CM_TIPOS_SISTEMA.includes(s.tipo) || s.origen !== 'manual';
+  const tipos = CM_LISTAS.tiposSeguimiento.includes(s.tipo) ? CM_LISTAS.tiposSeguimiento : [s.tipo, ...CM_LISTAS.tiposSeguimiento];
+  const texto = (id, etiqueta, valor, filas) => '<div class="form-group full"><label class="form-label">' + etiqueta + '</label>'
+    + (filas ? '<textarea id="' + id + '" class="form-input" rows="' + filas + '">' + cmEsc(valor || '') + '</textarea>'
+             : '<input id="' + id + '" class="form-input" value="' + cmEsc(valor || '') + '">') + '</div>';
+  const cuerpo = '<div class="cm-form">'
+    + '<div class="form-group"><label class="form-label">Fecha y hora</label><div style="padding-top:6px">' + cmFechaHora(s.fecha) + ' · por ' + cmEsc(s.responsable_nombre || '—') + '</div></div>'
+    + '<div class="form-group"><label class="form-label">' + (tipoFijo ? 'Tipo' : 'Tipo de seguimiento *') + '</label>'
+    + (tipoFijo ? '<div style="padding-top:6px">' + cmEsc(s.tipo) + '</div>' : '<select id="cm-cs-tipo" class="form-select">' + cmOpciones(tipos, s.tipo) + '</select>') + '</div>'
+    + texto('cm-cs-desc', motivo ? 'Motivo *' : 'Descripción', s.descripcion, 3)
+    + texto('cm-cs-gestion', 'Gestión realizada', s.gestion, 2)
+    + texto('cm-cs-resultado', 'Resultado', s.resultado)
+    + texto('cm-cs-compromisos', 'Compromisos', s.compromisos)
+    + texto('cm-cs-obs', 'Observaciones', s.observaciones, 2)
+    + '<div class="cm-aviso info full">La corrección queda en la Auditoría del caso con lo que decía antes. La fecha, el estado y el próximo seguimiento no se corrigen aquí: usa «Cambiar estado» o «Reprogramar».</div>'
+    + '</div>';
+  cmAbrirModal('Corregir ' + (s.tipo === 'Reapertura del caso' ? 'la reapertura' : 'el seguimiento #' + s.numero) + ' — ' + cmEsc(c.codigo), cuerpo,
+    '<button class="btn btn-ghost btn-sm" onclick="cmCerrarModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="cmGuardarCorregirSeguimiento(' + segId + ')">Guardar corrección</button>', 640);
+}
+async function cmGuardarCorregirSeguimiento(segId) {
+  const s = CM.detalle?.seguimientos.find(x => x.id === segId), c = CM.detalle?.caso;
+  if (!s || !c) return;
+  const motivo = s.tipo === 'Cambio de estado' || s.tipo === 'Reapertura del caso';
+  const nuevo = {
+    tipo: document.getElementById('cm-cs-tipo') ? cmValor('cm-cs-tipo') : s.tipo,
+    descripcion: cmValor('cm-cs-desc'), gestion: cmValor('cm-cs-gestion'), resultado: cmValor('cm-cs-resultado'),
+    compromisos: cmValor('cm-cs-compromisos'), observaciones: cmValor('cm-cs-obs'),
+  };
+  if (!nuevo.tipo) return cmErrorModal('Selecciona el tipo de seguimiento.');
+  if (motivo && !nuevo.descripcion) return cmErrorModal('Escribe el motivo.');
+  const cambios = {};
+  Object.keys(nuevo).forEach(k => { if (String(s[k] ?? '').trim() !== nuevo[k]) cambios[k] = nuevo[k]; });
+  if (!Object.keys(cambios).length) { cmCerrarModal(); showToast('Sin cambios'); return; }
+  showBlockingOverlay('Guardando corrección...');
+  try {
+    const { data, error } = await sb.from('casos_medicos_seguimientos').update(cambios).eq('id', segId).select('id');
+    if (error) { cmErrorModal(cmMsgError(error)); return; }
+    // Sin el permiso en la base de datos la actualización no afecta ninguna fila (no da error)
+    if (!data || !data.length) { cmErrorModal('No se guardó la corrección: la base de datos todavía no permite corregir seguimientos. Avísale al administrador del sistema.'); return; }
+    logAudit('update', 'casos_medicos', c.codigo, 'Corrigió el seguimiento #' + s.numero + ' del caso ' + c.codigo);
+    cmCerrarModal();
+    await cmRefrescarCaso(c.id);
+    showToast('✓ Seguimiento #' + s.numero + ' corregido');
   } finally { hideBlockingOverlay(); }
 }
 
@@ -15516,6 +15669,7 @@ function cmPdfLineaTiempo(det) {
   const ms = ts => new Date(ts).getTime();
   const msDia = iso => { const [y, m, d] = String(iso).slice(0, 10).split('-').map(Number); return new Date(y, m - 1, d).getTime(); };
   const F = (l, v) => v && String(v).trim() ? [l, cmEsc(v)] : null;
+  const Fsiempre = (l, v) => [l, v && String(v).trim() ? cmEsc(v) : '—'];
   const docsDeSeg = {};
   det.documentos.forEach(d => { if (d.seguimiento_id) (docsDeSeg[d.seguimiento_id] = docsDeSeg[d.seguimiento_id] || []).push(d); });
   const E = [];
@@ -15524,7 +15678,7 @@ function cmPdfLineaTiempo(det) {
   E.push({ t: msDia(c.fecha_reporte), f: c.fecha_reporte, h: cmIsoDeTs(c.created_at) === c.fecha_reporte ? cmHoraDeTs(c.created_at) : '',
     color: '#2563eb', ico: 'doc', titulo: 'Caso reportado',
     chip: creado?.detalle?.estado ? cmPdfChip(creado.detalle.estado, cmPdfColorEstado(creado.detalle.estado), true) : '',
-    filas: [F('Descripción', c.descripcion || 'Sin descripción inicial'),
+    filas: [F('Situación / motivo', c.motivo), F('Descripción', c.descripcion || 'Sin descripción inicial'),
       F('Registrado por', (c.creado_por_nombre || '—') + (c.origen === 'importacion_excel' ? ' · importado del Excel histórico' : ''))] });
 
   det.seguimientos.forEach(s => {
@@ -15534,14 +15688,19 @@ function cmPdfLineaTiempo(det) {
       .map(i => F(i.clase === 'restriccion' ? 'Restricción' : 'Recomendación', i.descripcion + (i.fecha_fin ? ' (hasta ' + cmFecha(i.fecha_fin) + ')' : '')));
     const docs = docsDeSeg[s.id] || [];
     const tardio = Math.abs(ms(s.created_at) - ms(s.fecha)) > 36 * 3600 * 1000;
+    const corr = cmCorreccionDe(det, s.id);
     E.push({ t: ms(s.fecha), f: cmIsoDeTs(s.fecha), h: cmHoraDeTs(s.fecha), color: col, ico: reap ? 'rotar' : 'registrar',
       titulo: reap ? 'Caso reabierto' : 'Seguimiento #' + s.numero + ' <span style="font-size:10.5px;font-weight:600;color:#64748b">· ' + cmEsc(s.tipo) + '</span>',
       chip: s.estado_resultante ? cmPdfChip(s.estado_resultante, cmPdfColorEstado(s.estado_resultante), true) : '',
-      filas: [F(reap ? 'Motivo' : 'Descripción', s.descripcion), F('Gestión realizada', s.gestion), F('Resultado', s.resultado),
+      // Descripción y gestión siempre presentes; en «Cambio de estado» y «Reapertura» lo registrado es el motivo
+      filas: [...(reap || s.tipo === 'Cambio de estado' ? [F(reap ? 'Motivo de la reapertura' : 'Motivo', s.descripcion), F('Gestión realizada', s.gestion)]
+                                                       : [Fsiempre('Descripción', s.descripcion), Fsiempre('Gestión realizada', s.gestion)]),
+        F('Resultado', s.resultado),
         F('Compromisos', s.compromisos), ...inds, docs.length ? ['Documento' + (docs.length > 1 ? 's' : ''), cmPdfDocs(docs)] : null,
         (s.proxima_fecha || s.proxima_accion) ? F('Próximo seguimiento', (s.proxima_fecha ? cmFecha(s.proxima_fecha) : 'sin fecha') + (s.proxima_accion ? ' — ' + s.proxima_accion : '')) : null,
         F('Observaciones', s.observaciones), F('Registro histórico', s.registro_historico),
-        F('Registrado por', (s.responsable_nombre || '—') + (tardio ? ' · registrado el ' + cmFechaHora(s.created_at) : ''))] });
+        F('Registrado por', (s.responsable_nombre || '—') + (tardio ? ' · registrado el ' + cmFechaHora(s.created_at) : '')
+          + (corr ? ' · corregido por ' + (corr.usuario_nombre || '—') + ' el ' + cmFechaHora(corr.created_at) : ''))] });
   });
 
   det.indicaciones.filter(i => !i.seguimiento_id).forEach(i => {
