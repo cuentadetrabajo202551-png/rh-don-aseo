@@ -3190,8 +3190,17 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
 const CERT_MAIL_ENDPOINT = 'https://www.donaseoltda.com/enviar-certificado.php';
 const CERT_MAIL_TOKEN    = 'donaseo-certificados-2026-xk92m'; // debe coincidir con $SECRETO del PHP
 
-const SUPABASE_URL = 'https://eimprmejytunsgzazdkh.supabase.co';
-const SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbXBybWVqeXR1bnNnemF6ZGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMjc4NDEsImV4cCI6MjA5NTcwMzg0MX0.IG7Ou9YcIMQn7TdHd5WJuhNvAKL-LqVmuxWfkEo1_wQ';
+// ── Proyecto de Supabase ──
+// RH se muda al proyecto sig-don-aseo (el mismo de Firmas, Panel, Academia y Caja menor).
+// Mientras EN_SIG esté en false todo funciona igual que siempre, con rh-don-aseo.
+// El día de la mudanza se pasa a true con: node mudanza-rh-a-sig/mudar.js index
+const EN_SIG = false;
+const SUPABASE_URL = EN_SIG ? 'https://nqkiepqaujlgmkvsevdr.supabase.co' : 'https://eimprmejytunsgzazdkh.supabase.co';
+const SUPABASE_KEY = EN_SIG
+  ? 'sb_publishable_cl1Dx7YVlYr4JO9qOWlZ6g_9h9oP2p0'
+  : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbXBybWVqeXR1bnNnemF6ZGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMjc4NDEsImV4cCI6MjA5NTcwMzg0MX0.IG7Ou9YcIMQn7TdHd5WJuhNvAKL-LqVmuxWfkEo1_wQ';
+// En sig-don-aseo la carpeta "documentos" es del Panel de documentos: la de RH se llama "rh-documentos"
+const CARPETA_DOCUMENTOS = EN_SIG ? 'rh-documentos' : 'documentos';
 
 // Adaptador de almacenamiento para la sesión: si el usuario marcó "Mantener sesión
 // iniciada" (checkbox de login), la sesión se guarda en localStorage y sobrevive a
@@ -4259,7 +4268,7 @@ async function eliminarEmpleado() {
       .select('storage_path').eq('empleado_id', String(emp.id));
     if (docs?.length) {
       const paths = docs.map(d => d.storage_path).filter(Boolean);
-      if (paths.length) await sb.storage.from('documentos').remove(paths);
+      if (paths.length) await sb.storage.from(CARPETA_DOCUMENTOS).remove(paths);
     }
     await sb.from('documentos_empleados').delete().eq('empleado_id', String(emp.id));
 
@@ -4620,7 +4629,7 @@ async function subirDocumentosMultiples(fileList) {
 // Sube UN archivo a Storage + registra su fila en documentos_empleados. Devuelve true/false.
 async function _subirUnDocumento(file, titulo) {
   const path = _docsEmpId + '/adjuntos/' + Date.now() + '_' + Math.random().toString(36).slice(2,6) + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
+  const { error: upErr } = await sb.storage.from(CARPETA_DOCUMENTOS).upload(path, file, {contentType:file.type, upsert:false});
   if (upErr) { showToast('Error subiendo "' + file.name + '": ' + upErr.message); return false; }
 
   const { error: dbErr } = await sb.from('documentos_empleados').insert([{
@@ -4631,7 +4640,7 @@ async function _subirUnDocumento(file, titulo) {
     tamanio:     file.size,
     subido_por:  _currentUser?.display_name || _currentUser?.email || 'Usuario'
   }]);
-  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando "' + file.name + '": ' + dbErr.message); return false; }
+  if (dbErr) { await sb.storage.from(CARPETA_DOCUMENTOS).remove([path]); showToast('Error registrando "' + file.name + '": ' + dbErr.message); return false; }
 
   _docsCounts[_docsEmpId] = (_docsCounts[_docsEmpId] || 0) + 1;
   return true;
@@ -4645,14 +4654,14 @@ async function subirDocumento(input, tipo) {
   showBlockingOverlay('Subiendo ' + file.name + '...');
   try {
     const path = _docsEmpId + '/' + tipo + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-    const { error: upErr } = await sb.storage.from('documentos').upload(path, file, {contentType:file.type, upsert:false});
+    const { error: upErr } = await sb.storage.from(CARPETA_DOCUMENTOS).upload(path, file, {contentType:file.type, upsert:false});
     if (upErr) { showToast('Error: ' + upErr.message); return; }
     const { error: dbErr } = await sb.from('documentos_empleados').insert([{
       empleado_id: String(_docsEmpId), tipo, nombre: file.name,
       storage_path: path, tamanio: file.size,
       subido_por: _currentUser?.display_name || _currentUser?.email || 'Usuario'
     }]);
-    if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
+    if (dbErr) { await sb.storage.from(CARPETA_DOCUMENTOS).remove([path]); showToast('Error registrando: ' + dbErr.message); return; }
     await logAudit('create', 'documentos', String(_docsEmpId), 'Subio documento ' + tipo + ': ' + file.name);
     showToast('Documento subido correctamente');
     input.value = '';
@@ -4672,7 +4681,7 @@ function subirDocDesdeBoton(input) {
 }
 
 async function descargarDocumento(id, storagePath) {
-  const { data, error } = await sb.storage.from('documentos').createSignedUrl(storagePath, 3600);
+  const { data, error } = await sb.storage.from(CARPETA_DOCUMENTOS).createSignedUrl(storagePath, 3600);
   if (error) { showToast('Error: ' + error.message); return; }
   window.open(data.signedUrl, '_blank');
 }
@@ -4681,7 +4690,7 @@ async function eliminarDocumento(id, storagePath) {
   if (!confirm('Eliminar este documento? Esta accion no se puede deshacer.')) return;
   showBlockingOverlay('Eliminando documento...');
   try {
-    const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
+    const { error: stErr } = await sb.storage.from(CARPETA_DOCUMENTOS).remove([storagePath]);
     if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
     const { error: dbErr } = await sb.from('documentos_empleados').delete().eq('id', id);
     if (dbErr) { showToast('Archivo eliminado del storage pero error en base de datos: ' + dbErr.message); return; }
@@ -6707,7 +6716,7 @@ async function eliminarNovedad(id) {
   try {
     const { data: soportes } = await sb.from('novedades_soportes').select('storage_path').eq('novedad_id', id);
     if (soportes && soportes.length) {
-      await sb.storage.from('documentos').remove(soportes.map(s => s.storage_path));
+      await sb.storage.from(CARPETA_DOCUMENTOS).remove(soportes.map(s => s.storage_path));
     }
     const { error } = await sb.from('novedades').delete().eq('id', id);
     if (error) { showToast('Error: ' + error.message); return; }
@@ -6728,14 +6737,14 @@ async function eliminarNovedad(id) {
 async function _subirArchivoDirecto(file, novedadId) {
   if (file.size > 10*1024*1024) { showToast('Máximo 10MB por archivo'); return false; }
   const path = 'novedades/' + novedadId + '/' + Date.now() + '_' + file.name.replace(/[^a-zA-Z0-9._-]/g,'_');
-  const { error: upErr } = await sb.storage.from('documentos').upload(path, file, { contentType: file.type, upsert:false });
+  const { error: upErr } = await sb.storage.from(CARPETA_DOCUMENTOS).upload(path, file, { contentType: file.type, upsert:false });
   if (upErr) { showToast('Error subiendo soporte: ' + upErr.message); return false; }
 
   const { error: dbErr } = await sb.from('novedades_soportes').insert([{
     novedad_id: novedadId, nombre: file.name, storage_path: path, tamanio: file.size,
     subido_por: _currentUser?.display_name || _currentUser?.email || 'Usuario'
   }]);
-  if (dbErr) { await sb.storage.from('documentos').remove([path]); showToast('Error registrando soporte: ' + dbErr.message); return false; }
+  if (dbErr) { await sb.storage.from(CARPETA_DOCUMENTOS).remove([path]); showToast('Error registrando soporte: ' + dbErr.message); return false; }
 
   await logAudit('create', 'novedades_soportes', novedadId, 'Adjuntó soporte: ' + file.name);
   return true;
@@ -6759,7 +6768,7 @@ async function subirSoporteNovedad(input, novedadId) {
 }
 
 async function descargarSoporteNovedad(storagePath) {
-  const { data, error } = await sb.storage.from('documentos').createSignedUrl(storagePath, 3600);
+  const { data, error } = await sb.storage.from(CARPETA_DOCUMENTOS).createSignedUrl(storagePath, 3600);
   if (error) { showToast('Error: ' + error.message); return; }
   window.open(data.signedUrl, '_blank');
 }
@@ -6771,7 +6780,7 @@ async function eliminarSoporteNovedad(id, storagePath, novedadId) {
 
   showBlockingOverlay('Eliminando soporte...');
   try {
-    const { error: stErr } = await sb.storage.from('documentos').remove([storagePath]);
+    const { error: stErr } = await sb.storage.from(CARPETA_DOCUMENTOS).remove([storagePath]);
     if (stErr) { showToast('Error eliminando archivo: ' + stErr.message); return; }
     const { error: dbErr } = await sb.from('novedades_soportes').delete().eq('id', id);
     if (dbErr) { showToast('Error en base de datos: ' + dbErr.message); return; }
@@ -8463,7 +8472,7 @@ async function descargarRespaldoCompleto() {
         const carpeta = emp
           ? _sanitizarNombreArchivo(`${emp.cedula || 'sin_cedula'}_${emp.nombre || 'sin_nombre'}`)
           : `empleado_${d.empleado_id}`;
-        const { data: blob, error } = await sb.storage.from('documentos').download(d.storage_path);
+        const { data: blob, error } = await sb.storage.from(CARPETA_DOCUMENTOS).download(d.storage_path);
         if (error || !blob) { failEmp++; return; }
         const nombreArchivo = _sanitizarNombreArchivo(d.nombre || d.storage_path.split('/').pop());
         zip.file(`adjuntos_empleados/${carpeta}/${nombreArchivo}`, blob);
@@ -8483,7 +8492,7 @@ async function descargarRespaldoCompleto() {
         const carpeta = nov
           ? _sanitizarNombreArchivo(`${nov.empleado_nombre || 'sin_nombre'}_${nov.tipo || ''}_${nov.fecha_inicio || ''}_id${s.novedad_id}`)
           : `novedad_${s.novedad_id}`;
-        const { data: blob, error } = await sb.storage.from('documentos').download(s.storage_path);
+        const { data: blob, error } = await sb.storage.from(CARPETA_DOCUMENTOS).download(s.storage_path);
         if (error || !blob) { failNov++; return; }
         const nombreArchivo = _sanitizarNombreArchivo(s.nombre || s.storage_path.split('/').pop());
         zip.file(`adjuntos_novedades/${carpeta}/${nombreArchivo}`, blob);
@@ -8638,7 +8647,7 @@ async function descargarHojaDeVida(id, conAdjuntos) {
     if (docs && docs.length) {
       showBlockingOverlay('Descargando ' + docs.length + ' adjunto(s)...');
       await _procesarEnLotes(docs, 4, async (d) => {
-        const { data: blob, error: errDl } = await sb.storage.from('documentos').download(d.storage_path);
+        const { data: blob, error: errDl } = await sb.storage.from(CARPETA_DOCUMENTOS).download(d.storage_path);
         if (errDl || !blob) return;
         zip.file('Adjuntos/' + _sanitizarNombreArchivo(d.nombre || d.storage_path.split('/').pop()), blob);
       });
@@ -8679,7 +8688,7 @@ async function descargarHojasDeVidaMasivo(conAdjuntos) {
           const { data: docs } = await sb.from('documentos_empleados').select('*').eq('empleado_id', String(emp.id));
           if (docs && docs.length) {
             await _procesarEnLotes(docs, 4, async (d) => {
-              const { data: blob, error: errDl } = await sb.storage.from('documentos').download(d.storage_path);
+              const { data: blob, error: errDl } = await sb.storage.from(CARPETA_DOCUMENTOS).download(d.storage_path);
               if (errDl || !blob) return;
               zip.file(carpeta + 'Adjuntos/' + _sanitizarNombreArchivo(d.nombre || d.storage_path.split('/').pop()), blob);
             });
@@ -9351,6 +9360,31 @@ async function crearNuevoUsuario() {
 
   showBlockingOverlay('Creando usuario...');
   try {
+    // En sig-don-aseo el registro público está cerrado: la cuenta la crea la función rh-usuarios.
+    // Si la persona ya tiene cuenta en otro sistema de Don Aseo, solo se le da acceso a RH.
+    if (EN_SIG) {
+      const { data, error } = await sb.functions.invoke('rh-usuarios', {
+        body: { action: 'create', email, password: pass, nombre, cargo, rol: role }
+      });
+      let msgError = null;
+      if (error) {
+        msgError = error.message;
+        try { const b = await error.context.json(); if (b && b.error) msgError = b.error; } catch (_) {}
+      } else if (!data || !data.success) {
+        msgError = (data && data.error) || 'No se pudo crear el usuario';
+      }
+      if (msgError) { showToast('Error: ' + msgError); return; }
+      await logAudit('create', 'usuario', data.userId,
+        (data.existente ? 'Dio acceso a RH a ' : 'Creo usuario ') + nombre + ' (' + email + ') con rol ' + role);
+      document.getElementById('form-nuevo-usuario').style.display = 'none';
+      ['nu-nombre','nu-cargo','nu-email','nu-pass'].forEach(id => { document.getElementById(id).value = ''; });
+      showToast(data.existente
+        ? '✓ ' + nombre + ' ya tenía cuenta en los sistemas de Don Aseo: ahora también entra a RH con su misma contraseña'
+        : '✓ Usuario creado: ya puede entrar con su correo y la contraseña que le asignaste');
+      cargarListaUsuarios();
+      return;
+    }
+
     const sbTemp = _clienteTemporalParaCrearUsuario();
     const { data: signUpData, error } = await sbTemp.auth.signUp({ email, password: pass });
     if (error) { showToast('Error: ' + error.message); return; }
@@ -9653,7 +9687,7 @@ async function vaciarBaseDeDatos() {
     const { data: docs } = await sb.from('documentos_empleados').select('storage_path');
     if (docs?.length) {
       const paths = docs.map(d => d.storage_path).filter(Boolean);
-      if (paths.length) await sb.storage.from('documentos').remove(paths);
+      if (paths.length) await sb.storage.from(CARPETA_DOCUMENTOS).remove(paths);
     }
     await sb.from('documentos_empleados').delete().neq('id', 0);
 
@@ -11811,7 +11845,7 @@ async function eliminarEmpleadoDirecto(id) {
     const { data: docs } = await sb.from('documentos_empleados').select('storage_path').eq('empleado_id', String(id));
     if (docs?.length) {
       const paths = docs.map(d => d.storage_path).filter(Boolean);
-      if (paths.length) await sb.storage.from('documentos').remove(paths);
+      if (paths.length) await sb.storage.from(CARPETA_DOCUMENTOS).remove(paths);
     }
     await sb.from('documentos_empleados').delete().eq('empleado_id', String(id));
     const idx = EMPLEADOS.findIndex(e => e.id === id);
