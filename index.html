@@ -9044,7 +9044,7 @@ async function _sinPerfilRH(estado) {
   _currentUser = null;
   const errEl = document.getElementById('login-error');
   if (estado === 'sin_acceso') {
-    try { await sb.auth.signOut(); } catch (e) {}
+    try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
     if (errEl) errEl.textContent = 'Tu usuario no tiene acceso a Recursos Humanos. Pídeselo al administrador.';
   } else if (errEl) errEl.textContent = 'No se pudo verificar tu acceso. Revisa la conexión e intenta de nuevo.';
 }
@@ -9805,7 +9805,7 @@ async function doLogout() {
   if (!confirm('Cerrar sesion?')) return;
   _stopRealtimeSync();
   await logAudit('logout', 'sesion', _currentUser?.id||'', 'Cierre de sesion');
-  await sb.auth.signOut();
+  await sb.auth.signOut({ scope: 'local' });
   _currentUser = null;
   if (typeof cmLimpiarDatos === 'function') cmLimpiarDatos();  // la información médica no queda en memoria
   clearTimeout(_inactivityTimer);
