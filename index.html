@@ -2343,7 +2343,6 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
 
       <div id="nota-usuarios-portal" style="border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:13px;color:var(--text2);background:var(--bg)">
         Los usuarios y sus accesos se administran en el Portal.
-        <a id="enlace-usuarios-portal" href="#" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;white-space:nowrap">Abrir el Portal &#8599;</a>
       </div>
 
       <!-- ── COPIA DE SEGURIDAD (solo admin) ──────────────────────────── -->
@@ -2482,7 +2481,6 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
     </div>
     <div id="ppu-nota-portal" style="font-size:12px;color:var(--text2);background:var(--bg);border-radius:8px;padding:12px">
       Tu nombre, cargo, foto y contrase&#241;a se cambian en el Portal.
-      <a id="ppu-enlace-portal" href="#" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;white-space:nowrap">Abrir el Portal &#8599;</a>
     </div>
     <div class="ppu-section-label" style="margin-top:20px">Foto de perfil</div>
     <div style="display:flex;align-items:center;gap:12px">
@@ -5438,8 +5436,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const enlacePortalMenu = document.getElementById('sb-nav-portal');
   if (enlacePortalMenu) enlacePortalMenu.href = PORTAL_URL;
-  const enlaceUsuariosPortal = document.getElementById('enlace-usuarios-portal');
-  if (enlaceUsuariosPortal) enlaceUsuariosPortal.href = PORTAL_URL;
 
   // Entrada desde el Portal: el pase se canjea por una sesión nueva, solo de esta pestaña
   if (PASE) {
@@ -9240,8 +9236,6 @@ function abrirPerfilUsuario() {
     : (_currentUser.display_name||_currentUser.email||'RH').slice(0,2).toUpperCase();
   if (avBig) avBig.innerHTML = avContent;
   if (avPrev) avPrev.innerHTML = avContent;
-  const enlacePortal = document.getElementById('ppu-enlace-portal');
-  if (enlacePortal) enlacePortal.href = PORTAL_URL;
   // Permisos info
   const permisos = {
     admin:    '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a, novedades, copia de seguridad y zona de peligro. Los usuarios se administran en el Portal.',
