@@ -1197,6 +1197,10 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
     <div id="sb-sync-dot" style="width:6px;height:6px;border-radius:50%;background:#94a3b8;flex-shrink:0;transition:background .3s,opacity .4s;opacity:.4"></div>
     <span id="sb-sync-txt" style="font-size:9px;color:rgba(255,255,255,.45);font-weight:500">Conectando...</span>
   </div>
+  <a id="sb-nav-portal" class="sb-item" href="#" title="Volver al Portal de accesos" style="text-decoration:none;margin-top:6px">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 12H5"/><path d="M12 19l-7-7 7-7"/></svg>
+    Portal
+  </a>
   <div class="sb-section" id="sb-label-principal">Principal</div>
   <div id="sb-nav-dashboard" class="sb-item active" onclick="showSection('dashboard',this)">
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
@@ -3228,12 +3232,28 @@ const _authStorageAdapter = {
   }
 };
 
+// Entrada desde el Portal (fase 4): el Portal abre RH con #pase=<enlace de un solo uso>. Se lee y se
+// borra de la dirección ANTES de crear el cliente. Esa pestaña guarda su sesión aparte (sessionStorage
+// con una llave propia de ESA pestaña: supabase-js avisa los cambios de sesión a las pestañas con la
+// misma llave, y así salir en una no afecta a otra). Al cerrarla se acaba y no toca otras sesiones.
+// Sin pase, todo sigue igual. El pase no se guarda, no se manda a ningún otro lado y no va a la auditoría.
+const PASE = (() => {
+  try {
+    const m = /(?:^#|&)pase=([^&]+)/.exec(location.hash);
+    if (!m) return null;
+    history.replaceState(null, '', location.pathname + location.search);
+    try { sessionStorage.setItem('portal.pestana', Date.now().toString(36) + Math.random().toString(36).slice(2, 10)); } catch (e) {}
+    try { return decodeURIComponent(m[1]); } catch (e) { return m[1]; }
+  } catch (e) { return null; }
+})();
+let PESTANA = null;
+try { PESTANA = sessionStorage.getItem('portal.pestana'); } catch (e) {}
+const DESDE_PORTAL = !!PESTANA;
+
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-  auth: {
-    persistSession: true,
-    autoRefreshToken: true,
-    storage: _authStorageAdapter
-  }
+  auth: DESDE_PORTAL
+    ? { persistSession: true, autoRefreshToken: true, storage: window.sessionStorage, storageKey: 'portal-pestana-sesion-' + PESTANA }
+    : { persistSession: true, autoRefreshToken: true, storage: _authStorageAdapter }
 });
 
 // EMPLEADOS: array local que actúa como caché de Supabase.
@@ -5483,6 +5503,22 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (sbLogoEl)    sbLogoEl.src    = LOGO_B64;
     const sbIconoEl = document.getElementById('sb-logo-icono');
     if (sbIconoEl && typeof LOGO_ICONO_B64 !== 'undefined') sbIconoEl.src = LOGO_ICONO_B64;
+  }
+
+  const enlacePortalMenu = document.getElementById('sb-nav-portal');
+  if (enlacePortalMenu) enlacePortalMenu.href = PORTAL_URL;
+
+  // Entrada desde el Portal: el pase se canjea por una sesión nueva, solo de esta pestaña
+  if (PASE) {
+    let errPase = null;
+    showBlockingOverlay('Entrando desde el Portal...');
+    try { ({ error: errPase } = await sb.auth.verifyOtp({ token_hash: PASE, type: 'email' })); }
+    catch (e) { errPase = e; }
+    finally { hideBlockingOverlay(); }
+    if (errPase) {
+      _avisoLoginConPortal('El enlace del Portal ya se usó o venció. Vuelve al Portal y entra otra vez, o ingresa con tu contraseña.');
+      return;
+    }
   }
 
   // Verificar si ya hay sesion activa (usuario ya habia iniciado sesion antes)
@@ -9045,8 +9081,21 @@ async function _sinPerfilRH(estado) {
   const errEl = document.getElementById('login-error');
   if (estado === 'sin_acceso') {
     try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
-    if (errEl) errEl.textContent = 'Tu usuario no tiene acceso a Recursos Humanos. Pídeselo al administrador.';
+    if (DESDE_PORTAL) _avisoLoginConPortal('No tienes acceso al Módulo de RH. Pídeselo al administrador.');
+    else if (errEl) errEl.textContent = 'Tu usuario no tiene acceso a Recursos Humanos. Pídeselo al administrador.';
   } else if (errEl) errEl.textContent = 'No se pudo verificar tu acceso. Revisa la conexión e intenta de nuevo.';
+}
+
+// Aviso en la pantalla de login con un enlace para volver al Portal (entrada desde el Portal)
+function _avisoLoginConPortal(texto) {
+  const errEl = document.getElementById('login-error');
+  if (!errEl) return;
+  errEl.textContent = texto + ' ';
+  const a = document.createElement('a');
+  a.href = PORTAL_URL;
+  a.textContent = 'Volver al Portal';
+  a.style.cssText = 'color:inherit;font-weight:700;text-decoration:underline';
+  errEl.appendChild(a);
 }
 
 // Secciones permitidas por rol
