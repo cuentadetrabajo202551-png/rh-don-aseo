@@ -2484,9 +2484,7 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
   style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:499;backdrop-filter:blur(2px)"></div>
 <div id="panel-perfil-usuario">
   <div class="ppu-header">
-    <div class="ppu-avatar-big" id="ppu-avatar" onclick="triggerAvatarUpload()">RH
-      <input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)">
-    </div>
+    <div class="ppu-avatar-big" id="ppu-avatar" style="cursor:default">RH</div>
     <div style="flex:1">
       <div class="ppu-name" id="ppu-nombre-display">Usuario</div>
       <div class="ppu-email-small" id="ppu-email-display">—</div>
@@ -2495,23 +2493,23 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
     <button onclick="cerrarPerfilUsuario()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:18px;padding:4px;align-self:flex-start">&#215;</button>
   </div>
   <div class="ppu-body">
-    <div class="ppu-section-label">Editar mi perfil</div>
+    <div class="ppu-section-label">Mi perfil</div>
     <div class="form-group" style="margin-bottom:12px">
       <label class="form-label">Nombre completo</label>
-      <input type="text" class="form-input" id="ppu-input-nombre" placeholder="Tu nombre">
+      <input type="text" class="form-input" id="ppu-input-nombre" readonly style="background:var(--bg);cursor:default">
     </div>
     <div class="form-group" style="margin-bottom:16px">
       <label class="form-label">Cargo</label>
-      <input type="text" class="form-input" id="ppu-input-cargo" placeholder="Tu cargo en la empresa">
+      <input type="text" class="form-input" id="ppu-input-cargo" readonly style="background:var(--bg);cursor:default">
     </div>
-    <button class="btn btn-primary" style="width:100%" onclick="guardarPerfil()">Guardar cambios</button>
+    <div id="ppu-nota-portal" style="font-size:12px;color:var(--text2);background:var(--bg);border-radius:8px;padding:12px">
+      Tu nombre, cargo, foto y contrase&#241;a se cambian en el Portal.
+      <a id="ppu-enlace-portal" href="#" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;white-space:nowrap">Abrir el Portal &#8599;</a>
+    </div>
     <div class="ppu-section-label" style="margin-top:20px">Foto de perfil</div>
     <div style="display:flex;align-items:center;gap:12px">
       <div id="ppu-foto-preview" style="width:60px;height:60px;border-radius:50%;background:#003c9d;display:flex;align-items:center;justify-content:center;font-size:20px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0"></div>
-      <div>
-        <button class="btn btn-ghost btn-sm" onclick="triggerAvatarUpload()">&#128247; Cambiar foto</button>
-        <div style="font-size:11px;color:var(--text3);margin-top:4px">JPG o PNG, m&#225;x 2MB</div>
-      </div>
+      <div style="font-size:11px;color:var(--text3)">Se cambia en el Portal</div>
     </div>
     <div class="ppu-section-label" style="margin-top:20px">Mi rol actual</div>
     <div id="ppu-permisos-info" style="font-size:12px;color:var(--text2);background:var(--bg);border-radius:8px;padding:12px"></div>
@@ -3201,6 +3199,8 @@ const SUPABASE_KEY = EN_SIG
   : 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImVpbXBybWVqeXR1bnNnemF6ZGtoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODAxMjc4NDEsImV4cCI6MjA5NTcwMzg0MX0.IG7Ou9YcIMQn7TdHd5WJuhNvAKL-LqVmuxWfkEo1_wQ';
 // En sig-don-aseo la carpeta "documentos" es del Panel de documentos: la de RH se llama "rh-documentos"
 const CARPETA_DOCUMENTOS = EN_SIG ? 'rh-documentos' : 'documentos';
+// Nombre, cargo, foto y contraseña se cambian en el Portal de accesos (en la fase 6 será https://panel.donaseoltda.com/)
+const PORTAL_URL = 'https://alex-campbelli.github.io/portal-don-aseo/';
 
 // Adaptador de almacenamiento para la sesión: si el usuario marcó "Mantener sesión
 // iniciada" (checkbox de login), la sesión se guarda en localStorage y sobrevive a
@@ -9034,8 +9034,8 @@ async function loadUserProfile(user) {
   if (error) return 'error';
   if (!data) return 'sin_acceso';
   _currentUser = { id: user.id, email: user.email, ...data };
-  // Guardar email en profiles si no estaba
-  if (!data.email) sb.from('profiles').update({ email: user.email }).eq('id', user.id).then(() => {});
+  // El correo de profiles lo mantiene el Portal (RH ya no cambia profiles): si falta, se usa el de la cuenta
+  if (!data.email) _currentUser.email = user.email;
   return 'ok';
 }
 
@@ -9256,8 +9256,10 @@ function abrirPerfilUsuario() {
   const avContent = _currentUser.avatar_url
     ? '<img src="' + escapeHTML(_currentUser.avatar_url) + '" style="width:100%;height:100%;object-fit:cover">'
     : (_currentUser.display_name||_currentUser.email||'RH').slice(0,2).toUpperCase();
-  if (avBig) avBig.innerHTML = avContent + '<input type="file" id="avatar-file-input" accept="image/*" style="display:none" onchange="subirFotoPerfil(this)">';
+  if (avBig) avBig.innerHTML = avContent;
   if (avPrev) avPrev.innerHTML = avContent;
+  const enlacePortal = document.getElementById('ppu-enlace-portal');
+  if (enlacePortal) enlacePortal.href = PORTAL_URL;
   // Permisos info
   const permisos = {
     admin:    '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a, novedades y gesti&oacute;n de usuarios.',
@@ -9276,7 +9278,16 @@ function cerrarPerfilUsuario() {
   document.getElementById('overlay-perfil-usuario').style.display = 'none';
 }
 
+// Nombre, cargo y foto (propios o de otros) se cambian en el Portal: RH solo los muestra.
+// Lo de abajo queda sin uso hasta que la fase 5 retire estas pantallas.
+function avisoPerfilEnPortal() {
+  if (confirm('El nombre, el cargo, la foto y la contraseña se cambian ahora en el Portal de accesos.\n\n¿Abrir el Portal?')) {
+    window.open(PORTAL_URL, '_blank', 'noopener');
+  }
+}
+
 async function guardarPerfil() {
+  avisoPerfilEnPortal(); return;
   const nombre = document.getElementById('ppu-input-nombre').value.trim();
   const cargo  = document.getElementById('ppu-input-cargo').value.trim();
   if (!nombre) { showToast('El nombre no puede estar vacío'); return; }
@@ -9296,10 +9307,11 @@ async function guardarPerfil() {
 }
 
 function triggerAvatarUpload() {
-  document.getElementById('avatar-file-input').click();
+  avisoPerfilEnPortal();
 }
 
 async function subirFotoPerfil(input) {
+  avisoPerfilEnPortal(); return;
   const file = input.files[0];
   if (!file) return;
   if (file.size > 2 * 1024 * 1024) { showToast('La imagen no debe superar 2MB'); return; }
@@ -9465,6 +9477,7 @@ let _editingUserNewPhoto = null;  // File object si hay nueva foto pendiente
 
 function abrirEditarUsuario(userId, nombre, cargo, email, avatarUrl) {
   if (!isAdmin()) return;
+  avisoPerfilEnPortal(); return;
   _editingUserId   = userId;
   _editingUserNewPhoto = null;
 
@@ -9506,6 +9519,7 @@ function previsualizarFotoUsuario(input) {
 
 async function guardarPerfilUsuario() {
   if (!isAdmin() || !_editingUserId) return;
+  avisoPerfilEnPortal(); return;
   const nombre = document.getElementById('meu-nombre').value.trim();
   const cargo  = document.getElementById('meu-cargo').value.trim();
   if (!nombre) { showToast('El nombre no puede estar vacío'); return; }
