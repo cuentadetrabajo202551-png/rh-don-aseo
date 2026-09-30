@@ -1254,8 +1254,8 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
     Auditor&#237;a
   </div>
   <div id="sb-nav-usuarios" class="sb-item" style="display:none" onclick="showSection('usuarios',this)">
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
-    Gesti&#243;n de Usuarios
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
+    Respaldo y datos
     <span class="sb-badge" style="background:#f5d400;color:#001a4d;font-size:9px">Admin</span>
   </div>
   <div class="sb-theme-toggle" onclick="toggleDarkMode()" title="Cambiar entre modo claro y oscuro">
@@ -2331,49 +2331,23 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
       </div>
     </div><!-- /auditoria -->
 
-    <!-- ════════════════════════════════════ USUARIOS ══ -->
+    <!-- ═════════════════════ RESPALDO Y DATOS (id "usuarios") ══ -->
+    <!-- Los usuarios y sus accesos se administran en el Portal de accesos: aquí solo quedan la copia y la zona de peligro -->
     <div id="section-usuarios" class="section">
       <div class="section-header">
         <div>
-          <div class="section-title">Gesti&#243;n de Usuarios</div>
-          <div class="section-sub">Solo visible para administradores &#8212; crea usuarios y asigna roles</div>
-        </div>
-        <button class="btn btn-primary" onclick="abrirFormNuevoUsuario()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Invitar usuario
-        </button>
-      </div>
-
-      <!-- Formulario nuevo usuario (oculto por defecto) -->
-      <div id="form-nuevo-usuario" style="display:none" class="cert-form-card">
-        <div class="cert-section-label">Nuevo usuario</div>
-        <div class="form-grid">
-          <div class="form-group"><label class="form-label">Nombre completo *</label>
-            <input type="text" class="form-input" id="nu-nombre" placeholder="Ej: Erika Padilla"></div>
-          <div class="form-group"><label class="form-label">Cargo</label>
-            <input type="text" class="form-input" id="nu-cargo" placeholder="Ej: Coordinadora de RH"></div>
-          <div class="form-group"><label class="form-label">Correo *</label>
-            <input type="email" class="form-input" id="nu-email" placeholder="correo@donaseo.com"></div>
-          <div class="form-group"><label class="form-label">Contrase&#241;a temporal *</label>
-            <input type="password" class="form-input" id="nu-pass" placeholder="M&#237;nimo 8 caracteres"></div>
-          <div class="form-group"><label class="form-label">Rol *</label>
-            <select class="form-select" id="nu-role">
-              <option value="viewer">Visualizador &#8212; solo lectura</option>
-              <option value="auxiliar">Auxiliar &#8212; empleados (lectura) + novedades</option>
-              <option value="editor">Editor &#8212; puede editar empleados</option>
-              <option value="admin">Admin &#8212; acceso total</option>
-            </select></div>
-        </div>
-        <div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">
-          <button class="btn btn-ghost" onclick="document.getElementById('form-nuevo-usuario').style.display='none'">Cancelar</button>
-          <button class="btn btn-primary" onclick="crearNuevoUsuario()">Crear usuario</button>
+          <div class="section-title">Respaldo y datos</div>
+          <div class="section-sub">Solo visible para administradores &#8212; copia de seguridad y zona de peligro</div>
         </div>
       </div>
 
-      <div id="lista-usuarios"></div>
+      <div id="nota-usuarios-portal" style="border:1px solid var(--border);border-radius:12px;padding:14px 20px;font-size:13px;color:var(--text2);background:var(--bg)">
+        Los usuarios y sus accesos se administran en el Portal.
+        <a id="enlace-usuarios-portal" href="#" target="_blank" rel="noopener" style="color:var(--blue);font-weight:600;white-space:nowrap">Abrir el Portal &#8599;</a>
+      </div>
 
       <!-- ── COPIA DE SEGURIDAD (solo admin) ──────────────────────────── -->
-      <div style="margin-top:40px;border:1px solid var(--border);border-radius:12px;overflow:hidden">
+      <div style="margin-top:20px;border:1px solid var(--border);border-radius:12px;overflow:hidden">
         <div style="background:#f0fdf4;padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px">
           <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#059669" stroke-width="2"><path d="M21 8v13H3V8"/><path d="M1 3h22v5H1z"/><line x1="10" y1="12" x2="14" y2="12"/></svg>
           <span style="font-size:13px;font-weight:700;color:#059669">Copia de Seguridad</span>
@@ -2854,48 +2828,6 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
     </div>
     <div class="bulk-modal-footer">
       <button class="btn btn-ghost" onclick="cerrarModalDashAnio()">Cerrar</button>
-    </div>
-  </div>
-</div>
-
-<!-- MODAL EDITAR PERFIL DE USUARIO (admin edita a otros) -->
-<div id="modal-overlay-usuario" onclick="if(event.target===this)cerrarEditarUsuario()"
-  style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.4);z-index:300;align-items:center;justify-content:center;padding:24px">
-  <div style="background:var(--card);border-radius:14px;width:100%;max-width:480px;box-shadow:0 8px 32px rgba(0,0,0,.2);overflow:hidden">
-    <div style="background:linear-gradient(135deg,#001a4d,#003c9d);padding:20px 24px;display:flex;align-items:center;gap:14px">
-      <div id="meu-avatar" style="width:52px;height:52px;border-radius:50%;background:#003c9d;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:700;color:#fff;flex-shrink:0;overflow:hidden">?</div>
-      <div style="flex:1">
-        <div style="font-size:15px;font-weight:700;color:#fff" id="meu-nombre-header">Usuario</div>
-        <div style="font-size:11px;color:rgba(255,255,255,.6)" id="meu-email-header">—</div>
-      </div>
-      <button onclick="cerrarEditarUsuario()" style="background:none;border:none;color:rgba(255,255,255,.6);cursor:pointer;font-size:18px;padding:4px">&#215;</button>
-    </div>
-    <div style="padding:20px 24px">
-      <div class="form-grid">
-        <div class="form-group full">
-          <label class="form-label">Nombre completo</label>
-          <input type="text" class="form-input" id="meu-nombre" placeholder="Nombre completo">
-        </div>
-        <div class="form-group full">
-          <label class="form-label">Cargo</label>
-          <input type="text" class="form-input" id="meu-cargo" placeholder="Cargo en la empresa">
-        </div>
-        <div class="form-group full">
-          <label class="form-label">Foto de perfil</label>
-          <div style="display:flex;align-items:center;gap:12px">
-            <div id="meu-foto-preview" style="width:48px;height:48px;border-radius:50%;background:#003c9d;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:700;color:#fff;overflow:hidden;flex-shrink:0"></div>
-            <div>
-              <input type="file" id="meu-foto-input" accept="image/*" style="display:none" onchange="previsualizarFotoUsuario(this)">
-              <button class="btn btn-ghost btn-sm" onclick="document.getElementById('meu-foto-input').click()">&#128247; Cambiar foto</button>
-              <div style="font-size:11px;color:var(--text3);margin-top:3px">JPG o PNG, máx 2MB</div>
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-    <div style="padding:14px 24px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:8px">
-      <button class="btn btn-ghost" onclick="cerrarEditarUsuario()">Cancelar</button>
-      <button class="btn btn-primary" onclick="guardarPerfilUsuario()">&#10003; Guardar cambios</button>
     </div>
   </div>
 </div>
@@ -3456,7 +3388,7 @@ function showSection(id, el) {
   document.getElementById('section-'+id).classList.add('active');
   document.querySelectorAll('.sb-item').forEach(i=>i.classList.remove('active'));
   if(el) el.classList.add('active');
-  const titles = {dashboard:'Dashboard',empleados:'Empleados',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Gestión de Usuarios',estadisticas:'Estadísticas de Rotación',fechas:'Cumpleaños & Fechas Críticas',novedades:'Novedades',casosmedicos:'Seguimientos médicos'};
+  const titles = {dashboard:'Dashboard',empleados:'Empleados',importacion:'Importación Masiva',duplicados:'Corrección de Datos',catalogos:'Catálogos Maestros',certificados:'Certificados Laborales',auditoria:'Auditoría del Sistema',usuarios:'Respaldo y datos',estadisticas:'Estadísticas de Rotación',fechas:'Cumpleaños & Fechas Críticas',novedades:'Novedades',casosmedicos:'Seguimientos médicos'};
   document.getElementById('breadcrumb').textContent = titles[id]||id;
   if (id === 'casosmedicos' && typeof cmConstruirModulo === 'function') cmConstruirModulo();
   if (id === 'auditoria') loadAuditLog();
@@ -3484,12 +3416,11 @@ function showSection(id, el) {
   }
   if (id === 'usuarios') {
     if (!isAdmin()) {
-      // No-admin intentando entrar a Gestión de Usuarios — redirigir al dashboard
-      showToast('Solo el administrador puede acceder a Gestion de Usuarios');
+      // No-admin intentando entrar a «Respaldo y datos» — redirigir al dashboard
+      showToast('Solo el administrador puede acceder a Respaldo y datos');
       showSection('dashboard', document.getElementById('sb-nav-dashboard'));
       return;
     }
-    cargarListaUsuarios();
   }
 }
 
@@ -5507,6 +5438,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
   const enlacePortalMenu = document.getElementById('sb-nav-portal');
   if (enlacePortalMenu) enlacePortalMenu.href = PORTAL_URL;
+  const enlaceUsuariosPortal = document.getElementById('enlace-usuarios-portal');
+  if (enlaceUsuariosPortal) enlaceUsuariosPortal.href = PORTAL_URL;
 
   // Entrada desde el Portal: el pase se canjea por una sesión nueva, solo de esta pestaña
   if (PASE) {
@@ -9062,8 +8995,8 @@ function isAdmin()    { return _currentUser?.role === 'admin'; }
 function isEditor()   { return ['admin','editor'].includes(_currentUser?.role); }
 function isAuxiliar() { return _currentUser?.role === 'auxiliar'; }
 
-// Cargar el perfil de RH. Solo entra quien tiene perfil: lo crea el administrador en
-// "Gestión de Usuarios" (ya no se crea solo al iniciar sesión). Devuelve 'ok', 'sin_acceso' o 'error'.
+// Cargar el perfil de RH. Solo entra quien tiene perfil: lo da el administrador en el Portal de
+// accesos (ya no se crea solo al iniciar sesión). Devuelve 'ok', 'sin_acceso' o 'error'.
 async function loadUserProfile(user) {
   _currentUser = null;
   const { data, error } = await sb.from('profiles').select('*').eq('id', user.id).maybeSingle();
@@ -9311,7 +9244,7 @@ function abrirPerfilUsuario() {
   if (enlacePortal) enlacePortal.href = PORTAL_URL;
   // Permisos info
   const permisos = {
-    admin:    '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a, novedades y gesti&oacute;n de usuarios.',
+    admin:    '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a, novedades, copia de seguridad y zona de peligro. Los usuarios se administran en el Portal.',
     editor:   '&#9998; <strong>Editor</strong> &#8212; Puede ver y editar empleados, importar, usar cat&aacute;logos, certificados y novedades. No puede crear ni eliminar usuarios.',
     auxiliar: '&#10010; <strong>Auxiliar</strong> &#8212; Puede consultar empleados (solo lectura) y usar el m&oacute;dulo de Novedades (crear y gestionar las que ella misma registre).',
     viewer:   '&#9711; <strong>Visualizador</strong> &#8212; Solo lectura: puede ver empleados y reportes pero no puede editar ni importar datos.'
@@ -9325,318 +9258,6 @@ function abrirPerfilUsuario() {
 function cerrarPerfilUsuario() {
   document.getElementById('panel-perfil-usuario').classList.remove('open');
   document.getElementById('overlay-perfil-usuario').style.display = 'none';
-}
-
-// Nombre, cargo y foto (propios o de otros) se cambian en el Portal: RH solo los muestra.
-// Lo de abajo queda sin uso hasta que la fase 5 retire estas pantallas.
-function avisoPerfilEnPortal() {
-  if (confirm('El nombre, el cargo, la foto y la contraseña se cambian ahora en el Portal de accesos.\n\n¿Abrir el Portal?')) {
-    window.open(PORTAL_URL, '_blank', 'noopener');
-  }
-}
-
-async function guardarPerfil() {
-  avisoPerfilEnPortal(); return;
-  const nombre = document.getElementById('ppu-input-nombre').value.trim();
-  const cargo  = document.getElementById('ppu-input-cargo').value.trim();
-  if (!nombre) { showToast('El nombre no puede estar vacío'); return; }
-  showBlockingOverlay('Guardando perfil...');
-  try {
-    const { error } = await sb.from('profiles').update({ display_name: nombre, cargo, updated_at: new Date().toISOString() }).eq('id', _currentUser.id);
-    if (error) { showToast('Error: ' + error.message); return; }
-    _currentUser.display_name = nombre;
-    _currentUser.cargo        = cargo;
-    applyRoleVisibility();
-    await logAudit('update', 'perfil', _currentUser.id, 'Actualizo nombre/cargo');
-    showToast('✓ Perfil actualizado');
-    cerrarPerfilUsuario();
-  } finally {
-    hideBlockingOverlay();
-  }
-}
-
-function triggerAvatarUpload() {
-  avisoPerfilEnPortal();
-}
-
-async function subirFotoPerfil(input) {
-  avisoPerfilEnPortal(); return;
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { showToast('La imagen no debe superar 2MB'); return; }
-  showBlockingOverlay('Subiendo foto...');
-  try {
-    const ext  = file.name.split('.').pop();
-    const path = _currentUser.id + '/avatar.' + ext;
-    const { error: upErr } = await sb.storage.from('avatars').upload(path, file, { contentType: file.type, upsert: true });
-    if (upErr) { showToast('Error subiendo foto: ' + upErr.message); return; }
-    const { data: { publicUrl } } = sb.storage.from('avatars').getPublicUrl(path);
-    const url = publicUrl + '?t=' + Date.now();  // busto caché
-    const { error: profErr } = await sb.from('profiles').update({ avatar_url: url }).eq('id', _currentUser.id);
-    if (profErr) { showToast('Foto subida pero error guardando en perfil: ' + profErr.message); return; }
-    _currentUser.avatar_url = url;
-    applyRoleVisibility();
-    abrirPerfilUsuario();  // refrescar panel
-    await logAudit('update', 'perfil', _currentUser.id, 'Actualizo foto de perfil');
-    showToast('✓ Foto actualizada');
-  } finally {
-    hideBlockingOverlay();
-  }
-}
-
-// ── GESTIÓN DE USUARIOS (solo admin) ──────────────────────────────────────
-// signUp() inicia sesión automáticamente en el cliente que lo llama — si se usara el
-// cliente "sb" normal (el mismo con el que el admin tiene su propia sesión abierta),
-// crear un usuario nuevo reemplazaría la sesión del admin por la del usuario recién
-// creado. Por eso se usa un cliente Supabase aparte y desechable, con almacenamiento
-// en memoria (no toca localStorage/sessionStorage), solo para la llamada a signUp().
-// La sesión del admin en "sb" nunca se toca.
-function _clienteTemporalParaCrearUsuario() {
-  const memoria = {};
-  return supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
-    auth: {
-      persistSession: false,
-      autoRefreshToken: false,
-      storage: {
-        getItem: (k) => memoria[k] || null,
-        setItem: (k, v) => { memoria[k] = v; },
-        removeItem: (k) => { delete memoria[k]; }
-      }
-    }
-  });
-}
-
-function abrirFormNuevoUsuario() {
-  document.getElementById('form-nuevo-usuario').style.display = 'block';
-}
-
-async function crearNuevoUsuario() {
-  const nombre = document.getElementById('nu-nombre').value.trim();
-  const cargo  = document.getElementById('nu-cargo').value.trim();
-  const email  = document.getElementById('nu-email').value.trim();
-  const pass   = document.getElementById('nu-pass').value;
-  const role   = document.getElementById('nu-role').value;
-  if (!nombre || !email || !pass) { showToast('Nombre, correo y contrasena son obligatorios'); return; }
-  if (pass.length < 8) { showToast('La contrasena debe tener minimo 8 caracteres'); return; }
-
-  showBlockingOverlay('Creando usuario...');
-  try {
-    // En sig-don-aseo el registro público está cerrado: la cuenta la crea la función rh-usuarios.
-    // Si la persona ya tiene cuenta en otro sistema de Don Aseo, solo se le da acceso a RH.
-    if (EN_SIG) {
-      const { data, error } = await sb.functions.invoke('rh-usuarios', {
-        body: { action: 'create', email, password: pass, nombre, cargo, rol: role }
-      });
-      let msgError = null;
-      if (error) {
-        msgError = error.message;
-        try { const b = await error.context.json(); if (b && b.error) msgError = b.error; } catch (_) {}
-      } else if (!data || !data.success) {
-        msgError = (data && data.error) || 'No se pudo crear el usuario';
-      }
-      if (msgError) { showToast('Error: ' + msgError); return; }
-      await logAudit('create', 'usuario', data.userId,
-        (data.existente ? 'Dio acceso a RH a ' : 'Creo usuario ') + nombre + ' (' + email + ') con rol ' + role);
-      document.getElementById('form-nuevo-usuario').style.display = 'none';
-      ['nu-nombre','nu-cargo','nu-email','nu-pass'].forEach(id => { document.getElementById(id).value = ''; });
-      showToast(data.existente
-        ? '✓ ' + nombre + ' ya tenía cuenta en los sistemas de Don Aseo: ahora también entra a RH con su misma contraseña'
-        : '✓ Usuario creado: ya puede entrar con su correo y la contraseña que le asignaste');
-      cargarListaUsuarios();
-      return;
-    }
-
-    const sbTemp = _clienteTemporalParaCrearUsuario();
-    const { data: signUpData, error } = await sbTemp.auth.signUp({ email, password: pass });
-    if (error) { showToast('Error: ' + error.message); return; }
-
-    if (signUpData.user) {
-      const { error: profErr } = await sb.from('profiles').upsert({ id: signUpData.user.id, display_name: nombre, cargo, role, email });
-      if (profErr) showToast('Usuario creado en auth pero error guardando perfil: ' + profErr.message);
-      await logAudit('create', 'usuario', signUpData.user.id, 'Creo usuario ' + nombre + ' (' + email + ') con rol ' + role);
-    }
-
-    document.getElementById('form-nuevo-usuario').style.display = 'none';
-    ['nu-nombre','nu-cargo','nu-email','nu-pass'].forEach(id => { document.getElementById(id).value = ''; });
-    showToast('✓ Usuario creado. Se envio email de confirmacion a ' + email);
-    cargarListaUsuarios();
-  } finally {
-    hideBlockingOverlay();
-  }
-}
-
-async function cargarListaUsuarios() {
-  const container = document.getElementById('lista-usuarios');
-  if (!container) return;
-  container.innerHTML = '<div style="padding:20px;color:var(--text3);font-size:13px">Cargando usuarios...</div>';
-  const { data, error } = await sb.from('profiles').select('*').order('created_at');
-  if (error || !data) { container.innerHTML = '<div style="color:var(--red);padding:16px">' + (error?.message||'Error') + '</div>'; return; }
-
-  const roleLabels = { admin: 'Administrador', editor: 'Editor', auxiliar: 'Auxiliar', viewer: 'Visualizador' };
-  container.innerHTML = data.map(p => {
-    const initials = (p.display_name || p.id).slice(0,2).toUpperCase();
-    const avatarHtml = p.avatar_url
-      ? '<img src="' + escapeHTML(p.avatar_url) + '" style="width:100%;height:100%;object-fit:cover;border-radius:50%">'
-      : initials;
-    const isCurrentUser = p.id === _currentUser?.id;
-    const emailDisplay = p.email ? escapeHTML(p.email) : '<span style="color:var(--text3);font-style:italic">email no registrado</span>';
-
-    return '<div class="user-card">'
-      + '<div class="user-avatar-md">' + avatarHtml + '</div>'
-      + '<div style="flex:1;min-width:0">'
-      + '<div style="font-weight:600;font-size:13px">' + escapeHTML(p.display_name||'Sin nombre')
-      + (isCurrentUser ? ' <span style="font-size:10px;color:var(--blue)">(t&uacute;)</span>' : '')
-      + '</div>'
-      + '<div style="font-size:11px;color:var(--text3)">' + escapeHTML(p.cargo||'Sin cargo') + '</div>'
-      + '<div style="font-size:11px;color:var(--text3);margin-top:1px">' + emailDisplay + '</div>'
-      + (isAdmin() && typeof cmChipPermisosUsuario === 'function' ? cmChipPermisosUsuario(p) : '')
-      + '</div>'
-      // Controles de rol
-      + (isAdmin()
-          ? '<select class="role-select ' + p.role + '" onchange="cambiarRol(\'' + p.id + '\',this)"'
-            + (isCurrentUser ? ' disabled title="No puedes cambiar tu propio rol"' : '') + '>'
-            + ['admin','editor','auxiliar','viewer'].map(r => '<option value="' + r + '"' + (r===p.role?' selected':'') + '>' + roleLabels[r] + '</option>').join('')
-            + '</select>'
-          : '<span class="role-select ' + p.role + '" style="cursor:default;user-select:none">' + (roleLabels[p.role]||p.role) + '</span>'
-        )
-      // Boton reset contraseña (solo admin, no en cuenta propia)
-      // Botones de admin: editar perfil + reset contraseña
-      + (isAdmin() && !isCurrentUser
-          ? ' <button class="btn-icon" title="Editar perfil" style="margin-left:6px;color:var(--blue)"'
-            + ' onclick="abrirEditarUsuario(\'' + p.id + '\',\'' + escapeHTML(p.display_name||'') + '\',\'' + escapeHTML(p.cargo||'') + '\',\'' + escapeHTML(p.email||'') + '\',\'' + escapeHTML(p.avatar_url||'') + '\')">'
-            + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>'
-            + '</button>'
-            + (p.email ? ' <button class="btn-icon" title="Enviar reset de contrasena" style="margin-left:4px;color:var(--orange)"'
-              + ' onclick="resetearPassword(\'' + escapeHTML(p.email) + '\',\'' + escapeHTML(p.display_name||'usuario') + '\')">'
-              + '<svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>'
-              + '</button>' : '')
-            + (p.role !== 'admin' && typeof cmAbrirPermisosUsuario === 'function'
-              ? ' <button class="btn-icon" title="Permisos de Seguimiento de casos médicos" style="margin-left:4px;color:var(--purple)"'
-                + ' onclick="cmAbrirPermisosUsuario(\'' + p.id + '\')">&#129658;</button>'
-              : '')
-          : '')
-      + '</div>';
-  }).join('');
-}
-
-// Envía email de reset de contraseña al usuario
-// ── ADMIN EDITA PERFIL DE OTRO USUARIO ──────────────────────────────────────
-let _editingUserId = null;
-let _editingUserNewPhoto = null;  // File object si hay nueva foto pendiente
-
-function abrirEditarUsuario(userId, nombre, cargo, email, avatarUrl) {
-  if (!isAdmin()) return;
-  avisoPerfilEnPortal(); return;
-  _editingUserId   = userId;
-  _editingUserNewPhoto = null;
-
-  document.getElementById('meu-nombre').value  = nombre || '';
-  document.getElementById('meu-cargo').value   = cargo  || '';
-  document.getElementById('meu-nombre-header').textContent = nombre || 'Usuario';
-  document.getElementById('meu-email-header').textContent  = email  || '—';
-
-  const av = document.getElementById('meu-avatar');
-  const prev = document.getElementById('meu-foto-preview');
-  const avHtml = avatarUrl
-    ? '<img src="' + escapeHTML(avatarUrl) + '" style="width:100%;height:100%;object-fit:cover">'
-    : (nombre||'?').slice(0,2).toUpperCase();
-  if (av) av.innerHTML = avHtml;
-  if (prev) prev.innerHTML = avHtml;
-
-  document.getElementById('meu-foto-input').value = '';
-  document.getElementById('modal-overlay-usuario').style.display = 'flex';
-}
-
-function cerrarEditarUsuario() {
-  document.getElementById('modal-overlay-usuario').style.display = 'none';
-  _editingUserId = null;
-  _editingUserNewPhoto = null;
-}
-
-function previsualizarFotoUsuario(input) {
-  const file = input.files[0];
-  if (!file) return;
-  if (file.size > 2 * 1024 * 1024) { showToast('La imagen no debe superar 2MB'); return; }
-  _editingUserNewPhoto = file;
-  const url = URL.createObjectURL(file);
-  const prev = document.getElementById('meu-foto-preview');
-  const av   = document.getElementById('meu-avatar');
-  const img  = '<img src="' + url + '" style="width:100%;height:100%;object-fit:cover">';
-  if (prev) prev.innerHTML = img;
-  if (av)   av.innerHTML   = img;
-}
-
-async function guardarPerfilUsuario() {
-  if (!isAdmin() || !_editingUserId) return;
-  avisoPerfilEnPortal(); return;
-  const nombre = document.getElementById('meu-nombre').value.trim();
-  const cargo  = document.getElementById('meu-cargo').value.trim();
-  if (!nombre) { showToast('El nombre no puede estar vacío'); return; }
-
-  showBlockingOverlay('Guardando perfil...');
-  try {
-    let avatarUrl = null;
-
-    // Subir nueva foto si la seleccionaron
-    if (_editingUserNewPhoto) {
-      const ext  = _editingUserNewPhoto.name.split('.').pop();
-      const path = _editingUserId + '/avatar.' + ext;
-      const { error: upErr } = await sb.storage.from('avatars')
-        .upload(path, _editingUserNewPhoto, { contentType: _editingUserNewPhoto.type, upsert: true });
-      if (upErr) { showToast('Error subiendo foto: ' + upErr.message); return; }
-      const { data: { publicUrl } } = sb.storage.from('avatars').getPublicUrl(path);
-      avatarUrl = publicUrl + '?t=' + Date.now();
-    }
-
-    const updateData = { display_name: nombre, cargo, updated_at: new Date().toISOString() };
-    if (avatarUrl) updateData.avatar_url = avatarUrl;
-
-    const { error } = await sb.from('profiles').update(updateData).eq('id', _editingUserId);
-    if (error) { showToast('Error: ' + error.message); return; }
-
-    await logAudit('update', 'usuario', _editingUserId, 'Admin actualizo perfil de ' + nombre);
-    showToast('✓ Perfil de ' + nombre + ' actualizado');
-    cerrarEditarUsuario();
-    cargarListaUsuarios();  // refrescar la lista
-  } finally {
-    hideBlockingOverlay();
-  }
-}
-
-async function resetearPassword(email, nombre) {
-  if (!isAdmin()) { showToast('Solo el administrador puede hacer esto'); return; }
-  if (!confirm('Enviar email de recuperacion de contrasena a ' + nombre + ' (' + email + ')?')) return;
-  showBlockingOverlay('Enviando email...');
-  try {
-    const { error } = await sb.auth.resetPasswordForEmail(email, {
-      redirectTo: window.location.origin + window.location.pathname
-    });
-    if (error) { showToast('Error: ' + error.message); return; }
-    await logAudit('update', 'usuario', '', 'Envio reset de contrasena a ' + email);
-    showToast('✓ Email de recuperacion enviado a ' + email);
-  } finally {
-    hideBlockingOverlay();
-  }
-}
-
-async function cambiarRol(userId, select) {
-  // Solo el admin puede cambiar roles
-  if (!isAdmin()) {
-    showToast('Solo el administrador puede cambiar roles');
-    cargarListaUsuarios();  // refrescar para revertir cualquier cambio visual
-    return;
-  }
-  const newRole = select.value;
-  showBlockingOverlay('Actualizando rol...');
-  try {
-    const { error } = await sb.from('profiles').update({ role: newRole }).eq('id', userId);
-    if (error) { showToast('Error: ' + error.message); select.value = select.dataset.prev || 'viewer'; return; }
-    select.className = 'role-select ' + newRole;
-    await logAudit('update', 'usuario', userId, 'Cambio rol a ' + newRole);
-    showToast('✓ Rol actualizado');
-  } finally {
-    hideBlockingOverlay();
-  }
 }
 
 // ── AUTENTICACIÓN — Login / Logout ─────────────────────────────────────────
@@ -13594,15 +13215,6 @@ const CM_ESTADOS_ACTIVOS = CM_ESTADOS.filter(e => e !== 'Cerrado' && e !== 'Canc
 const CM_PRIORIDADES = ['Baja','Media','Alta','Urgente'];
 const CM_ESTADOS_IND = ['Activa','Cumplida','Finalizada','Anulada'];
 const CM_MESES = ['ENE','FEB','MAR','ABR','MAY','JUN','JUL','AGO','SEP','OCT','NOV','DIC'];
-const CM_PERMISOS = [
-  ['ver',        'Ver casos',               'Consultar casos, seguimientos y línea de tiempo'],
-  ['crear',      'Crear casos',             'Abrir casos nuevos'],
-  ['editar',     'Registrar seguimientos',  'Seguimientos, recomendaciones, restricciones y datos del caso'],
-  ['cerrar',     'Cerrar casos',            'Cerrar o cancelar casos'],
-  ['documentos', 'Documentos',              'Ver y adjuntar soportes médicos'],
-  ['reportes',   'Reportes',                'Exportar a Excel y PDF'],
-  ['admin',      'Administrar el módulo',   'Todo lo anterior + reabrir casos, anular documentos, importar histórico y listas'],
-];
 // Listas configurables (se guardan en la tabla "catalogs" con estas claves)
 const CM_LISTAS_DEF = {
   tipos: { key: 'casosMedicos_tipos', titulo: 'Tipos de caso', items: [
@@ -16509,72 +16121,6 @@ async function cmRestaurarLista(k) {
   if (await cmGuardarLista(k)) logAudit('update', 'catalogs', CM_LISTAS_DEF[k].key, 'Restauró ' + CM_LISTAS_DEF[k].titulo + ' (casos médicos)');
   else CM_LISTAS[k] = antes;
   cmRender();
-}
-
-// ── PERMISOS POR USUARIO (Gestión de Usuarios, solo el administrador del ERP) ────────────────
-function cmChipPermisosUsuario(p) {
-  if (!p) return '';
-  if (p.role === 'admin') return '<div><span class="cm-user-chip">🩺 Casos médicos: acceso total (administrador)</span></div>';
-  const l = Array.isArray(p.permisos_medicos) ? p.permisos_medicos : [];
-  if (!l.length) return '';
-  const nombres = Object.fromEntries(CM_PERMISOS.map(([k, t]) => [k, t.toLowerCase()]));
-  const txt = l.includes('admin') ? 'todos los permisos'
-    : (l.length === 1 && l[0] === 'ver') ? 'solo consulta'
-    : ['consulta'].concat(l.filter(k => k !== 'ver').map(k => nombres[k] || k)).join(', ');
-  return '<div><span class="cm-user-chip">🩺 Casos médicos: ' + cmEsc(txt) + '</span></div>';
-}
-async function cmAbrirPermisosUsuario(uid) {
-  if (!isAdmin()) return;
-  let p = null;
-  showBlockingOverlay('Cargando usuario...');
-  try {
-    const r = await sb.from('profiles').select('*').eq('id', uid).single();
-    if (r.error) throw r.error;
-    p = r.data;
-  } catch (e) { showToast('No se pudo cargar el usuario: ' + cmEsc(cmMsgError(e))); return; }
-  finally { hideBlockingOverlay(); }
-  if (!p || !('permisos_medicos' in p)) { showToast('Primero hay que ejecutar en Supabase la migración de Seguimiento de casos médicos'); return; }
-  const actuales = Array.isArray(p.permisos_medicos) ? p.permisos_medicos : [];
-  const nombre = p.display_name || p.email || 'Usuario';
-  CM._permNombre = nombre;
-  const cuerpo = '<div style="font-size:12.5px;color:var(--text2);margin-bottom:12px">¿Qué puede hacer <b>' + cmEsc(nombre) + '</b> en <b>Seguimiento de casos médicos</b>? '
-    + 'Es información de salud: da acceso solo a quien lo necesita.</div>'
-    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px">'
-    + '<button class="btn btn-ghost btn-sm" onclick="cmPresetPermisos(\'todos\')">Responsable SST (todos los permisos)</button>'
-    + '<button class="btn btn-ghost btn-sm" onclick="cmPresetPermisos(\'consulta\')">Solo consulta</button>'
-    + '<button class="btn btn-ghost btn-sm" onclick="cmPresetPermisos(\'ninguno\')">Quitar acceso</button></div>'
-    + '<div class="cm-perm-grid">' + CM_PERMISOS.map(([k, t, d]) => '<label class="cm-perm"><input type="checkbox" class="cm-perm-chk" value="' + k + '"'
-      + (actuales.includes(k) || actuales.includes('admin') || (k === 'ver' && actuales.length) ? ' checked' : '') + ' onchange="cmOnCambioPermiso(this)">'
-      + '<div><b style="font-size:12.5px;color:var(--text)">' + t + '</b><small>' + d + '</small></div></label>').join('') + '</div>'
-    + '<div class="cm-aviso info" style="margin-top:12px">Verá el módulo en <b>Novedades → Seguimiento de casos médicos</b> (si su rol no incluye Novedades, solo verá esa pestaña). '
-    + 'Los cambios aplican cuando la persona recargue la página o vuelva a iniciar sesión.</div>';
-  cmAbrirModal('🩺 Permisos de casos médicos — ' + cmEsc(nombre), cuerpo,
-    '<button class="btn btn-ghost btn-sm" onclick="cmCerrarModal()">Cancelar</button><button class="btn btn-primary btn-sm" onclick="cmGuardarPermisosUsuario(\'' + cmEsc(uid) + '\')">Guardar permisos</button>', 640);
-}
-function cmOnCambioPermiso(chk) {
-  const todos = [...document.querySelectorAll('.cm-perm-chk')];
-  const de = k => todos.find(x => x.value === k);
-  if (chk.value === 'admin' && chk.checked) todos.forEach(x => { x.checked = true; });
-  if (chk.value !== 'ver' && chk.checked && de('ver')) de('ver').checked = true;          // todo permiso incluye ver
-  if (chk.value === 'ver' && !chk.checked) todos.forEach(x => { x.checked = false; });     // sin ver no hay acceso
-  if (chk.value !== 'admin' && !chk.checked && de('admin')) de('admin').checked = false;
-}
-function cmPresetPermisos(tipo) {
-  document.querySelectorAll('.cm-perm-chk').forEach(x => { x.checked = tipo === 'todos' || (tipo === 'consulta' && x.value === 'ver'); });
-}
-async function cmGuardarPermisosUsuario(uid) {
-  if (!isAdmin()) return;
-  const sel = [...document.querySelectorAll('.cm-perm-chk:checked')].map(x => x.value);
-  showBlockingOverlay('Guardando permisos...');
-  try {
-    const { error } = await sb.from('profiles').update({ permisos_medicos: sel }).eq('id', uid);
-    if (error) { cmErrorModal(cmMsgError(error)); return; }
-    logAudit('update', 'usuario', uid, 'Permisos de Seguimiento de casos médicos de ' + (CM._permNombre || uid) + ': ' + (sel.length ? sel.join(', ') : 'sin acceso'));
-    cmCerrarModal();
-    showToast('✓ Permisos guardados');
-    if (typeof cargarListaUsuarios === 'function') cargarListaUsuarios();
-    if (!CM.responsables.length || cmPuede('ver')) cmCargarResponsables();
-  } finally { hideBlockingOverlay(); }
 }
 
 // ── FICHA DEL EMPLEADO → pestaña "Casos médicos" (historial agrupado por año) ─────────────────
