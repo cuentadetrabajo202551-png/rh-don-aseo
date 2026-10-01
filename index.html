@@ -462,6 +462,7 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .ppu-role-badge.editor{background:#60a5fa;color:#fff}
 .ppu-role-badge.auxiliar{background:#34d399;color:#064e3b}
 .ppu-role-badge.viewer{background:rgba(255,255,255,.2);color:#fff}
+.ppu-role-badge.supervisor{background:#c4b5fd;color:#2e1065}
 .ppu-body{flex:1;overflow-y:auto;padding:20px 24px}
 .ppu-section-label{font-size:10px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.6px;margin:18px 0 10px}
 .ppu-section-label:first-child{margin-top:4px}
@@ -9045,7 +9046,9 @@ const PLANTILLAS_RH = (() => {
                    catalogos:'editar', certificados:'editar', fechas:'ver', estadisticas:'ver', auditoria:'ver' };
   return { admin: editor, editor: editor,
            auxiliar: { dashboard:'ver', empleados:'ver', novedades:'editar' },
-           viewer:   { dashboard:'ver', empleados:'ver' } };
+           viewer:   { dashboard:'ver', empleados:'ver' },
+           // Supervisor: maneja los empleados y las novedades de SUS contratos (siempre tiene contratos)
+           supervisor: { dashboard:'ver', empleados:'editar', novedades:'editar', fechas:'ver', estadisticas:'ver' } };
 })();
 function _plantillaRH(rol) { return PLANTILLAS_RH[rol] || PLANTILLAS_RH.viewer; }
 async function _cargarMisSecciones(perfil) {
@@ -9270,8 +9273,8 @@ function applyRoleVisibility() {
   const roleEl   = document.getElementById('sb-user-role-badge');
   const avatarEl = document.getElementById('sb-avatar-display');
   if (nameEl) nameEl.textContent = _currentUser.display_name || _currentUser.email;
-  const roleLabels = { admin: '♦ Admin', editor: '✎ Editor', auxiliar: '✚ Auxiliar', viewer: '○ Visualizador' };
-  const roleColors = { admin: '#f5d400', editor: '#60a5fa', auxiliar: '#34d399', viewer: '#64748b' };
+  const roleLabels = { admin: '♦ Admin', editor: '✎ Editor', auxiliar: '✚ Auxiliar', viewer: '○ Visualizador', supervisor: '⚑ Supervisor' };
+  const roleColors = { admin: '#f5d400', editor: '#60a5fa', auxiliar: '#34d399', viewer: '#64748b', supervisor: '#c4b5fd' };
   if (roleEl) {
     roleEl.textContent = roleLabels[role] || role;
     roleEl.style.color = roleColors[role] || '#64748b';
@@ -9428,7 +9431,7 @@ function abrirPerfilUsuario() {
   document.getElementById('ppu-input-cargo').value  = _currentUser.cargo || '';
   // Role badge
   const rb = document.getElementById('ppu-role-display');
-  const rl = { admin:'Admin', editor:'Editor', auxiliar:'Auxiliar', viewer:'Visualizador' };
+  const rl = { admin:'Admin', editor:'Editor', auxiliar:'Auxiliar', viewer:'Visualizador', supervisor:'Supervisor' };
   rb.textContent  = rl[_currentUser.role] || _currentUser.role;
   rb.className    = 'ppu-role-badge ' + (_currentUser.role||'viewer');
   // Avatar
@@ -9444,7 +9447,8 @@ function abrirPerfilUsuario() {
     admin:    '&#9830; <strong>Administrador</strong> &#8212; Acceso total: empleados, importaci&oacute;n, cat&aacute;logos, certificados, auditor&#237;a, novedades, copia de seguridad y zona de peligro. Los usuarios se administran en el Portal.',
     editor:   '&#9998; <strong>Editor</strong> &#8212; Puede ver y editar empleados, importar, usar cat&aacute;logos, certificados y novedades. No puede crear ni eliminar usuarios.',
     auxiliar: '&#10010; <strong>Auxiliar</strong> &#8212; Puede consultar empleados (solo lectura) y usar el m&oacute;dulo de Novedades (crear y gestionar las que ella misma registre).',
-    viewer:   '&#9711; <strong>Visualizador</strong> &#8212; Solo lectura: puede ver empleados y reportes pero no puede editar ni importar datos.'
+    viewer:   '&#9711; <strong>Visualizador</strong> &#8212; Solo lectura: puede ver empleados y reportes pero no puede editar ni importar datos.',
+    supervisor: '&#9873; <strong>Supervisor</strong> &#8212; Maneja los empleados de sus contratos: crear, editar la ficha, dar de baja, reingreso, eliminar y documentos. Registra novedades (cambia o borra solo las suyas). No ve otros contratos.'
   };
   const pi = document.getElementById('ppu-permisos-info');
   if (pi) pi.innerHTML = permisos[_currentUser.role] || '—';
