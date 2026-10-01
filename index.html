@@ -443,6 +443,8 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 /* Contratos (fase 7, etapa 2): aviso arriba con los contratos que ve la persona */
 .rh-aviso-contratos{padding:8px 24px;border-bottom:1px solid var(--border);background:var(--bg);color:var(--text2);font-size:12.5px;line-height:1.45}
 .rh-aviso-contratos b{color:var(--text)}
+/* Aviso fijo arriba cuando el Portal le cambia los permisos con la página abierta */
+.rh-aviso-permisos{display:flex;align-items:center;gap:12px;flex-wrap:wrap;padding:10px 24px;border-bottom:1px solid #fcd34d;background:#fef3c7;color:#92400e;font-size:13px;font-weight:600;line-height:1.45}
 [data-solo-lectura="1"] [onclick^="commitImport("],
 [data-solo-lectura="1"] [onclick^="showAddCatalogForm("], [data-solo-lectura="1"] #catAddForm,
 [data-solo-lectura="1"] [onclick^="editCatalogInline("], [data-solo-lectura="1"] [onclick^="deleteCatalogItem("],
@@ -3385,6 +3387,8 @@ function _sbOcultarTip() { document.getElementById('sb-tip')?.remove(); }
 
 // ───────────────────── NAVIGATION ─────────────────────
 function showSection(id, el) {
+  // Al cambiar de sección también se revisa si sigue teniendo acceso (a lo más cada 15 s)
+  if (_huellaAccesoRH && Date.now() - _ultimaRevisionAcceso > 15000) _revisarAcceso();
   // Verificar acceso según rol
   if (_currentUser && !canAccess(id)) {
     showToast('No tienes acceso a esta sección');
@@ -5501,6 +5505,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     _startRealtimeSync();
     _startCertBadgeAutoRefresh();
     _startCertSolRealtimeSync();
+    _iniciarRevisionAcceso();
+  } else if (_rhAccesoRetirado) {
+    // La página se recargó porque le quitaron el acceso a RH: se avisa en el ingreso
+    _avisoLoginConPortal(RH_AVISO_RETIRADO);
   }
   // Si no hay sesion, la pantalla de login ya esta visible por defecto
 });
@@ -9176,9 +9184,85 @@ async function _sinPerfilRH(estado) {
   const errEl = document.getElementById('login-error');
   if (estado === 'sin_acceso') {
     try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
-    if (DESDE_PORTAL) _avisoLoginConPortal('No tienes acceso al Módulo de RH. Pídeselo al administrador.');
+    if (_rhAccesoRetirado) _avisoLoginConPortal(RH_AVISO_RETIRADO);
+    else if (DESDE_PORTAL) _avisoLoginConPortal('No tienes acceso al Módulo de RH. Pídeselo al administrador.');
     else if (errEl) errEl.textContent = 'Tu usuario no tiene acceso a Recursos Humanos. Pídeselo al administrador.';
   } else if (errEl) errEl.textContent = 'No se pudo verificar tu acceso. Revisa la conexión e intenta de nuevo.';
+}
+
+// ── Revisar el acceso mientras la página está abierta (fase 7) ──────────────────────────
+// Si el Portal le quita el acceso (o la suspende: también borra su fila de profiles), la base deja
+// de darle datos al instante, pero lo ya cargado seguiría en pantalla. Por eso, cada 60 s (solo con la
+// pestaña a la vista), al volver a la pestaña y al cambiar de sección, se lee su fila de profiles y
+// se compara con la «huella» que se guardó al entrar:
+//   - sin fila: ya no tiene acceso. Se cierra la sesión de esta pestaña y se recarga la página, que
+//     queda en el ingreso con el aviso (así no queda nada de lo cargado, ni en memoria ni en pantalla);
+//   - cambió el rol, las secciones, los contratos o los permisos médicos: aviso fijo arriba;
+//   - si no se pudo revisar (sin red, error): no se hace nada y se intenta en la siguiente vuelta.
+const RH_REVISAR_ACCESO_MS = 60000;
+const RH_AVISO_RETIRADO = 'Ya no tienes acceso a RH. Si crees que es un error, habla con el administrador.';
+var _rhAccesoRetirado = false;   // la página se recargó porque le quitaron el acceso
+try { _rhAccesoRetirado = sessionStorage.getItem('rh.accesoRetirado') === '1'; sessionStorage.removeItem('rh.accesoRetirado'); } catch (e) {}
+var _huellaAccesoRH = null, _revisionAccesoTimer = null, _revisandoAcceso = false, _ultimaRevisionAcceso = 0;
+function _huellaAcceso(p) {
+  return JSON.stringify([p.role ?? null, p.secciones ?? null, p.contratos ?? null, p.permisos_medicos ?? null]);
+}
+// Se llama al entrar (con contraseña, con el pase o con la sesión guardada), ya pasada la puerta
+function _iniciarRevisionAcceso() {
+  _rhAccesoRetirado = false;
+  _huellaAccesoRH = _currentUser ? _huellaAcceso(_currentUser) : null;
+  clearInterval(_revisionAccesoTimer);
+  _revisionAccesoTimer = setInterval(() => { if (!document.hidden) _revisarAcceso(); }, RH_REVISAR_ACCESO_MS);
+}
+function _detenerRevisionAcceso() {
+  clearInterval(_revisionAccesoTimer);
+  _revisionAccesoTimer = null;
+  _huellaAccesoRH = null;
+  _avisoPermisosCambiaron(false);
+}
+async function _revisarAcceso() {
+  if (_revisandoAcceso || !_currentUser || !_huellaAccesoRH) return;   // una revisión a la vez
+  _revisandoAcceso = true;
+  _ultimaRevisionAcceso = Date.now();
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session || session.user.id !== _currentUser.id) return;       // sesión vencida: lo de siempre
+    const { data, error } = await sb.from('profiles').select('*').eq('id', _currentUser.id).maybeSingle();
+    if (error) return;                                                  // no se pudo revisar
+    if (!data) { await _accesoRetiradoRH(); return; }
+    _avisoPermisosCambiaron(_huellaAcceso(data) !== _huellaAccesoRH);
+  } catch (e) {
+    // sin red: no se hace nada, se intenta en la siguiente vuelta
+  } finally {
+    _revisandoAcceso = false;
+  }
+}
+document.addEventListener('visibilitychange', () => { if (!document.hidden) _revisarAcceso(); });
+// Ya no tiene acceso: se tapa todo, se borra lo cargado, se cierra la sesión de esta pestaña y se recarga
+async function _accesoRetiradoRH() {
+  _detenerRevisionAcceso();
+  _stopRealtimeSync();
+  document.getElementById('login-screen').style.display = 'flex';
+  EMPLEADOS.length = 0;
+  filteredData = [];
+  if (typeof cmLimpiarDatos === 'function') cmLimpiarDatos();
+  _currentUser = null;
+  try { sessionStorage.setItem('rh.accesoRetirado', '1'); } catch (e) {}
+  try { await sb.auth.signOut({ scope: 'local' }); } catch (e) {}
+  location.reload();
+}
+// Sigue con acceso, pero cambió: aviso fijo arriba. No recarga sola (podría perder lo que está escribiendo).
+// Solo toca la pantalla si el aviso cambia: cuando todo sigue igual, la revisión no se nota.
+function _avisoPermisosCambiaron(mostrar) {
+  let av = document.getElementById('rh-aviso-permisos');
+  if (!mostrar) { if (av && av.style.display !== 'none') av.style.display = 'none'; return; }
+  if (av) { if (av.style.display === 'none') av.style.display = ''; return; }
+  av = document.createElement('div');
+  av.id = 'rh-aviso-permisos';
+  av.className = 'rh-aviso-permisos';
+  av.innerHTML = '<span>Tus permisos en RH cambiaron. Guarda lo que estés haciendo y actualiza la página.</span>'
+    + '<button type="button" class="btn btn-primary btn-sm" onclick="location.reload()">Actualizar ahora</button>';
+  document.getElementById('topbar')?.after(av);
 }
 
 // Aviso en la pantalla de login con un enlace para volver al Portal (entrada desde el Portal)
@@ -9520,6 +9604,7 @@ async function doLogin() {
   _startRealtimeSync();  // tiempo real vía Supabase Realtime
   _startCertBadgeAutoRefresh();
   _startCertSolRealtimeSync();
+  _iniciarRevisionAcceso();
   btn.disabled = false;
   btn.textContent = 'Iniciar sesion';
 }
@@ -9688,6 +9773,7 @@ function _stopRealtimeSync() {
 
 async function doLogout() {
   if (!confirm('Cerrar sesion?')) return;
+  _detenerRevisionAcceso();
   _stopRealtimeSync();
   await logAudit('logout', 'sesion', _currentUser?.id||'', 'Cierre de sesion');
   await sb.auth.signOut({ scope: 'local' });
