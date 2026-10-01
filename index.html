@@ -4,13 +4,13 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<!-- RH va siempre en modo claro: también le pide al navegador que no lo oscurezca solo -->
+<meta name="color-scheme" content="only light">
 <title>RH — Módulo de Empleados</title>
 <script>
-  // Aplicar el tema guardado ANTES de pintar la página, para que no haya un parpadeo
-  // de tema claro y luego oscuro al cargar.
-  try {
-    if (localStorage.getItem('tema') === 'dark') document.documentElement.setAttribute('data-theme', 'dark');
-  } catch(e) {}
+  // RH va siempre en modo claro (ya no hay modo oscuro): se borra la preferencia que alguien
+  // haya dejado guardada antes de pintar la página.
+  try { localStorage.removeItem('tema'); } catch(e) {}
 </script>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
@@ -440,6 +440,9 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .ppu-role-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:5px}
 /* Modo solo lectura por sección (fase 7 del Portal): aviso y botones de cambio ocultos */
 .rh-aviso-solo-lectura{margin:0 0 14px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text2);font-size:12.5px}
+/* Contratos (fase 7, etapa 2): aviso arriba con los contratos que ve la persona */
+.rh-aviso-contratos{padding:8px 24px;border-bottom:1px solid var(--border);background:var(--bg);color:var(--text2);font-size:12.5px;line-height:1.45}
+.rh-aviso-contratos b{color:var(--text)}
 [data-solo-lectura="1"] [onclick^="commitImport("],
 [data-solo-lectura="1"] [onclick^="showAddCatalogForm("], [data-solo-lectura="1"] #catAddForm,
 [data-solo-lectura="1"] [onclick^="editCatalogInline("], [data-solo-lectura="1"] [onclick^="deleteCatalogItem("],
@@ -1274,11 +1277,6 @@ html[data-theme="dark"] .cm-aviso.ok{color:#86efac}
     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/><path d="M3 12c0 1.66 4 3 9 3s9-1.34 9-3"/></svg>
     Respaldo y datos
     <span class="sb-badge" style="background:#f5d400;color:#001a4d;font-size:9px">Admin</span>
-  </div>
-  <div class="sb-theme-toggle" onclick="toggleDarkMode()" title="Cambiar entre modo claro y oscuro">
-    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
-    <span id="sb-theme-label">Modo oscuro</span>
-    <div class="sb-theme-switch"><div class="sb-theme-switch-knob"></div></div>
   </div>
   <div class="sb-footer">
     <div class="sb-user" style="cursor:pointer" onclick="abrirPerfilUsuario()" title="Mi perfil y configuración">
@@ -3358,7 +3356,6 @@ function alternarBarraLateral() {
 // Nombre de cada opción al pasar el mouse (con la barra contraída solo se ven los íconos)
 function _sbTextoOpcion(el) {
   if (el.classList.contains('sb-riel-btn')) return document.body.classList.contains('sb-contraida') ? 'Expandir menú' : 'Contraer menú';
-  if (el.classList.contains('sb-theme-toggle')) return document.getElementById('sb-theme-label')?.textContent || '';
   if (el.classList.contains('sb-user')) return document.getElementById('sb-user-email')?.textContent || '';
   const texto = [...el.childNodes].filter(n => n.nodeType === 3).map(n => n.textContent).join(' ').replace(/\s+/g, ' ').trim();
   const badge = el.querySelector('.sb-badge');
@@ -3371,7 +3368,7 @@ function _sbOcultarTip() { document.getElementById('sb-tip')?.remove(); }
   if (!sidebar) return;
   sidebar.addEventListener('mouseover', ev => {
     const el = document.body.classList.contains('sb-contraida')
-      ? ev.target.closest('.sb-item, .sb-theme-toggle, .sb-riel-btn, .sb-user')
+      ? ev.target.closest('.sb-item, .sb-riel-btn, .sb-user')
       : ev.target.closest('.sb-riel-btn');
     const texto = el ? _sbTextoOpcion(el) : '';
     if (!texto) { _sbOcultarTip(); return; }
@@ -3463,7 +3460,7 @@ function initFilters(){
   // Las opciones salen del CATÁLOGO (fuente de verdad), no de los valores crudos de EMPLEADOS
   // — así "AUX. DE SERVICIOS GENERALES" y "Aux. de Servicios Generales" no aparecen como dos
   // opciones distintas: una sola opción del catálogo y el filtro compara ignorando mayúsculas/tildes.
-  const clientes = [...(CATALOGS.clientes||[])].sort();
+  const clientes = [..._clientesPermitidos(CATALOGS.clientes||[])].sort();
   const cargos = [...(CATALOGS.cargos||[])].sort();
   const cs = document.getElementById('filterCliente');
   const cc = document.getElementById('filterCargo');
@@ -3639,7 +3636,7 @@ function abrirModalBulkEdit() {
   const selCli = document.getElementById('bulkedit-cliente');
   const selCar = document.getElementById('bulkedit-cargo');
   selCli.innerHTML = '<option value="">— No cambiar —</option>' +
-    (CATALOGS.clientes||[]).map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
+    _clientesPermitidos(CATALOGS.clientes||[]).map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
   selCar.innerHTML = '<option value="">— No cambiar —</option>' +
     (CATALOGS.cargos||[]).map(c=>`<option value="${escapeHTML(c)}">${escapeHTML(c)}</option>`).join('');
   selCli.value = ''; selCar.value = '';
@@ -3660,6 +3657,8 @@ async function ejecutarBulkEdit() {
     return;
   }
 
+  if (nuevoCliente && !_clientePermitido(nuevoCliente)) { _avisoClienteNoPermitido(nuevoCliente); return; }  // con contratos, solo los suyos
+
   const ids = [..._selectedEmps];
   const cambios = {};
   if (nuevoCliente) cambios.cliente = nuevoCliente;
@@ -3673,6 +3672,7 @@ async function ejecutarBulkEdit() {
   if (!confirm(
     'Se aplicará a ' + ids.length + ' empleado(s):\n\n' + desc + '\n\n¿Confirmar?'
   )) return;
+  if (!(await _siguenEnMisContratos(ids))) { cerrarModalBulkEdit(); limpiarSeleccion(); return; }
 
   showBlockingOverlay('Aplicando cambios a ' + ids.length + ' empleado(s)...');
   cambios.updated_at = new Date().toISOString();
@@ -3725,7 +3725,8 @@ function _cbOpenTrasladar() {
   const inp = document.getElementById('trasladar-cliente-input');
   const dd  = document.getElementById('trasladar-cliente-dd');
   const q   = removeAccents(inp.value.trim().toLowerCase());
-  const filtered = q ? CATALOGS.clientes.filter(c => removeAccents(c.toLowerCase()).includes(q)) : CATALOGS.clientes;
+  const clientes = _clientesPermitidos(CATALOGS.clientes);
+  const filtered = q ? clientes.filter(c => removeAccents(c.toLowerCase()).includes(q)) : clientes;
   const shown = filtered.slice(0, 60);
   dd.innerHTML = shown.length
     ? shown.map(c => '<div class="combobox-item" onmousedown="event.preventDefault();_selClienteTrasladar(\'' + escapeHTML(c) + '\')">' + _cbHL(c, inp.value) + '</div>').join('')
@@ -3745,9 +3746,11 @@ async function ejecutarTrasladar() {
   const fechaRaw     = document.getElementById('trasladar-fecha').value;
   if (!nuevoCliente) { showToast('Selecciona el nuevo cliente'); return; }
   if (!fechaRaw)     { showToast('Selecciona la fecha del traslado'); return; }
+  if (!_clientePermitido(nuevoCliente)) { _avisoClienteNoPermitido(nuevoCliente); return; }  // con contratos, solo a los suyos
 
   const ids = [..._selectedEmps];
   const fecha = _fromInputDate(fechaRaw);
+  if (!(await _siguenEnMisContratos(ids))) { cerrarModalTrasladar(); limpiarSeleccion(); return; }
 
   // Capturar cliente anterior de cada empleado antes de actualizar
   const snapshots = ids.map(id => {
@@ -3818,6 +3821,13 @@ async function ejecutarReingreso() {
   const fechaFinActual = _fromInputDate(fechaFinActualRaw);
   const fechaIngreso   = _fromInputDate(fechaIngresoRaw);
   const fechaFinNueva  = fechaFinNuevaRaw ? _fromInputDate(fechaFinNuevaRaw) : '';
+
+  // Con contratos: que el registro siga en sus contratos y, si el nuevo queda ACTIVO, que la cédula
+  // no esté ACTIVA en un contrato que no ve
+  if (_tieneContratos()) {
+    if (!(await _siguenEnMisContratos([emp.id]))) { cerrarModalReingreso(); return; }
+    if (!fechaFinNueva && emp.cedula && await _cedulaActivaEnOtroContrato(emp.cedula)) return;
+  }
 
   if (!confirm('¿Confirmar el reingreso de ' + (emp.nombre||'—') + '?\n\nEl contrato actual quedará INACTIVO (retiro: ' + fechaFinActual + ') y se creará un nuevo registro ' + (fechaFinNueva ? 'con ingreso ' + fechaIngreso + ' y retiro ' + fechaFinNueva + '.' : 'ACTIVO con ingreso ' + fechaIngreso + '.'))) return;
 
@@ -3891,6 +3901,7 @@ async function ejecutarDesactivar() {
 
   const ids   = [..._selectedEmps];
   const fecha = _fromInputDate(fechaRaw);
+  if (!(await _siguenEnMisContratos(ids))) { cerrarModalDesactivar(); limpiarSeleccion(); return; }
 
   showBlockingOverlay('Dando de baja a ' + ids.length + ' empleado(s)...');
   try {
@@ -4227,6 +4238,7 @@ async function eliminarEmpleado() {
   // Si tiene casos de Seguimiento médico: el administrador confirma y se eliminan con el registro
   if (typeof cmAntesDeBorrarEmpleados === 'function'
       && !(await cmAntesDeBorrarEmpleados([emp.id], 'El registro de ' + (emp.nombre || 'este empleado') + ' (CC ' + (emp.cedula || '—') + ')'))) return;
+  if (!(await _siguenEnMisContratos([emp.id]))) { closePanel(); return; }  // con contratos: que siga en los suyos
 
   showBlockingOverlay('Eliminando empleado...');
   try {
@@ -4407,6 +4419,16 @@ async function saveEdit(){
       showToast('⚠ Esta cédula ya está ACTIVA en otro contrato: ' + (activoExistente.cliente||'Sin cliente') + ' — ' + (activoExistente.cargo||'Sin cargo') + '. No se puede agregar como activo mientras ese contrato siga activo.');
       return;
     }
+  }
+
+  // Con contratos (fase 7, etapa 2): el cliente debe ser uno de sus contratos, y al crear un ACTIVO
+  // se revisa que la cédula no esté ACTIVA en un contrato que no ve. Al editar, que el registro siga
+  // en sus contratos.
+  if (_tieneContratos()) {
+    if (!_clientePermitido(datosNuevos.cliente)) { _avisoClienteNoPermitido(datosNuevos.cliente); return; }
+    if (!_editingEmpId && datosNuevos.estado === 'ACTIVO' && datosNuevos.cedula
+        && await _cedulaActivaEnOtroContrato(datosNuevos.cedula)) return;
+    if (_editingEmpId && !(await _siguenEnMisContratos([_editingEmpId]))) { closeEditModal(); return; }
   }
 
   showBlockingOverlay(_editingEmpId ? 'Guardando cambios...' : 'Creando empleado...');
@@ -5424,26 +5446,8 @@ async function asignarCampoAlerta(empId, campo, valor, selectEl) {
 // ───────────────────── CHARTS ─────────────────────
 // initCharts() eliminado — reemplazado por buildCharts() dinamico en refreshDashboard()
 
-// ───────────────────── MODO OSCURO ─────────────────────
-function toggleDarkMode() {
-  const esOscuro = document.documentElement.getAttribute('data-theme') === 'dark';
-  if (esOscuro) document.documentElement.removeAttribute('data-theme');
-  else document.documentElement.setAttribute('data-theme', 'dark');
-  try { localStorage.setItem('tema', esOscuro ? 'light' : 'dark'); } catch(e) {}
-  _actualizarLabelTema();
-  // Los gráficos de Chart.js se dibujan en un <canvas> y no cambian solos de color —
-  // hay que reconstruirlos para que tomen la paleta del nuevo tema.
-  try { if (typeof Chart !== 'undefined') buildCharts(); } catch(e) {}
-}
-function _actualizarLabelTema() {
-  const esOscuro = document.documentElement.getAttribute('data-theme') === 'dark';
-  const label = document.getElementById('sb-theme-label');
-  if (label) label.textContent = esOscuro ? 'Modo claro' : 'Modo oscuro';
-}
-
 // ───────────────────── INIT ─────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
-  _actualizarLabelTema();
   initCatalogs();
 
   // Recordar la preferencia de "mantener sesión" del último inicio de sesión
@@ -9049,7 +9053,7 @@ async function _cargarMisSecciones(perfil) {
     const { data, error } = await sb.rpc('rh_mis_secciones');
     if (!error && data && typeof data === 'object' && !Array.isArray(data)) return data;
   } catch (e) {}
-  return (perfil.secciones && typeof perfil.secciones === 'object') ? perfil.secciones : _plantillaRH(perfil.role);
+  return _quitarGlobalesSiContratos((perfil.secciones && typeof perfil.secciones === 'object') ? perfil.secciones : _plantillaRH(perfil.role), perfil);
 }
 // 'ver', 'editar' o null (no ve la sección)
 function nivelSeccion(seccion) {
@@ -9067,6 +9071,87 @@ function _soloConsulta(...secciones) {
   return true;
 }
 
+// ── Contratos de RH (fase 7, etapa 2) ──────────────────────────────────────────
+// profiles.contratos: null = todos los contratos (clientes). Con contratos, la base (RLS) solo deja
+// ver y cambiar los empleados de esos contratos, con sus documentos, novedades y soportes. La página
+// ajusta las listas de clientes, avisa arriba qué contratos ve y revisa antes de guardar.
+// La clave del contrato es la de firmas_rh_clave: minúsculas, sin tildes ni espacios de más.
+const SECCIONES_GLOBALES_RH = ['importacion', 'duplicados', 'catalogos', 'certificados', 'auditoria'];
+// Con contratos no hay secciones globales (rh_mis_secciones ya las quita; esto es por si la base no responde)
+function _quitarGlobalesSiContratos(secciones, perfil) {
+  if (perfil.role === 'admin' || !Array.isArray(perfil.contratos)) return secciones;
+  const s = Object.assign({}, secciones);
+  SECCIONES_GLOBALES_RH.forEach(k => delete s[k]);
+  return s;
+}
+// null = todos; si no, [{clave, nombre}] de sus contratos (los nombres los da la base)
+async function _cargarMisContratos(perfil) {
+  if (perfil.role === 'admin' || !Array.isArray(perfil.contratos)) return null;
+  try {
+    const { data, error } = await sb.rpc('rh_mis_contratos');
+    if (!error) return Array.isArray(data) ? data : null;
+  } catch (e) {}
+  return perfil.contratos.map(c => ({ clave: c, nombre: c }));
+}
+function _tieneContratos() { return !!_currentUser && !isAdmin() && Array.isArray(_currentUser.contratosInfo); }
+function _claveContrato(nombre) {
+  const t = String(nombre == null ? '' : nombre)
+    .replace(/[áéíóúüÁÉÍÓÚÜ]/g, ch => 'aeiouuAEIOUU'['áéíóúüÁÉÍÓÚÜ'.indexOf(ch)])
+    .replace(/\s+/g, ' ').trim().toLowerCase();
+  return t || null;
+}
+// Primero por el nombre que da la base (el de la lista); si lo escribieron distinto, por la clave
+function _clientePermitido(nombre) {
+  if (!_tieneContratos()) return true;
+  if (!nombre) return false;
+  const exacto = _snapToCatalog(String(nombre), 'clientes');
+  if (_currentUser.contratosInfo.some(c => c.nombre === nombre || c.nombre === exacto)) return true;
+  const k = _claveContrato(nombre);
+  return !!k && _currentUser.contratosInfo.some(c => c.clave === k);
+}
+// La lista de clientes que puede escoger: sin contratos, la misma lista; con contratos, solo los suyos
+function _clientesPermitidos(lista) {
+  if (!_tieneContratos()) return lista;
+  const nombres = _currentUser.contratosInfo.map(c => c.nombre);
+  return nombres.concat((lista || []).filter(c => !nombres.includes(c) && _clientePermitido(c)));
+}
+function _textoMisContratos() { return _currentUser.contratosInfo.map(c => c.nombre).join(', '); }
+function _avisoClienteNoPermitido(nombre) {
+  showToast('Solo puedes usar tus contratos: ' + _textoMisContratos() + '. «' + (nombre || 'Sin cliente') + '» no es uno de ellos.');
+}
+// Antes de crear (o reingresar) un empleado ACTIVO: ¿esa cédula está ACTIVA en un contrato que la
+// persona no ve? La base solo responde sí o no. Devuelve true si hay que detenerse (y ya avisó).
+async function _cedulaActivaEnOtroContrato(cedula) {
+  try {
+    const { data, error } = await sb.rpc('rh_cedula_activa_en_otro_contrato', { p_cedula: cedula });
+    if (error) throw error;
+    if (data === true) {
+      showToast('⚠ Esta cédula ya está ACTIVA en otro contrato que no está entre los tuyos. No se puede agregar como activo mientras ese contrato siga activo: pídele a quien maneja todos los contratos que revise el caso.');
+      return true;
+    }
+    return false;
+  } catch (e) {
+    showToast('No se pudo revisar si la cédula está activa en otro contrato. Intenta de nuevo.');
+    return true;
+  }
+}
+// Con contratos, un registro puede salir de sus contratos mientras la página está abierta (un
+// traslado hecho por otra persona: el tiempo real no se lo avisa). Si se intentara cambiar, la base
+// no cambiaría nada y no daría error. Por eso, antes de cambiar o borrar, se revisa que sigan
+// visibles; si alguno ya no lo está, se avisa, se recarga la lista y no se hace nada.
+async function _siguenEnMisContratos(ids) {
+  if (!_tieneContratos()) return true;
+  const { data, error } = await sb.from('empleados').select('id').in('id', ids);
+  if (error) { showToast('Error: ' + error.message); return false; }
+  const faltan = ids.length - (data || []).length;
+  if (faltan <= 0) return true;
+  showToast('⚠ ' + (faltan === 1 ? 'Un registro ya no está en tus contratos (otra persona lo trasladó o lo borró)'
+                                 : faltan + ' registros ya no están en tus contratos (otra persona los trasladó o los borró)')
+            + '. No se cambió nada. Se recarga la lista.');
+  await loadFromSupabase();
+  return false;
+}
+
 // Cargar el perfil de RH. Solo entra quien tiene perfil: lo da el administrador en el Portal de
 // accesos (ya no se crea solo al iniciar sesión). Devuelve 'ok', 'sin_acceso' o 'error'.
 async function loadUserProfile(user) {
@@ -9078,6 +9163,7 @@ async function loadUserProfile(user) {
   // El correo de profiles lo mantiene el Portal (RH ya no cambia profiles): si falta, se usa el de la cuenta
   if (!data.email) _currentUser.email = user.email;
   _currentUser.seccionesEfectivas = await _cargarMisSecciones(_currentUser);
+  _currentUser.contratosInfo = await _cargarMisContratos(_currentUser);
   return 'ok';
 }
 
@@ -9132,8 +9218,6 @@ function applyRoleVisibility() {
   const role = _currentUser.role || 'viewer';
 
   // ── Sidebar: mostrar/ocultar items según canAccess (secciones de la persona o plantilla de su rol) ──
-  // "Modo oscuro" no está aquí a propósito — es una preferencia visual, no una sección
-  // de datos, así que se mantiene visible para todos los roles, incluido Visualizador.
   const navItems = {
     'sb-nav-dashboard':    'dashboard',
     'sb-nav-empleados':    'empleados',
@@ -9219,6 +9303,20 @@ function applyRoleVisibility() {
       aviso.style.display = '';
     } else if (aviso) aviso.style.display = 'none';
   });
+
+  // ── Contratos (fase 7, etapa 2): si solo ve algunos contratos, un aviso arriba dice cuáles ──
+  let avisoContratos = document.getElementById('rh-aviso-contratos');
+  if (_tieneContratos()) {
+    if (!avisoContratos) {
+      avisoContratos = document.createElement('div');
+      avisoContratos.id = 'rh-aviso-contratos';
+      avisoContratos.className = 'rh-aviso-contratos';
+      document.getElementById('topbar')?.after(avisoContratos);
+    }
+    avisoContratos.innerHTML = '<b>Viendo:</b> ' + (_currentUser.contratosInfo.length === 1 ? 'Contrato ' : 'Contratos ')
+      + escapeHTML(_textoMisContratos());
+    avisoContratos.style.display = '';
+  } else if (avisoContratos) avisoContratos.style.display = 'none';
 
   // Seguimiento de casos médicos: pestaña, contador y carga de datos según los permisos del usuario
   if (typeof cmAlIniciarSesion === 'function') cmAlIniciarSesion();
@@ -11718,6 +11816,7 @@ function _buildCombobox(sel, items) {
 }
 
 function _cbOpen(inp, dd, sel, items, q) {
+  if (COMBOBOX_MAP[sel.id] === 'clientes') items = _clientesPermitidos(items);  // con contratos, solo los suyos
   const norm = removeAccents((q||'').trim().toLowerCase());
   const filtered = norm
     ? items.filter(i => removeAccents(String(i).toLowerCase()).includes(norm))
