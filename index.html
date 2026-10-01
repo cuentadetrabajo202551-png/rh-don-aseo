@@ -438,6 +438,23 @@ tbody td{padding:11px 14px;font-size:13px;color:var(--text)}
 .ppu-name{font-size:16px;font-weight:700;color:#fff;margin-bottom:2px}
 .ppu-email-small{font-size:11px;color:rgba(255,255,255,.6)}
 .ppu-role-badge{display:inline-block;font-size:10px;font-weight:700;padding:2px 8px;border-radius:10px;margin-top:5px}
+/* Modo solo lectura por sección (fase 7 del Portal): aviso y botones de cambio ocultos */
+.rh-aviso-solo-lectura{margin:0 0 14px;padding:10px 14px;border:1px solid var(--border);border-radius:10px;background:var(--bg);color:var(--text2);font-size:12.5px}
+[data-solo-lectura="1"] [onclick^="commitImport("],
+[data-solo-lectura="1"] [onclick^="showAddCatalogForm("], [data-solo-lectura="1"] #catAddForm,
+[data-solo-lectura="1"] [onclick^="editCatalogInline("], [data-solo-lectura="1"] [onclick^="deleteCatalogItem("],
+[data-solo-lectura="1"] [onclick^="certPrint("], [data-solo-lectura="1"] [onclick^="certEnviarCorreo("],
+[data-solo-lectura="1"] [onclick^="generarDesdeSolicitud("], [data-solo-lectura="1"] [onclick^="marcarSolicitudGenerada("],
+[data-solo-lectura="1"] [onclick^="derivarSolicitud("], [data-solo-lectura="1"] [onclick^="rechazarSolicitudCertificado("],
+[data-solo-lectura="1"] [onclick^="marcarSolicitudPendiente("], [data-solo-lectura="1"] [onclick^="eliminarSolicitudCertificado("],
+[data-solo-lectura="1"] [onclick^="eliminarCertificadoGenerado("],
+[data-solo-lectura="1"] [onclick^="resolverDupExacto("], [data-solo-lectura="1"] [onclick^="adoptarCedula("],
+[data-solo-lectura="1"] [onclick^="descartarPosibleDup("], [data-solo-lectura="1"] [onclick^="unificarVarianteNombre("],
+[data-solo-lectura="1"] [onclick^="descartarSimilar("], [data-solo-lectura="1"] [onchange^="asignarCampoAlerta("],
+[data-solo-lectura="1"] #nov-tab-registrar, [data-solo-lectura="1"] #nov-tab-carga,
+[data-solo-lectura="1"] [onclick^="editarNovedad("], [data-solo-lectura="1"] [onclick^="eliminarNovedad("],
+[data-solo-lectura="1"] [onclick^="eliminarSoporteNovedad("], [data-solo-lectura="1"] [onclick^="commitNovImport("]
+{display:none!important}
 .ppu-role-badge.admin{background:#f5d400;color:#001a4d}
 .ppu-role-badge.editor{background:#60a5fa;color:#fff}
 .ppu-role-badge.auxiliar{background:#34d399;color:#064e3b}
@@ -3373,8 +3390,9 @@ function showSection(id, el) {
   // Verificar acceso según rol
   if (_currentUser && !canAccess(id)) {
     showToast('No tienes acceso a esta sección');
-    // Redirigir silenciosamente al dashboard
-    showSection('dashboard', document.getElementById('sb-nav-dashboard'));
+    // Redirigir a la primera sección que sí puede ver (normalmente el Dashboard)
+    const destino = _primeraSeccionVisible();
+    if (destino && destino !== id) showSection(destino, document.getElementById('sb-nav-' + destino));
     return;
   }
   // "Seguimientos médicos" usa toda la pantalla y entra con la barra lateral contraída (se puede
@@ -3585,11 +3603,11 @@ function updateBulkBar() {
   const cnt = document.getElementById('bulk-count-num');
   const btnTodos = document.getElementById('btn-sel-todos');
 
-  if (bar) bar.style.display = (n > 0 && isEditor()) ? 'flex' : 'none';
+  if (bar) bar.style.display = (n > 0 && puedeEditar('empleados')) ? 'flex' : 'none';
   if (cnt) cnt.textContent = n;
 
   // Mostrar "Seleccionar todos" solo si hay empleados filtrados y es editor+
-  if (btnTodos) btnTodos.style.display = (isEditor() && filteredData.length > 0) ? '' : 'none';
+  if (btnTodos) btnTodos.style.display = (puedeEditar('empleados') && filteredData.length > 0) ? '' : 'none';
 
   // Actualizar etiqueta del botón
   if (btnTodos) {
@@ -3634,6 +3652,7 @@ function cerrarModalBulkEdit() {
 }
 
 async function ejecutarBulkEdit() {
+  if (_soloConsulta('empleados')) return;
   const nuevoCliente = document.getElementById('bulkedit-cliente').value;
   const nuevoCargo   = document.getElementById('bulkedit-cargo').value;
   if (!nuevoCliente && !nuevoCargo) {
@@ -3721,6 +3740,7 @@ function _selClienteTrasladar(val) {
 }
 
 async function ejecutarTrasladar() {
+  if (_soloConsulta('empleados')) return;
   const nuevoCliente = document.getElementById('trasladar-cliente-val').value || document.getElementById('trasladar-cliente-input').value.trim();
   const fechaRaw     = document.getElementById('trasladar-fecha').value;
   if (!nuevoCliente) { showToast('Selecciona el nuevo cliente'); return; }
@@ -3782,6 +3802,7 @@ function cerrarModalReingreso() {
 }
 
 async function ejecutarReingreso() {
+  if (_soloConsulta('empleados')) return;
   const emp = EMPLEADOS.find(e => e.id === _reingresoEmpId);
   if (!emp) { showToast('Empleado no encontrado'); return; }
 
@@ -3862,6 +3883,7 @@ function cerrarModalDesactivar() {
 }
 
 async function ejecutarDesactivar() {
+  if (_soloConsulta('empleados')) return;
   const fechaRaw = document.getElementById('desactivar-fecha').value;
   const motivo   = document.getElementById('desactivar-motivo').value;
   if (!fechaRaw) { showToast('Selecciona la fecha de retiro'); return; }
@@ -3946,7 +3968,7 @@ function renderTable(){
     const isSelected = _selectedEmps.has(emp.id);
     return `<tr class="${isSelected?'bg-selected':''}" data-emp-id="${emp.id}">
       <td style="text-align:center;width:36px">
-        ${isEditor() ? `<input type="checkbox" class="emp-check" ${isSelected?'checked':''} onchange="toggleEmpSelection(${emp.id},this.checked)">` : ''}
+        ${puedeEditar('empleados') ? `<input type="checkbox" class="emp-check" ${isSelected?'checked':''} onchange="toggleEmpSelection(${emp.id},this.checked)">` : ''}
       </td>
       <td>
         <div class="emp-cell">
@@ -3975,7 +3997,7 @@ function renderTable(){
           <button class="btn-icon" onclick="openPanel(${emp.id})" title="Ver perfil">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
           </button>
-          ${isEditor() ? `<button class="btn-icon" onclick="openEditModal(${emp.id})" title="Editar">
+          ${puedeEditar('empleados') ? `<button class="btn-icon" onclick="openEditModal(${emp.id})" title="Editar">
             <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
           </button>` : ''}
         </div>
@@ -4040,10 +4062,10 @@ function openPanel(id){
   pb.className='badge '+(emp.estado==='ACTIVO'?'badge-activo':'badge-inactivo');
   // Botón eliminar: solo admin
   const delBtn=document.getElementById('panel-delete-btn');
-  if(delBtn) delBtn.style.display = isEditor() ? '' : 'none';
+  if(delBtn) delBtn.style.display = puedeEditar('empleados') ? '' : 'none';
   // Botón reingreso: solo editor+ y solo si el empleado está actualmente ACTIVO
   const reingresoBtn=document.getElementById('panel-reingreso-btn');
-  if(reingresoBtn) reingresoBtn.style.display = (isEditor() && emp.estado==='ACTIVO') ? '' : 'none';
+  if(reingresoBtn) reingresoBtn.style.display = (puedeEditar('empleados') && emp.estado==='ACTIVO') ? '' : 'none';
 
   // Missing fields
   const missing=getMissingFields(emp);
@@ -4182,6 +4204,7 @@ function _msgErrorBorrarEmpleado(error) {
 }
 
 async function eliminarEmpleado() {
+  if (_soloConsulta('empleados')) return;
   const emp = EMPLEADOS.find(e => e.id === currentEmpId);
   if (!emp) { showToast('No se encontró el registro'); return; }
 
@@ -4315,6 +4338,7 @@ function _snapToCatalog(value, catKey){
 }
 
 async function saveEdit(){
+  if (_soloConsulta('empleados', 'duplicados')) return;
   // Helper: leer valor de un campo del formulario
   // Para comboboxes: si el <select> está vacío, leer del input visible como fallback
   const fv = (fid) => {
@@ -4472,7 +4496,7 @@ async function loadDocumentos() {
   if (badge) { badge.textContent = docs.length; badge.style.display = docs.length > 0 ? '' : 'none'; }
 
   // ── Formulario inline para adjuntar ────────────────────────────────────
-  const formHtml = isEditor() ? `
+  const formHtml = puedeEditar('empleados') ? `
     <div id="doc-adjuntar-form" style="display:none;background:var(--bg);border:2px dashed var(--border);border-radius:10px;padding:14px;margin-bottom:12px;transition:border-color .15s,background .15s"
       ondragover="event.preventDefault();event.stopPropagation();this.style.borderColor='var(--blue)';this.style.background='var(--blue-light)'"
       ondragleave="event.preventDefault();event.stopPropagation();this.style.borderColor='var(--border)';this.style.background='var(--bg)'"
@@ -4496,7 +4520,7 @@ async function loadDocumentos() {
     </div>` : '';
 
   // ── Botón adjuntar ──────────────────────────────────────────────────────
-  const btnHtml = isEditor() ? `
+  const btnHtml = puedeEditar('empleados') ? `
     <div style="display:flex;justify-content:flex-end;margin-bottom:10px">
       <button class="btn btn-primary btn-sm" onclick="
         const f=document.getElementById('doc-adjuntar-form');
@@ -4523,9 +4547,9 @@ async function loadDocumentos() {
           + '<div class="doc-name">'+escapeHTML(titulo)+'</div>'
           + '<div class="doc-meta">'+escapeHTML(d.nombre)+' &middot; '+fecha+(d.subido_por?' &middot; '+escapeHTML(d.subido_por):'')+(tam?' &middot; '+tam:'')+'</div>'
           + '</div>'
-          + (isEditor() ? '<button class="btn-icon" title="Editar tipo" onclick="editarTipoDocumento('+d.id+')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
+          + (puedeEditar('empleados') ? '<button class="btn-icon" title="Editar tipo" onclick="editarTipoDocumento('+d.id+')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg></button>' : '')
           + '<button class="btn-icon" title="Ver/Descargar" onclick="descargarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg></button>'
-          + (isEditor() ? '<button class="btn-icon red" title="Eliminar" onclick="eliminarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>' : '')
+          + (puedeEditar('empleados') ? '<button class="btn-icon red" title="Eliminar" onclick="eliminarDocumento('+d.id+',\''+escapeHTML(d.storage_path)+'\')"><svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v2"/></svg></button>' : '')
           + '</div>';
       }).join('')
     : '<div style="text-align:center;padding:28px 16px;color:var(--text3);font-size:12px">Sin documentos adjuntos a\xfan</div>';
@@ -4597,6 +4621,7 @@ async function _subirUnDocumento(file, titulo) {
 
 // Función legacy (usada en otros lugares del código)
 async function subirDocumento(input, tipo) {
+  if (_soloConsulta('empleados')) return;
   const file = input.files[0];
   if (!file || !_docsEmpId) return;
   if (file.size > 10*1024*1024) { showToast('Maximo 10MB por archivo'); return; }
@@ -4636,6 +4661,7 @@ async function descargarDocumento(id, storagePath) {
 }
 
 async function eliminarDocumento(id, storagePath) {
+  if (_soloConsulta('empleados')) return;
   if (!confirm('Eliminar este documento? Esta accion no se puede deshacer.')) return;
   showBlockingOverlay('Eliminando documento...');
   try {
@@ -4676,6 +4702,7 @@ function editarTipoDocumento(id) {
 }
 
 async function guardarTipoDocumento(id) {
+  if (_soloConsulta('empleados')) return;
   const sel = document.getElementById('doc-tipo-edit-' + id);
   const nuevoTipo = sel?.value;
   if (!nuevoTipo) { showToast('Selecciona un tipo'); return; }
@@ -5349,6 +5376,7 @@ function renderAlerts(){
 
 // ── Asignar cargo o cliente desde alerta inline ────────────────────────
 async function asignarCampoAlerta(empId, campo, valor, selectEl) {
+  if (_soloConsulta('duplicados')) { if (selectEl) selectEl.value = ''; return; }
   if (!valor) return;
 
   // Opción "Agregar nuevo": pedir nombre y agregar al catálogo
@@ -5457,6 +5485,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (acceso !== 'ok') { await _sinPerfilRH(acceso); return; }
     mostrarApp(session.user.email);
     applyRoleVisibility();
+    if (!canAccess('dashboard')) _irASeccionInicial();   // sin Dashboard: a la primera sección que puede ver
     _resetInactivity();
     await loadCatalogsFromDB();
     await loadNovedadesFromDB();
@@ -5755,6 +5784,7 @@ function calcAge(fechaStr) {
 
 // ─── COMMIT IMPORT: mueve datos validados a EMPLEADOS ─────────────────────
 async function commitImport() {
+  if (_soloConsulta('importacion')) return;
   // PROTECCIÓN: bloquear guardado si es simulación con datos de ejemplo
   if (_isDemoImport) {
     showToast('&#128274; Simulaci\xf3n activa — carga un archivo Excel real para importar datos');
@@ -6455,6 +6485,7 @@ async function loadCatalogsFromDB() {
 }
 
 async function persistCatalog(key) {
+  if (_soloConsulta('catalogos', 'duplicados')) return;
   if (!CATALOGS[key]) return;
   await sb.from('catalogs').upsert({ key, items: CATALOGS[key], updated_at: new Date().toISOString() });
 }
@@ -6511,12 +6542,14 @@ function irANovedadesPorVencer(event) {
 
 // ── Permisos: regla de "propiedad" — admin sin restricción, editor/auxiliar solo lo propio ──
 function canAccessNovedades() { return canAccess('novedades'); }
-function canCreateNovedad()   { return canAccessNovedades(); }
+function canCreateNovedad()   { return puedeEditar('novedades'); }
 function canEditNovedad(nov) {
+  if (!puedeEditar('novedades')) return false;
   if (isAdmin()) return true;
   return nov?.creado_por === _currentUser?.id;
 }
 function canDeleteNovedad(nov) {
+  if (!puedeEditar('novedades')) return false;
   if (isAdmin()) return true;
   return nov?.creado_por === _currentUser?.id;
 }
@@ -6760,6 +6793,8 @@ async function eliminarSoporteNovedad(id, storagePath, novedadId) {
 
 // ── Router de sub-tabs de la sección Novedades ────────────────────────────
 function buildNovedades(tab) {
+  // Quien solo consulta Novedades no tiene «Registrar» ni «Carga masiva»: entra al historial
+  if ((tab === 'registrar' || tab === 'carga') && !canCreateNovedad()) tab = 'historial';
   _novedadesTabActiva = tab;
   ['registrar','calendario','historial','porvencer','reportes','carga'].forEach(t => {
     document.getElementById('nov-tab-'+t)?.classList.toggle('active', t === tab);
@@ -8296,6 +8331,7 @@ function goNovImportStep(n) {
 }
 
 async function commitNovImport() {
+  if (_soloConsulta('novedades')) return;
   if (_isDemoNovImport) {
     showToast('🔒 Simulación activa — carga un archivo Excel real para importar datos');
     return;
@@ -8712,6 +8748,7 @@ function _hvConfirmarDescarga() {
 // ───────────────────────────────────────────────────────────────────────────
 
 function showAddCatalogForm(){
+  if (_soloConsulta('catalogos')) return;
   const f = document.getElementById('catAddForm');
   f.style.display = f.style.display==='none'?'flex':'none';
   if(f.style.display!=='none') document.getElementById('catNewValue').focus();
@@ -8749,6 +8786,7 @@ function _refrescarSelectCatalogo(selectId, valores){
 }
 
 function saveCatalogItem(){
+  if (_soloConsulta('catalogos')) return;
   const catalogKey = activeCatalog;
   const val = toSentenceCase(document.getElementById('catNewValue').value.trim());
   if(!val){ showToast('Escribe un nombre para el elemento'); return; }
@@ -8764,6 +8802,7 @@ function saveCatalogItem(){
 }
 
 function editCatalogInline(idx, key){
+  if (_soloConsulta('catalogos')) return;
   const items = CATALOGS[key];
   const old = items[idx];
   const newVal = prompt(`Editar "${old}":`, old);
@@ -8779,6 +8818,7 @@ function editCatalogInline(idx, key){
 }
 
 function deleteCatalogItem(key, idx){
+  if (_soloConsulta('catalogos')) return;
   const item = CATALOGS[key][idx];
   if(!confirm(`¿Eliminar "${item}" del catálogo?\n\nNota: esto no afecta registros existentes.`)) return;
   CATALOGS[key].splice(idx,1);
@@ -8988,8 +9028,44 @@ function _resetInactivity() {
 
 // Helpers de rol
 function isAdmin()    { return _currentUser?.role === 'admin'; }
-function isEditor()   { return ['admin','editor'].includes(_currentUser?.role); }
+function isEditor()   { return ['admin','editor'].includes(_currentUser?.role); }   // ya no se usa: ver puedeEditar(seccion)
 function isAuxiliar() { return _currentUser?.role === 'auxiliar'; }
+
+// ── Secciones de RH (fase 7 del Portal) ──────────────────────────────────────────
+// Cada persona tiene, por sección, 'ver' (solo consulta) o 'editar'. Las da el Portal en
+// profiles.secciones; si está vacío se usa la plantilla de su rol. La base las calcula con
+// rh_mis_secciones() y las hace cumplir con sus reglas; la página solo muestra lo que corresponde.
+// Copia de public.rh_plantilla: solo se usa si la base no responde (la base manda).
+const PLANTILLAS_RH = (() => {
+  const editor = { dashboard:'ver', empleados:'editar', novedades:'editar', importacion:'editar', duplicados:'editar',
+                   catalogos:'editar', certificados:'editar', fechas:'ver', estadisticas:'ver', auditoria:'ver' };
+  return { admin: editor, editor: editor,
+           auxiliar: { dashboard:'ver', empleados:'ver', novedades:'editar' },
+           viewer:   { dashboard:'ver', empleados:'ver' } };
+})();
+function _plantillaRH(rol) { return PLANTILLAS_RH[rol] || PLANTILLAS_RH.viewer; }
+async function _cargarMisSecciones(perfil) {
+  try {
+    const { data, error } = await sb.rpc('rh_mis_secciones');
+    if (!error && data && typeof data === 'object' && !Array.isArray(data)) return data;
+  } catch (e) {}
+  return (perfil.secciones && typeof perfil.secciones === 'object') ? perfil.secciones : _plantillaRH(perfil.role);
+}
+// 'ver', 'editar' o null (no ve la sección)
+function nivelSeccion(seccion) {
+  if (!_currentUser) return null;
+  const mapa = isAdmin() ? PLANTILLAS_RH.admin : (_currentUser.seccionesEfectivas || _plantillaRH(_currentUser.role));
+  return mapa[seccion] || null;
+}
+function puedeEditar(seccion) { return isAdmin() || nivelSeccion(seccion) === 'editar'; }
+// true si el Portal le guardó secciones propias (no la plantilla del rol)
+function _seccionesPersonalizadas() { return !isAdmin() && !!_currentUser?.secciones; }
+// Para las acciones que cambian datos: true (y avisa) si en esas secciones solo puede consultar
+function _soloConsulta(...secciones) {
+  if (secciones.some(s => puedeEditar(s))) return false;
+  showToast('Solo puedes consultar esta sección');
+  return true;
+}
 
 // Cargar el perfil de RH. Solo entra quien tiene perfil: lo da el administrador en el Portal de
 // accesos (ya no se crea solo al iniciar sesión). Devuelve 'ok', 'sin_acceso' o 'error'.
@@ -9001,6 +9077,7 @@ async function loadUserProfile(user) {
   _currentUser = { id: user.id, email: user.email, ...data };
   // El correo de profiles lo mantiene el Portal (RH ya no cambia profiles): si falta, se usa el de la cuenta
   if (!data.email) _currentUser.email = user.email;
+  _currentUser.seccionesEfectivas = await _cargarMisSecciones(_currentUser);
   return 'ok';
 }
 
@@ -9027,20 +9104,26 @@ function _avisoLoginConPortal(texto) {
   errEl.appendChild(a);
 }
 
-// Secciones permitidas por rol
-// "alertas" ya no es una sección propia — vive como pestaña dentro de "duplicados"
-const ROLE_SECTIONS = {
-  admin:    ['dashboard','empleados','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','usuarios','novedades'],
-  editor:   ['dashboard','empleados','importacion','duplicados','catalogos','certificados','fechas','estadisticas','auditoria','novedades'],
-  auxiliar: ['dashboard','empleados','novedades'],
-  viewer:   ['dashboard','empleados']
-};
+// Primera sección que puede ver, en el orden del menú (con la plantilla del rol siempre es el Dashboard)
+function _primeraSeccionVisible() {
+  return ['dashboard','empleados','novedades','casosmedicos','importacion','duplicados','catalogos','certificados',
+          'fechas','estadisticas','auditoria','usuarios'].find(s => canAccess(s)) || null;
+}
+// Al entrar: a la primera sección que puede ver. Si no tiene ninguna, no se muestra ninguna.
+function _irASeccionInicial() {
+  const inicio = _primeraSeccionVisible();
+  if (inicio) { showSection(inicio, document.getElementById('sb-nav-' + inicio)); return; }
+  document.querySelectorAll('.section.active').forEach(s => s.classList.remove('active'));
+  showToast('No tienes secciones de RH asignadas. Pídeselas al administrador.');
+}
 
+// Secciones que puede ver: las de sus secciones (o la plantilla de su rol).
+// "alertas" ya no es una sección propia — vive como pestaña dentro de "duplicados"
 function canAccess(section) {
-  const role = _currentUser?.role || 'viewer';
-  if ((ROLE_SECTIONS[role] || ROLE_SECTIONS.viewer).includes(section)) return true;
-  // "Seguimientos médicos" no depende del rol sino de los permisos médicos del usuario
-  return section === 'casosmedicos' && typeof cmPuede === 'function' && cmPuede('ver');
+  if (section === 'usuarios') return isAdmin();   // «Respaldo y datos»: solo el admin
+  // "Seguimientos médicos" no depende de las secciones sino de los permisos médicos del usuario
+  if (section === 'casosmedicos') return typeof cmPuede === 'function' && cmPuede('ver');
+  return !!nivelSeccion(section);
 }
 
 // Aplicar visibilidad según rol
@@ -9048,10 +9131,12 @@ function applyRoleVisibility() {
   if (!_currentUser) return;
   const role = _currentUser.role || 'viewer';
 
-  // ── Sidebar: mostrar/ocultar items según ROLE_SECTIONS (fuente única de verdad) ──
+  // ── Sidebar: mostrar/ocultar items según canAccess (secciones de la persona o plantilla de su rol) ──
   // "Modo oscuro" no está aquí a propósito — es una preferencia visual, no una sección
   // de datos, así que se mantiene visible para todos los roles, incluido Visualizador.
   const navItems = {
+    'sb-nav-dashboard':    'dashboard',
+    'sb-nav-empleados':    'empleados',
     'sb-nav-importacion':  'importacion',
     'sb-nav-duplicados':   'duplicados',
     'sb-nav-catalogos':    'catalogos',
@@ -9084,17 +9169,17 @@ function applyRoleVisibility() {
   // ── Botones en sección Empleados ──────────────────────────────────────
   // Nuevo empleado: solo editores/admins
   const btnNuevo = document.getElementById('btn-nuevo-empleado');
-  if (btnNuevo) btnNuevo.style.display = isEditor() ? '' : 'none';
+  if (btnNuevo) btnNuevo.style.display = puedeEditar('empleados') ? '' : 'none';
   // Exportar Excel: todos los roles (incluyendo viewer)
   const btnExport = document.getElementById('btn-exportar-excel');
   if (btnExport) btnExport.style.display = '';
   // Checkbox de selección masiva (encabezado): solo editores/admins
   const checkAllHeader = document.getElementById('check-all-header');
-  if (checkAllHeader) checkAllHeader.style.display = isEditor() ? '' : 'none';
+  if (checkAllHeader) checkAllHeader.style.display = puedeEditar('empleados') ? '' : 'none';
 
   // ── Botón Editar en panel de perfil del empleado ──────────────────────
   const editBtn = document.getElementById('panel-edit-btn');
-  if (editBtn) editBtn.style.display = isEditor() ? '' : 'none';
+  if (editBtn) editBtn.style.display = puedeEditar('empleados') ? '' : 'none';
 
   // ── Footer del sidebar: nombre, rol, avatar ───────────────────────────
   const nameEl   = document.getElementById('sb-user-email');
@@ -9114,6 +9199,26 @@ function applyRoleVisibility() {
       avatarEl.textContent = (_currentUser.display_name || _currentUser.email || 'RH').slice(0,2).toUpperCase();
     }
   }
+
+  // ── Modo solo lectura por sección (fase 7): en las secciones donde solo puede consultar se ocultan
+  //    los botones de cambio (CSS [data-solo-lectura="1"]). Si el Portal le dio secciones propias,
+  //    además ve un aviso arriba de la sección. Con la plantilla del rol todo se ve como siempre.
+  ['empleados','novedades','importacion','duplicados','catalogos','certificados'].forEach(s => {
+    const sec = document.getElementById('section-' + s);
+    if (!sec) return;
+    const soloLectura = canAccess(s) && !puedeEditar(s);
+    sec.dataset.soloLectura = soloLectura ? '1' : '0';
+    let aviso = sec.querySelector(':scope > .rh-aviso-solo-lectura');
+    if (soloLectura && _seccionesPersonalizadas()) {
+      if (!aviso) {
+        aviso = document.createElement('div');
+        aviso.className = 'rh-aviso-solo-lectura';
+        aviso.textContent = 'Solo consulta: puedes ver esta sección, pero no hacer cambios.';
+        sec.prepend(aviso);
+      }
+      aviso.style.display = '';
+    } else if (aviso) aviso.style.display = 'none';
+  });
 
   // Seguimiento de casos médicos: pestaña, contador y carga de datos según los permisos del usuario
   if (typeof cmAlIniciarSesion === 'function') cmAlIniciarSesion();
@@ -9300,8 +9405,8 @@ async function doLogin() {
   applyRoleVisibility();
   _resetInactivity();
   // Siempre regresar al Dashboard al iniciar sesión — sin importar en qué sección
-  // estaba la sesión anterior
-  showSection('dashboard', document.getElementById('sb-nav-dashboard'));
+  // estaba la sesión anterior (o a la primera sección que puede ver, si no tiene Dashboard)
+  _irASeccionInicial();
   await logAudit('login', 'sesion', data.user.id, 'Inicio de sesion');
   btn.textContent = 'Cargando datos...';
   await loadCatalogsFromDB();
@@ -10763,6 +10868,7 @@ async function _persistirIgnorar(tipo, clave) {
 
 // ── ACCIÓN: Resolver duplicado exacto (misma cédula, 2+ activos) ──────────
 async function resolverDupExacto(cedula, accion) {
+  if (_soloConsulta('duplicados')) return;
   const registros = EMPLEADOS.filter(e => e.cedula === cedula && e.estado === 'ACTIVO');
   if (registros.length < 2) { showToast('No se encontraron los registros'); return; }
 
@@ -10882,6 +10988,7 @@ async function unificarPosiblesDup(idMantener, nameKey) {
 // ── ACCIÓN: Descartar posible duplicado (mismos nombres, distintas cédulas) ─
 // nameKey = nombre en MAYÚSCULAS (clave estable que no cambia entre rebuilds)
 function descartarPosibleDup(nameKey) {
+  if (_soloConsulta('duplicados')) return;
   _posDismissed.add(nameKey);
   _persistirIgnorar('possible', nameKey);
   _refrescarDuplicadosSiVisible();
@@ -10896,6 +11003,7 @@ function togglePosHistorico() {
 // ── ACCIÓN: Corregir cédula — actualiza todos los demás registros del grupo
 //    con la cédula del registro elegido (fix permanente de datos)
 async function adoptarCedula(idReferencia, nameKey) {
+  if (_soloConsulta('duplicados')) return;
   const nombre = nameKey.replace(/\\'/g, "'");
   const pares  = EMPLEADOS.filter(e => e.nombre && e.nombre.trim().toUpperCase() === nombre);
   const ref    = EMPLEADOS.find(e => e.id === idReferencia);
@@ -11011,6 +11119,7 @@ function actualizarSaludWidgets() {
 
 // ── ACCIÓN: Unificar variantes de nombres similares (cualquier campo de catálogo) ──
 async function unificarVarianteNombre(idx) {
+  if (_soloConsulta('duplicados')) return;
   const item = _simGroupsData[idx];
   if (!item) { showToast('Error: grupo no encontrado'); return; }
   const { type, group } = item;
@@ -11088,6 +11197,7 @@ async function unificarVarianteNombre(idx) {
 // ── ACCIÓN: Ignorar sugerencia de normalización ───────────────────────────
 // Usa Set persistente como _posDismissed — no splice (buildDuplicados lo sobreescribiría)
 function descartarSimilar(idx) {
+  if (_soloConsulta('duplicados')) return;
   const item = _simGroupsData[idx];
   if (!item) { showToast('Error: grupo no encontrado'); return; }
   const key = item.type + '_' + item.group[0].name;
@@ -11234,7 +11344,7 @@ function buildDuplicados() {
           ? '<span style="color:var(--green);font-weight:700;font-size:11px">ACTIVO</span>'
           : '<span style="color:var(--red);font-size:11px">INACTIVO</span>';
         // Botón "Esta CC es la correcta" — corrige la cédula de los otros registros del grupo
-        const btnMantener = isEditor()
+        const btnMantener = puedeEditar('duplicados')
           ? '<button class="dup-btn" style="font-size:10px;padding:3px 8px;white-space:nowrap;background:var(--green);color:#fff;border-color:var(--green)" onclick="adoptarCedula(' + r.id + ',\'' + nameKey + '\')" title="Actualizar los dem\xe1s registros del grupo para que tengan esta c\xe9dula (correcci\xf3n permanente)">&#10003; Esta CC es la correcta</button>'
           : '';
         return '<tr style="border-bottom:1px solid var(--border)">'
@@ -11254,7 +11364,7 @@ function buildDuplicados() {
           + '<td style="padding:8px 10px;white-space:nowrap">'
           +   '<div style="display:flex;gap:4px;align-items:center;flex-wrap:nowrap">'
           +     '<button class="btn-icon" onclick="openPanel(' + r.id + ')" title="Ver perfil completo">&#128065;</button>'
-          +     (isEditor() ? '<button class="btn-icon" onclick="openEditModal(' + r.id + ')" title="Editar">&#9998;</button>' : '')
+          +     (puedeEditar('duplicados') ? '<button class="btn-icon" onclick="openEditModal(' + r.id + ')" title="Editar">&#9998;</button>' : '')
           +     btnMantener
           +   '</div>'
           + '</td>'
@@ -11498,8 +11608,8 @@ function toggleSimVariantEmps(divId, campo, variantName) {
           + '<td style="padding:5px 10px;color:var(--text3)">' + escapeHTML(e.ingreso||'—') + '</td>'
           + '<td style="padding:5px 10px;white-space:nowrap">'
           + '<button class="btn-icon" onclick="openPanel('+e.id+')" title="Ver perfil">&#128065;</button>'
-          + (isEditor() ? '<button class="btn-icon" onclick="openEditModal('+e.id+')" title="Editar">&#9998;</button>' : '')
-          + (isEditor() ? '<button class="btn-icon red" onclick="eliminarEmpleadoDirecto('+e.id+')" title="Eliminar registro">&#128465;</button>' : '')
+          + (puedeEditar('duplicados') ? '<button class="btn-icon" onclick="openEditModal('+e.id+')" title="Editar">&#9998;</button>' : '')
+          + (puedeEditar('empleados') ? '<button class="btn-icon red" onclick="eliminarEmpleadoDirecto('+e.id+')" title="Eliminar registro">&#128465;</button>' : '')
           + '</td></tr>';
       }).join('')
     + (emps.length > 25 ? '<tr><td colspan="5" style="padding:6px 10px;color:var(--text3);font-size:10px;font-style:italic">y '+(emps.length-25)+' más...</td></tr>' : '')
@@ -11509,6 +11619,7 @@ function toggleSimVariantEmps(divId, campo, variantName) {
 
 // ── Eliminar empleado sin abrir panel (desde Corrección de Datos) ──────────
 async function eliminarEmpleadoDirecto(id) {
+  if (_soloConsulta('empleados', 'duplicados')) return;
   const emp = EMPLEADOS.find(e => e.id === id);
   if (!emp) { showToast('Registro no encontrado'); return; }
   if (!confirm('¿Eliminar permanentemente a:\n\n' + (emp.nombre||'Sin nombre') + '\nCC: ' + (emp.cedula||'—') + '\n\nEsta acción no se puede deshacer.')) return;
@@ -12022,6 +12133,7 @@ function _certRenderSolicitudesTabla() {
 }
 
 async function rechazarSolicitudCertificado(id) {
+  if (_soloConsulta('certificados')) return;
   const comentario = prompt('¿Por qué no se puede generar este certificado? Este comentario quedará visible en la solicitud:');
   if (comentario === null) return; // canceló
   if (!comentario.trim()) { showToast('Escribe un motivo para poder rechazar la solicitud'); return; }
@@ -12049,6 +12161,7 @@ async function rechazarSolicitudCertificado(id) {
 // Derivar una solicitud a otra área: abre un modal para redactar la respuesta al solicitante
 let _derivarSolId = null;
 function derivarSolicitud(id) {
+  if (_soloConsulta('certificados')) return;
   const sol = CERT_SOLICITUDES.find(s => s.id === id);
   if (!sol) return;
   if (!sol.empleado_correo || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(sol.empleado_correo)) {
@@ -12072,6 +12185,7 @@ function cerrarDerivarModal() {
 }
 
 async function enviarDerivacion() {
+  if (_soloConsulta('certificados')) return;
   const sol = CERT_SOLICITUDES.find(s => s.id === _derivarSolId);
   if (!sol) { cerrarDerivarModal(); return; }
   const mensaje = document.getElementById('derivar-mensaje').value;
@@ -12158,6 +12272,7 @@ async function agregarSolicitudCertificado() {
 }
 
 function generarDesdeSolicitud(id) {
+  if (_soloConsulta('certificados')) return;
   const sol = CERT_SOLICITUDES.find(s => s.id === id);
   if (!sol) return;
   // Comparar solo dígitos — tolera puntos, espacios u otros caracteres que a veces trae el dato del formulario
@@ -12184,6 +12299,7 @@ function generarDesdeSolicitud(id) {
 }
 
 async function marcarSolicitudPendiente(id) {
+  if (_soloConsulta('certificados')) return;
   if (!confirm('¿Devolver esta solicitud a estado pendiente?')) return;
   showBlockingOverlay('Actualizando...');
   try {
@@ -12206,6 +12322,7 @@ async function marcarSolicitudPendiente(id) {
 }
 
 async function marcarSolicitudGenerada(id, silencioso) {
+  if (_soloConsulta('certificados')) return;
   if (!silencioso && !confirm('¿Marcar esta solicitud como generada?')) return;
   if (!silencioso) showBlockingOverlay('Actualizando...');
   try {
@@ -12227,6 +12344,7 @@ async function marcarSolicitudGenerada(id, silencioso) {
 }
 
 async function eliminarSolicitudCertificado(id) {
+  if (_soloConsulta('certificados')) return;
   if (!isAdmin()) { showToast('Solo el administrador puede eliminar solicitudes'); return; }
   if (!confirm('¿Eliminar esta solicitud? Esta acción no se puede deshacer.')) return;
   showBlockingOverlay('Eliminando...');
@@ -12328,6 +12446,7 @@ function _certRenderHistorialCertTabla() {
 }
 
 async function eliminarCertificadoGenerado(id) {
+  if (_soloConsulta('certificados')) return;
   if (!isAdmin()) { showToast('Solo el administrador puede eliminar registros del historial'); return; }
   if (!confirm('¿Eliminar este registro del historial? Esta acción no se puede deshacer.')) return;
   showBlockingOverlay('Eliminando...');
@@ -13053,6 +13172,7 @@ function certUpdatePreview() {
 }
 
 function certPrint() {
+  if (_soloConsulta('certificados')) return;
   const content = document.getElementById('certDocBody')?.innerHTML;
   if (!content) { showToast('Selecciona un empleado primero'); return; }
   _registrarCertificadoGenerado('IMPRESO', null); // deja evidencia en el historial
@@ -13100,6 +13220,7 @@ function certPrint() {
 
 // ── Enviar el certificado por correo con el PDF adjunto (vía script PHP en HostGator) ──
 async function certEnviarCorreo() {
+  if (_soloConsulta('certificados')) return;
   const emp = _certEmp;
   if (!emp) { showToast('Selecciona un empleado primero'); return; }
   const el = document.getElementById('certDocBody');
